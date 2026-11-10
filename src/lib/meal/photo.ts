@@ -1,5 +1,6 @@
 // 음식 사진에서 찍은 때와 위치를 읽고, AI에 보낼 작은 사진을 만든다.
 // 원본 사진은 기기 밖으로 나가지 않는다: 줄인 사진(위치 정보 없음)과 좌표 숫자만 보낸다.
+import { toDecodable } from '../heic'
 
 export interface PhotoInfo {
   /** YYYY-MM-DD */
@@ -49,7 +50,7 @@ export const MAX_SIDE = 1280
 
 /** AI에 보낼 JPEG (base64). 다시 그리면서 사진 속 위치 정보는 사라진다 */
 export async function shrinkPhoto(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  const bitmap = await createImageBitmap(await toDecodable(file), { imageOrientation: 'from-image' })
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scale)

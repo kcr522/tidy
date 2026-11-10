@@ -9,6 +9,7 @@
  */
 import type { Section, Theme, Trio } from './palette'
 import { isPhotoRef, photoSrc } from './customPhotos'
+import { toDecodable } from './heic'
 import { SECTIONS, textOn } from './palette'
 
 export type ColorChoice = 'default' | 'random' | 'fixed'
@@ -231,7 +232,7 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
 
 /** 고른 사진을 긴 쪽 2048px JPEG로 줄인다 (폰 화면에 충분히 또렷하고, 원본 수십 MB 사진도 넣을 수 있게) */
 export async function shrinkPhoto(file: File, max = 2048): Promise<Blob> {
-  const { source, width, height, done } = await decode(file)
+  const { source, width, height, done } = await decode(await toDecodable(file))
   try {
     const scale = Math.min(1, max / Math.max(width, height))
     const canvas = document.createElement('canvas')
@@ -245,7 +246,7 @@ export async function shrinkPhoto(file: File, max = 2048): Promise<Blob> {
 }
 
 /** 사진 열기. createImageBitmap 이 큰 사진도 메모리를 덜 쓰고 회전 정보도 맞춰 준다. 안 되면 <img> 로 */
-async function decode(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
+async function decode(file: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
   if (typeof createImageBitmap === 'function') {
     try {
       const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' })

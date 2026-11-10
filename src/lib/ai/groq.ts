@@ -5,6 +5,8 @@
  * 사진과 구글 검색은 못 한다 (사진이 있으면 부르는 쪽이 기기 안 글자 인식으로 바꿔서 글로 보낸다).
  */
 
+import { appFetch } from '../../platform/nativeFetch'
+
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 /** 큰 모델(하루 약 1,000번) → 작은 모델(하루 1만 번 넘게) */
 export const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
@@ -19,7 +21,7 @@ export interface GroqRequest {
 }
 
 /** Groq 에게 묻고 글 답과 쓴 모델을 돌려준다 */
-export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof fetch = fetch, models = GROQ_MODELS): Promise<{ text: string; model: string }> {
+export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof fetch = appFetch(), models = GROQ_MODELS): Promise<{ text: string; model: string }> {
   let last = 'Groq에서 답을 받지 못했어요'
   for (const model of models) {
     let res: Response
@@ -41,7 +43,8 @@ export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof
       })
     } catch (err) {
       if (req.signal?.aborted) throw err
-      throw new Error('Groq에 연결하지 못했어요. 인터넷을 확인해 주세요')
+      const why = err instanceof Error && err.message ? ` (${err.message.slice(0, 120)})` : ''
+      throw new Error(`Groq에 연결하지 못했어요. 인터넷을 확인해 주세요${why}`)
     }
     const data = (await res.json().catch(() => ({}))) as { choices?: { message?: { content?: string } }[]; error?: { message?: string; code?: string } }
     const why = data.error?.message ?? ''

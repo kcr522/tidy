@@ -1,6 +1,7 @@
 // 기기 안에서 사진 속 글자를 읽는다 (Tesseract, 무료, 인터넷으로 사진을 보내지 않는다)
 // 처음 한 번은 글자 인식 파일(약 6MB)을 Tidy 서버에서 받아 기기에 저장한다.
 import type { Worker } from 'tesseract.js'
+import { toDecodable } from '../heic'
 
 export type OcrProgress = (stage: 'loading' | 'reading', ratio: number) => void
 
@@ -35,7 +36,7 @@ function getWorker(): Promise<Worker> {
 
 /** 글씨가 작으면 키우고 흑백으로 바꿔 인식률을 높인다 */
 async function prepare(src: Blob | string): Promise<HTMLCanvasElement> {
-  const url = typeof src === 'string' ? src : URL.createObjectURL(src)
+  const url = typeof src === 'string' ? src : URL.createObjectURL(await toDecodable(src))
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image()
