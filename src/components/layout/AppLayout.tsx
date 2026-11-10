@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
+import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { syncAlarms } from '../../platform/alarms'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -53,6 +54,9 @@ export default function AppLayout() {
     if (!todos) return
     return syncTodoAlarms(todos, (text) => toast(text))
   }, [todos, today, toast])
+
+  // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
+  useWidgetSync(todos, today)
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 홈 화면 위젯 색 (밤 모드는 values-night) -->
+<resources>
+    <color name="widget_bg">#FFFFFF</color>
+    <color name="widget_text">#191F28</color>
+    <color name="widget_muted">#6B7684</color>
+    <color name="widget_line">#E8EEF5</color>
+    <color name="widget_brand">#1D8FE1</color>
+</resources>
