@@ -91,3 +91,33 @@ export function dayTitle(dateKey: string): string {
   const d = parseDateKey(dateKey)
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`
 }
+
+/** 할 일 캘린더 칸: 그날 마감인 할 일 중 몇 개를 끝냈는지 */
+export interface DayProgress {
+  total: number
+  done: number
+}
+
+export function dayProgress(todos: Todo[]): Map<string, DayProgress> {
+  const map = new Map<string, DayProgress>()
+  for (const t of todos) {
+    if (!t.dueDate) continue
+    const p = map.get(t.dueDate) ?? { total: 0, done: 0 }
+    p.total += 1
+    if (t.isCompleted === 1) p.done += 1
+    map.set(t.dueDate, p)
+  }
+  return map
+}
+
+/**
+ * 그날 할 일을 카테고리별로 묶는다.
+ * 카테고리 순서대로, 없는(또는 지워진) 카테고리의 할 일은 맨 앞 '기본'(id 없음)에 모은다.
+ * 비어 있는 카테고리도 넣어서 바로 + 로 추가할 수 있게 한다. '기본'은 할 일이 있거나 카테고리가 하나도 없을 때만.
+ */
+export function groupByCategory<C extends { id?: number }>(todos: Todo[], categories: C[]): { category: C | null; todos: Todo[] }[] {
+  const known = new Set(categories.map((c) => c.id))
+  const base = todos.filter((t) => t.categoryId == null || !known.has(t.categoryId))
+  const groups = categories.map((c) => ({ category: c as C | null, todos: todos.filter((t) => t.categoryId === c.id) }))
+  return base.length > 0 || categories.length === 0 ? [{ category: null, todos: base }, ...groups] : groups
+}

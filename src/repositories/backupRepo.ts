@@ -1,5 +1,5 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isWebUrl } from '../lib/validate'
 
@@ -30,6 +30,8 @@ export interface Backup {
   habitChecks?: HabitCheck[]
   /** 적금 (스키마 6부터) */
   savings?: SavingsPlan[]
+  /** 할 일 카테고리 (스키마 8부터) */
+  todoCategories?: TodoCategory[]
 }
 
 export interface BackupMedia {
@@ -67,7 +69,7 @@ function isTodo(v: unknown): v is Todo {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isFlag(v.isCompleted) && (v.completedAt === null || isStr(v.completedAt)) &&
     (v.dueDate === null || isStr(v.dueDate)) && (v.priority === 'HIGH' || v.priority === 'MEDIUM' || v.priority === 'LOW') &&
-    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && isStr(v.createdAt) && isStr(v.updatedAt)
+    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && (v.categoryId === undefined || isNum(v.categoryId)) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
@@ -80,6 +82,10 @@ function isBookmark(v: unknown): v is Bookmark {
 
 function isCategory(v: unknown): v is ScrapCategory {
   return isObj(v) && isId(v.id) && isStr(v.name) && isNum(v.order) && isStr(v.createdAt)
+}
+
+function isTodoCategory(v: unknown): v is TodoCategory {
+  return isObj(v) && isCategory(v) && isStr((v as unknown as Record<string, unknown>).color)
 }
 
 const isDataUrl = (v: unknown) => typeof v === 'string' && /^data:[\w/+.-]*;base64,/.test(v)
@@ -178,10 +184,12 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const savings = data.savings ?? []
   const categories = data.scrapCategories ?? []
   const media = data.scrapMedia ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings)) throw new InvalidBackupError()
+  const todoCategories = data.todoCategories ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
-    !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings)
+    !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings) ||
+    !todoCategories.every(isTodoCategory)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -193,7 +201,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -214,6 +222,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         habitChecks: await database.habitChecks.toArray(),
         savings: await database.savings.toArray(),
         scrapCategories: await database.scrapCategories.toArray(),
+        todoCategories: await database.todoCategories.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
         ...rest,
@@ -244,6 +253,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.habits.bulkAdd(backup.habits ?? [])
         await database.habitChecks.bulkAdd(backup.habitChecks ?? [])
         await database.savings.bulkAdd(backup.savings ?? [])
+        await database.todoCategories.bulkAdd(backup.todoCategories ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)
