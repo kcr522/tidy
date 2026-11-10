@@ -6,6 +6,7 @@ import CalendarPage from './pages/CalendarPage'
 import DiaryPage from './pages/DiaryPage'
 import DashboardPage from './pages/DashboardPage'
 import NotFoundPage from './pages/NotFoundPage'
+import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
 import TodosPage from './pages/TodosPage'
 import TransactionsPage from './pages/TransactionsPage'
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="scraps" element={<BookmarksPage />} />
         <Route path="share" element={<SharePage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
