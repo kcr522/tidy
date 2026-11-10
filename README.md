@@ -132,6 +132,20 @@
 
 <img src="docs/screenshots/p2-ask-list.png" width="240"> <img src="docs/screenshots/p2-ask-ask.png" width="240"> <img src="docs/screenshots/p2-ask-settings.png" width="320">
 
+**2차 · 가계부 메뉴 (≡): 차트, 통계, 고정 금액**
+
+<img src="docs/screenshots/p2-insights-menu.png" width="240"> <img src="docs/screenshots/p2-insights-chart.png" width="240"> <img src="docs/screenshots/p2-insights-stats.png" width="240"> <img src="docs/screenshots/p2-insights-income.png" width="240">
+
+**2차 · 다크 / 라이트 / 자동 화면 밝기**
+
+<img src="docs/screenshots/p2-theme-menu.png" width="240"> <img src="docs/screenshots/p2-theme-dark-menu.png" width="240"> <img src="docs/screenshots/p2-theme-dark-money.png" width="240"> <img src="docs/screenshots/p2-theme-desktop-auto.png" width="420">
+
+**2차 · 꾸미기 (설정): 배경·구역마다 사진, 투명도, 랜덤 색 / 고정 색**
+
+<img src="docs/screenshots/p2-custom-background.png" width="240"> <img src="docs/screenshots/p2-custom-fixed.png" width="240"> <img src="docs/screenshots/p2-custom-dashboard.png" width="240"> <img src="docs/screenshots/p2-custom-dark.png" width="240">
+
+<img src="docs/screenshots/p2-custom-check.png" width="240"> <img src="docs/screenshots/p2-custom-preview.png" width="240"> <img src="docs/screenshots/p2-custom-check-todos.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

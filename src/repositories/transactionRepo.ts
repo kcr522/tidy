@@ -96,6 +96,11 @@ export function createTransactionRepo(database: TidyDB = defaultDb) {
     },
 
     /** 선택한 달의 내역 (month: 1~12) */
+    /** 모든 내역 (차트·통계용) */
+    async listAll(): Promise<Transaction[]> {
+      return database.transactions.toArray()
+    },
+
     async listByMonth(year: number, month: number): Promise<Transaction[]> {
       const [start, end] = monthRange(year, month)
       const list = await database.transactions.where('date').between(start, end, true, false).toArray()

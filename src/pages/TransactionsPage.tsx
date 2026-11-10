@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, List, Plus, Repeat } from 'lucide-react'
+import { CalendarDays, List, Menu, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -9,10 +9,10 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
-import RecurringManager from '../components/transactions/RecurringManager'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
+import MoneyMenu from '../components/transactions/insights/MoneyMenu'
 import type { Transaction } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
@@ -46,7 +46,7 @@ export default function TransactionsPage() {
   const [filterBy, setFilterBy] = useState<FilterBy>('category')
   const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
-  const [showRecurring, setShowRecurring] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelected] = useState(today)
@@ -139,9 +139,8 @@ export default function TransactionsPage() {
         title="가계부"
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" className="px-3.5" onClick={() => setShowRecurring(true)} aria-label="정기 내역" title="정기 내역">
-              <Repeat className="size-[18px]" aria-hidden />
-              <span className="hidden sm:inline">정기</span>
+            <Button variant="secondary" className="px-3.5" onClick={() => setShowMenu(true)} aria-label="차트, 통계, 고정 금액 메뉴" title="메뉴">
+              <Menu className="size-5" aria-hidden />
             </Button>
             <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
           </div>
@@ -315,9 +314,7 @@ export default function TransactionsPage() {
         )}
       </Modal>
 
-      <Modal open={showRecurring} title="정기 내역" onClose={() => setShowRecurring(false)}>
-        {showRecurring && <RecurringManager today={today} />}
-      </Modal>
+      {showMenu && <MoneyMenu onClose={() => setShowMenu(false)} today={today} />}
 
       <ConfirmDialog
         open={deleting !== null}

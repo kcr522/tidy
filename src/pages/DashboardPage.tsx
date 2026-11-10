@@ -6,6 +6,7 @@ import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import AiFeedbackCard from '../components/dashboard/AiFeedbackCard'
 import MoneyCard from '../components/dashboard/MoneyCard'
 import PaydayCard from '../components/dashboard/PaydayCard'
 import TodayTodoCard from '../components/dashboard/TodayTodoCard'
@@ -84,6 +85,7 @@ export default function DashboardPage() {
         // 폰: 세로 3단, 컴퓨터: 가로 3칸 (FR-050)
         <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
           <MoneyCard month={month} items={transactions} today={today} onAdd={() => setSheet({ kind: 'money' })} />
+          <AiFeedbackCard items={transactions} today={today} />
           <PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />
           <TodayTodoCard
             todos={todos}

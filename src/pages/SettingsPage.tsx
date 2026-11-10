@@ -2,10 +2,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
+import CustomizeCard from '../components/settings/CustomizeCard'
 import { inputClass } from '../components/common/formStyles'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import AiSettingsSection from '../components/settings/AiSettingsSection'
 import { db } from '../db/database'
 import { todayKey } from '../lib/date'
 import { pickTextFile, saveTextFile } from '../platform/saveFile'
@@ -96,6 +98,8 @@ export default function SettingsPage() {
           </dl>
         </section>
 
+        <CustomizeCard />
+
         <section className="card divide-y divide-slate-100 overflow-hidden">
           <h2 className="px-5 pt-5 pb-3 font-bold">백업</h2>
           <Row
@@ -129,6 +133,8 @@ export default function SettingsPage() {
             }
           />
         </section>
+
+        <AiSettingsSection />
 
         {aliases && aliases.length > 0 && (
           <section className="card overflow-hidden">

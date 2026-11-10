@@ -167,15 +167,50 @@ export function pickTheme(random: Rand = Math.random): Theme {
   return { angle: 100 + Math.round(random() * 60), sections }
 }
 
-/** 고른 색을 CSS 변수로 넣는다 (index.css의 .theme-* 가 읽는다) */
-export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement) {
+// ───────────── 다크 모드 ─────────────
+
+/** 어두운 바탕에서도 보이게 밝힌다 (차콜, 흑백 같은 아주 어두운 색만 바뀐다) */
+export function lift(hex: string, minLum = 0.06): string {
+  if (luminance(hex) >= minLum) return hex
+  const [h, s, l] = hexToHsl(hex)
+  for (let x = l; x < 95; x += 2) {
+    const c = hslToHex(h, s, x)
+    if (luminance(c) >= minLum) return c
+  }
+  return hslToHex(h, s, 95)
+}
+
+/** 다크용 단색 포인트: 50/100은 어두운 색조 바탕, 500~700은 어두운 바탕에서 읽히는 밝은 글자색 */
+export function brandShadesDark(colors: Trio): Record<'50' | '100' | '500' | '600' | '700', string> {
+  const base = [...colors].sort((a, b) => hexToHsl(b)[1] - hexToHsl(a)[1] || luminance(a) - luminance(b))[0]
+  const [h, s] = hexToHsl(base)
+  const sat = Math.min(s, 85)
+  const brightEnough = (startL: number, minLum: number) => {
+    for (let l = startL; l < 95; l += 2) {
+      const c = hslToHex(h, sat, l)
+      if (luminance(c) >= minLum) return c
+    }
+    return hslToHex(h, sat, 95)
+  }
+  return {
+    // 너무 진한 색 상자가 되지 않게, 색은 살짝만 비치는 어두운 회색
+    '50': hslToHex(h, Math.min(sat, 22), 14),
+    '100': hslToHex(h, Math.min(sat, 28), 20),
+    '500': brightEnough(52, 0.2),
+    '600': brightEnough(58, 0.3), // 카드(#1c1f26) 바탕 대비 4.5:1 이상
+    '700': brightEnough(66, 0.42),
+  }
+}
+
+/** 고른 색을 CSS 변수로 넣는다 (index.css의 .theme-* 가 읽는다). dark면 어두운 바탕에 맞춘 색 */
+export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement, dark = false) {
   root.style.setProperty('--grad-angle', `${theme.angle}deg`)
-  // 로고: 대시보드 색을 흰 바탕에서도 보이게 진하게
-  theme.sections.main.colors.forEach((c, i) => root.style.setProperty(`--logo-c${i + 1}`, deepen(c)))
+  // 로고: 대시보드 색을 바탕에서 보이게 (라이트: 진하게, 다크: 밝게)
+  theme.sections.main.colors.forEach((c, i) => root.style.setProperty(`--logo-c${i + 1}`, dark ? lift(c, 0.22) : deepen(c)))
   for (const sec of SECTIONS) {
-    const { colors } = theme.sections[sec]
+    const colors = (dark ? theme.sections[sec].colors.map((c) => lift(c)) : theme.sections[sec].colors) as Trio
     colors.forEach((c, i) => root.style.setProperty(`--${sec}-c${i + 1}`, c))
-    const shades = brandShades(colors)
+    const shades = dark ? brandShadesDark(colors) : brandShades(colors)
     for (const [k, v] of Object.entries(shades)) root.style.setProperty(`--${sec}-${k}`, v)
     const on = textOn(colors)
     root.style.setProperty(`--${sec}-on`, on)
