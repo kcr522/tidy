@@ -1,9 +1,11 @@
+import { toDecodable } from './heic'
+
 /**
  * 사진을 긴 쪽 maxSide 픽셀로 줄여 JPEG data URL로 바꾼다.
  * 폰 사진(몇 MB)을 그대로 넣으면 저장 공간과 백업 파일이 커지므로 줄여서 저장한다.
  */
 export async function shrinkImage(file: File, maxSide = 1080, quality = 0.8): Promise<string> {
-  const url = URL.createObjectURL(file)
+  const url = URL.createObjectURL(await toDecodable(file))
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image()

@@ -1,4 +1,5 @@
 // 사진 줄이기 (브라우저에서만). 저장 공간과 AI 요청 크기를 줄인다.
+import { toDecodable } from '../heic'
 
 async function load(blob: Blob): Promise<CanvasImageSource & { width: number; height: number }> {
   if ('createImageBitmap' in window) {
@@ -21,7 +22,7 @@ async function load(blob: Blob): Promise<CanvasImageSource & { width: number; he
 
 /** 긴 변을 maxSide 이하로 줄인 JPEG. 이미 작으면 그대로 JPEG로만 */
 export async function shrinkImage(blob: Blob, maxSide = 720, quality = 0.82): Promise<Blob> {
-  const img = await load(blob)
+  const img = await load(await toDecodable(blob))
   const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(img.width * scale))

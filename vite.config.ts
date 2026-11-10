@@ -41,9 +41,15 @@ export default defineConfig({
         // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
         navigateFallbackDenylist: [/^\/api\//],
         // 글자 인식 파일(16MB)은 처음 설치 때 받지 않고, 캡처 인식을 처음 쓸 때 받아 둔다
-        globIgnores: ['ocr/**'],
+        // HEIC 사진 변환 도구(3MB)도 HEIC 사진을 처음 고를 때 받아 둔다
+        globIgnores: ['ocr/**', '**/heic-to-*.js'],
         // 글씨체(Pretendard) 조각 파일은 처음 쓸 때 받아 두고, 그 뒤로는 오프라인에서도 쓴다
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/heic-to-[\w-]+\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-heic', expiration: { maxEntries: 2 }, cacheableResponse: { statuses: [200] } },
+          },
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/ocr/'),
             handler: 'CacheFirst',
