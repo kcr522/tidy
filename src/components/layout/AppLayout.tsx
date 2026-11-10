@@ -1,4 +1,8 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useToday } from '../../hooks/useToday'
+import { recurringRepo } from '../../repositories/recurringRepo'
+import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
 import { themeFor } from './theme'
 
@@ -10,6 +14,16 @@ import { themeFor } from './theme'
 export default function AppLayout() {
   // 지금 보고 있는 구역의 색 (가계부: 하늘, 할 일: 민트, 스크랩: 라벤더)
   const theme = themeFor(useLocation().pathname)
+  const today = useToday()
+  const toast = useToast()
+
+  // 앱을 켜거나 날짜가 바뀌면 오늘까지의 정기 내역을 가계부에 기록한다
+  useEffect(() => {
+    recurringRepo
+      .runDue(today)
+      .then((n) => n > 0 && toast(`정기 내역 ${n}건을 가계부에 기록했어요`))
+      .catch(() => toast('정기 내역을 기록하지 못했어요', 'error'))
+  }, [today, toast])
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />

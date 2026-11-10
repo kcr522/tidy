@@ -41,6 +41,7 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                       {categoryEmoji(t.category)} {t.category}
                       {t.time && <> · {formatTimeLabel(t.time)}</>}
                       {t.account && <> · {t.account}</>}
+                      {t.recurringId != null && <> · 🔁 정기</>}
                     </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>

@@ -7,21 +7,24 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import MoneyCard from '../components/dashboard/MoneyCard'
+import PaydayCard from '../components/dashboard/PaydayCard'
 import TodayTodoCard from '../components/dashboard/TodayTodoCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
 import TodoForm from '../components/todos/TodoForm'
+import RecurringManager from '../components/transactions/RecurringManager'
 import TransactionForm from '../components/transactions/TransactionForm'
 import type { Bookmark, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkInput } from '../repositories/bookmarkRepo'
+import { recurringRepo } from '../repositories/recurringRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Sheet = { kind: 'money' } | { kind: 'todo'; item?: Todo } | { kind: 'scrap' } | null
+type Sheet = { kind: 'money' } | { kind: 'todo'; item?: Todo } | { kind: 'scrap' } | { kind: 'payday'; fresh: boolean } | null
 
-const SHEET_TITLE = { money: '수입/지출 추가', todo: '할 일 추가', scrap: '링크 저장' } as const
+const SHEET_TITLE = { money: '수입/지출 추가', todo: '할 일 추가', scrap: '링크 저장', payday: '정기 내역' } as const
 
 /** 대시보드: 앱의 첫 화면 (spec US4, FR-050~055) */
 export default function DashboardPage() {
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const todos = useLiveQuery(() => todoRepo.listAll(), [])
   const unread = useLiveQuery(() => bookmarkRepo.list('unread'), [])
   const linked = useLiveQuery(() => todoRepo.linkedBookmarks(), [])
+  const incomes = useLiveQuery(async () => (await recurringRepo.list()).filter((r) => r.type === 'INCOME' && r.isActive === 1), [])
 
   async function run(action: () => Promise<unknown>, done: string) {
     try {
@@ -80,6 +84,7 @@ export default function DashboardPage() {
         // 폰: 세로 3단, 컴퓨터: 가로 3칸 (FR-050)
         <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
           <MoneyCard month={month} items={transactions} today={today} onAdd={() => setSheet({ kind: 'money' })} />
+          <PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />
           <TodayTodoCard
             todos={todos}
             today={today}
@@ -105,6 +110,9 @@ export default function DashboardPage() {
       >
         {sheet?.kind === 'money' && <TransactionForm onSubmit={saveMoney} />}
         {sheet?.kind === 'todo' && <TodoForm key={sheet.item?.id ?? 'new'} initial={sheet.item} defaultDueDate={today} onSubmit={saveTodo} />}
+        {sheet?.kind === 'payday' && (
+          <RecurringManager today={today} preset={sheet.fresh ? { type: 'INCOME', category: '월급', memo: '월급' } : undefined} />
+        )}
         {sheet?.kind === 'scrap' && <BookmarkForm isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
       </Modal>
 
