@@ -16,6 +16,10 @@ export interface Transaction {
   /** YYYY-MM-DD */
   date: string
   memo: string
+  /** 쓴 시각 HH:mm (2차, 없을 수 있음) */
+  time?: string
+  /** 결제 수단: 계좌, 카드, 앱 이름 (2차, 없을 수 있음) */
+  account?: string
   createdAt: string
   updatedAt: string
 }

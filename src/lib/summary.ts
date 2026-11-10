@@ -49,6 +49,43 @@ export function filterByCategory(list: Transaction[], category: string | null): 
   return category === null ? list : list.filter((t) => t.category === category)
 }
 
+// ───────────── 결제 수단 (2차) ─────────────
+
+/** 결제 수단을 적지 않은 내역 */
+export const NO_ACCOUNT = '미지정'
+
+export function accountOf(t: Transaction): string {
+  return t.account?.trim() || NO_ACCOUNT
+}
+
+export interface AccountTotal {
+  account: string
+  expense: number
+  income: number
+  count: number
+}
+
+/** 결제 수단별 합계 (지출 많은 순, 미지정은 맨 뒤) */
+export function accountTotals(list: Transaction[]): AccountTotal[] {
+  const map = new Map<string, AccountTotal>()
+  for (const t of list) {
+    const key = accountOf(t)
+    const row = map.get(key) ?? { account: key, expense: 0, income: 0, count: 0 }
+    if (t.type === 'EXPENSE') row.expense += t.amount
+    else row.income += t.amount
+    row.count += 1
+    map.set(key, row)
+  }
+  return [...map.values()].sort(
+    (a, b) => Number(a.account === NO_ACCOUNT) - Number(b.account === NO_ACCOUNT) || b.expense - a.expense || b.income - a.income,
+  )
+}
+
+/** 결제 수단으로 거르기. null이면 전체 */
+export function filterByAccount(list: Transaction[], account: string | null): Transaction[] {
+  return account === null ? list : list.filter((t) => accountOf(t) === account)
+}
+
 export interface DayGroup {
   date: string
   items: Transaction[]

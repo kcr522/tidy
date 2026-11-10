@@ -7,15 +7,19 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import MonthSummary from '../components/transactions/MonthSummary'
+import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
 import type { Transaction } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
-import { categoriesUsed, filterByCategory, monthSummary } from '../lib/summary'
+import { accountEmoji } from '../lib/accounts'
+import { formatWon } from '../lib/format'
+import { accountTotals, categoriesUsed, filterByAccount, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Editor = { mode: 'add' } | { mode: 'edit'; item: Transaction } | null
+type Editor = { mode: 'add' } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
+type FilterBy = 'category' | 'account'
 
 /** 가계부 화면 (spec US1) */
 export default function TransactionsPage() {
@@ -25,13 +29,26 @@ export default function TransactionsPage() {
   const thisMonth = useMemo(() => ({ year: thisYear, month: thisMonthNum }), [thisYear, thisMonthNum])
   const [ym, setYm] = useState(thisMonth)
   const [category, setCategory] = useState<string | null>(null)
+  const [filterBy, setFilterBy] = useState<FilterBy>('category')
+  const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const toast = useToast()
 
   const items = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
   const used = useMemo(() => categoriesUsed(items ?? []), [items])
-  const filtered = useMemo(() => (items ? filterByCategory(items, category) : undefined), [items, category])
+  const accounts = useMemo(() => accountTotals(items ?? []), [items])
+  const filtered = useMemo(
+    () => (items ? (filterBy === 'category' ? filterByCategory(items, category) : filterByAccount(items, account)) : undefined),
+    [items, filterBy, category, account],
+  )
+  const filterName = filterBy === 'category' ? category : account
+
+  function changeFilterBy(next: FilterBy) {
+    setFilterBy(next)
+    setCategory(null)
+    setAccount(null)
+  }
   // 필터를 고르면 위쪽 합계도 그 카테고리 기준 (US6 시나리오 2)
   const summary = useMemo(() => monthSummary(filtered ?? []), [filtered])
   const chips = category !== null && !used.includes(category) ? [...used, category] : used
@@ -88,20 +105,50 @@ export default function TransactionsPage() {
       />
 
       {items !== undefined && items.length > 0 && (
-        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="카테고리 필터">
-          {[null, ...chips].map((c) => (
-            <button
-              key={c ?? 'all'}
-              type="button"
-              aria-pressed={category === c}
-              onClick={() => setCategory(c)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
-                category === c ? 'bg-grad on-grad shadow-float' : 'bg-white text-slate-600 shadow-card hover:bg-slate-50'
-              }`}
-            >
-              {c === null ? '전체' : `${categoryEmoji(c)} ${c}`}
-            </button>
-          ))}
+        <div className="mb-4 space-y-2.5">
+          <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="radiogroup" aria-label="모아 보기 기준">
+            {(
+              [
+                ['category', '카테고리별'],
+                ['account', '결제 수단별'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={filterBy === key}
+                onClick={() => changeFilterBy(key)}
+                className={`min-h-10 flex-1 rounded-xl text-sm font-semibold ${filterBy === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0"
+            role="group"
+            aria-label={filterBy === 'category' ? '카테고리 필터' : '결제 수단 필터'}
+          >
+            {filterBy === 'category'
+              ? [null, ...chips].map((c) => (
+                  <Chip key={c ?? 'all'} active={category === c} onClick={() => setCategory(c)}>
+                    {c === null ? '전체' : `${categoryEmoji(c)} ${c}`}
+                  </Chip>
+                ))
+              : [null, ...accounts].map((a) => (
+                  <Chip key={a?.account ?? 'all'} active={account === (a?.account ?? null)} onClick={() => setAccount(a?.account ?? null)}>
+                    {a === null ? (
+                      '전체'
+                    ) : (
+                      <>
+                        {accountEmoji(a.account)} {a.account}
+                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
+                      </>
+                    )}
+                  </Chip>
+                ))}
+          </div>
         </div>
       )}
 
@@ -116,20 +163,27 @@ export default function TransactionsPage() {
         filtered.length === 0 ? (
           <EmptyState
             icon="🔍"
-            title={`이 달에는 ${category} 내역이 없어요`}
+            title={`이 달에는 ${filterName} 내역이 없어요`}
             action={
-              <Button variant="secondary" onClick={() => setCategory(null)}>
+              <Button variant="secondary" onClick={() => changeFilterBy(filterBy)}>
                 전체 보기
               </Button>
             }
           />
         ) : (
-          <TransactionList items={filtered} onSelect={(item) => setEditor({ mode: 'edit', item })} />
+          <TransactionList items={filtered} onSelect={(item) => setEditor({ mode: 'view', item })} />
         )
       )}
 
-      <Modal open={editor !== null} title={editor?.mode === 'edit' ? '내역 수정' : '내역 추가'} onClose={() => setEditor(null)}>
-        {editor && (
+      <Modal
+        open={editor !== null}
+        title={editor?.mode === 'view' ? '내역 자세히' : editor?.mode === 'edit' ? '내역 수정' : '내역 추가'}
+        onClose={() => setEditor(null)}
+      >
+        {editor?.mode === 'view' && (
+          <TransactionDetail item={editor.item} onEdit={() => setEditor({ mode: 'edit', item: editor.item })} onDelete={() => setDeleting(editor.item)} />
+        )}
+        {editor && editor.mode !== 'view' && (
           <TransactionForm
             key={editor.mode === 'edit' ? editor.item.id : 'new'}
             initial={editor.mode === 'edit' ? editor.item : undefined}
@@ -149,5 +203,20 @@ export default function TransactionsPage() {
         onCancel={() => setDeleting(null)}
       />
     </>
+  )
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
+        active ? 'bg-grad on-grad shadow-float' : 'bg-white text-slate-600 shadow-card hover:bg-slate-50'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
