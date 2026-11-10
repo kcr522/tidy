@@ -21,9 +21,9 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x, Node.js 20 LTS 이상
+**Language/Version**: TypeScript 7, Node.js 22 LTS 이상
 
-**Primary Dependencies**: React 18, Vite 5, React Router 6, Tailwind CSS 3, Dexie 4 + dexie-react-hooks, vite-plugin-pwa, date-fns(ko 로케일), Capacitor 6(@capacitor/browser, @capacitor/filesystem, @capacitor/share)
+**Primary Dependencies**: React 19, Vite 8, React Router 7, Tailwind CSS 4(@tailwindcss/vite), Dexie 4 + dexie-react-hooks, vite-plugin-pwa, date-fns(ko 로케일), Capacitor 6(@capacitor/browser, @capacitor/filesystem, @capacitor/share)
 
 **Storage**: IndexedDB (Dexie.js). 모든 환경 공통. 스키마는 [data-model.md](./data-model.md)
 
@@ -72,7 +72,6 @@ tidy/
 ├── index.html
 ├── package.json
 ├── vite.config.ts                 # PWA 설정 포함
-├── tailwind.config.js
 ├── capacitor.config.ts            # 폰 앱 설정 (Day 7)
 ├── public/
 │   └── icons/                     # 앱 아이콘 (192, 512px)
