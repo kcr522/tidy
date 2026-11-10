@@ -259,3 +259,40 @@ describe('Gemini (무료)', () => {
     expect((await askAssistant({ engine: 'gemini' }, { today: TODAY, text: '내일 치과' })).engine).toBe('local')
   })
 })
+
+describe('Gemini 오류 다루기', () => {
+  const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
+  const good = { candidates: [{ content: { parts: [{ text: '안녕' }] } }] }
+
+  it('모델을 못 찾으면(404) 고정 모델로 한 번 더', async () => {
+    const { callGemini, GEMINI_FALLBACK_MODEL } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValueOnce(reply(404, { error: { message: 'not found' } })).mockResolvedValueOnce(reply(200, good))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)).resolves.toBe('안녕')
+    expect(f.mock.calls[1][0]).toContain(GEMINI_FALLBACK_MODEL)
+  })
+
+  it('붐비면(503) 잠깐 쉬고 한 번 더', async () => {
+    vi.useFakeTimers()
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValueOnce(reply(503, { error: { message: 'overloaded' } })).mockResolvedValueOnce(reply(200, good))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect(p).resolves.toBe('안녕')
+    vi.useRealTimers()
+  })
+
+  it('그 밖의 오류는 구글이 준 이유를 보여 준다', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValue(reply(400, { error: { message: 'Invalid JSON payload' } }))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)).rejects.toThrow('Gemini에서 오류가 났어요 (400: Invalid JSON payload)')
+    const k = vi.fn().mockResolvedValue(reply(400, { error: { message: 'API key not valid. Please pass a valid API key.' } }))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, k)).rejects.toThrow('Gemini 키가 맞지 않아요')
+  })
+
+  it('답 토큰은 최소 2048 (생각하는 데 쓰는 토큰 때문에)', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValue(reply(200, good))
+    await callGemini('K', { system: 'S', parts: [{ text: 'x' }], maxTokens: 512 }, f)
+    expect(JSON.parse(f.mock.calls[0][1].body).generationConfig.maxOutputTokens).toBe(2048)
+  })
+})
