@@ -156,6 +156,10 @@
 
 <img src="docs/screenshots/p2-custom-check.png" width="240"> <img src="docs/screenshots/p2-custom-preview.png" width="240"> <img src="docs/screenshots/p2-custom-check-todos.png" width="240">
 
+**캡처로 가계부 입력 (AI 없이, 기기 안 글자 인식)**
+
+<img src="docs/screenshots/ocr-menu.png" width="220"> <img src="docs/screenshots/ocr-sample-bank.png" width="220"> <img src="docs/screenshots/ocr-review-dialog.png" width="220"> <img src="docs/screenshots/ocr-saved.png" width="220">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

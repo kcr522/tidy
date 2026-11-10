@@ -4,7 +4,7 @@ import { matchMerchant } from '../merchants'
 import type { AssistantReply, AssistantRequest, EventGuess, PaymentGuess } from './assistant'
 
 // AI 없이(설정 > AI 연결 '기본') 쓰는 대화창: 글에서 날짜·금액·지난 이야기를 규칙으로 찾는다.
-// 사진 속 글자는 읽지 못한다.
+// 사진은 assistantEngines에서 기기 안 글자 인식(OCR)으로 글로 바꾼 뒤 이 규칙에 넣는다.
 
 const WEEK = '일월화수목금토'
 const key = (d: Date) => format(d, 'yyyy-MM-dd')
@@ -124,7 +124,7 @@ export function localAssistant(req: AssistantRequest): AssistantReply {
     return {
       ...none,
       kind: 'none',
-      reply: "지금은 AI 연결이 '기본'이라 사진 속 글자를 읽지 못해요. 설정 > AI 연결에서 Claude를 켜 주시거나, 사진 속 날짜와 내용을 글로 적어 주세요.",
+      reply: '사진에서 읽을 수 있는 글자를 찾지 못했어요. 더 선명한 사진을 보내 주시거나, 날짜와 내용을 글로 적어 주세요.',
     }
   }
   const today = req.today

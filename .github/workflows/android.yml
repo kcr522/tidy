@@ -1,0 +1,51 @@
+# 안드로이드 앱(APK) 만들기
+# GitHub의 Actions 탭 → "Android APK" → 맨 위 실행 결과 → 아래쪽 Artifacts의 tidy-debug-apk 를 받으면 된다.
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'feat/**']
+    paths-ignore: ['docs/**', '**/*.md']
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: 웹 화면 빌드
+        run: |
+          npm ci
+          npm run build
+
+      - name: 안드로이드 프로젝트에 복사
+        run: npx cap sync android
+
+      - name: APK 만들기
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: 파일 이름 정리
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk tidy-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tidy-debug-apk
+          path: tidy-debug.apk
+          retention-days: 30

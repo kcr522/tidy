@@ -2,6 +2,7 @@
 node_modules/
 
 # 빌드 결과물
+public/ocr/
 dist/
 dist-ssr/
 dev-dist/

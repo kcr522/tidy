@@ -8,6 +8,7 @@ import EmptyState from '../components/common/EmptyState'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import BankCapture from '../components/transactions/BankCapture'
 import MealCapture from '../components/transactions/MealCapture'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
@@ -50,6 +51,9 @@ export default function TransactionsPage() {
   const [editor, setEditor] = useState<Editor>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [showMeal, setShowMeal] = useState(false)
+  // 📷: 무엇으로 기록할지 고르기 → 은행·카드 캡처 / 음식 사진
+  const [photoMenu, setPhotoMenu] = useState(false)
+  const [showBank, setShowBank] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelected] = useState(today)
@@ -182,7 +186,7 @@ export default function TransactionsPage() {
             <Button variant="secondary" className="px-3.5" onClick={() => setShowMenu(true)} aria-label="차트, 통계, 고정 금액 메뉴" title="메뉴">
               <Menu className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="px-3.5" onClick={() => setShowMeal(true)} aria-label="음식 사진으로 기록" title="음식 사진으로 기록">
+            <Button variant="secondary" className="px-3.5" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
             </Button>
             <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
@@ -362,6 +366,47 @@ export default function TransactionsPage() {
             defaultDate={editor.mode === 'add' ? editor.date : undefined}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
+          />
+        )}
+      </Modal>
+
+      <Modal open={photoMenu} title="사진으로 기록" onClose={() => setPhotoMenu(false)}>
+        <div className="grid gap-2.5">
+          {(
+            [
+              ['🧾', '은행·카드 앱 캡처', '거래 내역이나 결제 알림 캡처에서 날짜·금액·가게를 찾아 한 번에 기록해요', () => setShowBank(true)],
+              ['🍜', '음식 사진', '먹은 음식 사진으로 가게와 메뉴 가격을 찾아 기록해요', () => setShowMeal(true)],
+            ] as const
+          ).map(([icon, title, desc, open]) => (
+            <button
+              key={title}
+              type="button"
+              onClick={() => {
+                setPhotoMenu(false)
+                open()
+              }}
+              className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-left transition hover:bg-brand-50 active:scale-[0.99]"
+            >
+              <span className="bg-grad-soft flex size-12 shrink-0 items-center justify-center rounded-2xl text-2xl" aria-hidden>
+                {icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold text-slate-800">{title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal open={showBank} title="은행·카드 캡처로 기록" onClose={() => setShowBank(false)}>
+        {showBank && (
+          <BankCapture
+            today={today}
+            onDone={(n) => {
+              setShowBank(false)
+              toast(n > 0 ? `캡처에서 ${n}건을 기록했어요` : '저장한 내역이 없어요')
+            }}
           />
         )}
       </Modal>

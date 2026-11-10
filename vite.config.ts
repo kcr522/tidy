@@ -40,8 +40,15 @@ export default defineConfig({
       workbox: {
         // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
         navigateFallbackDenylist: [/^\/api\//],
+        // 글자 인식 파일(16MB)은 처음 설치 때 받지 않고, 캡처 인식을 처음 쓸 때 받아 둔다
+        globIgnores: ['ocr/**'],
         // 글씨체(Pretendard) 조각 파일은 처음 쓸 때 받아 두고, 그 뒤로는 오프라인에서도 쓴다
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/ocr/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-ocr', expiration: { maxEntries: 10 }, cacheableResponse: { statuses: [200] } },
+          },
           {
             urlPattern: ({ request }) => request.destination === 'font',
             handler: 'CacheFirst',
