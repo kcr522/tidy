@@ -92,14 +92,14 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 **Independent Test**: spec.md US2의 Acceptance Scenarios 1~5
 
-- [ ] T026 [US2] 저장소 `src/repositories/todoRepo.ts`: add, update, remove, toggleComplete(completedAt 기록), listAll, listToday
-- [ ] T027 [P] [US2] 오늘 할 일/정렬 계산 `src/lib/summary.ts`의 `todayTodos()`, `sortTodos()` + 테스트 (FR-023, FR-024)
-- [ ] T028 [US2] 입력 폼 `src/components/todos/TodoForm.tsx`: 제목, 마감일(선택), 중요도(기본 보통) (FR-020)
-- [ ] T029 [US2] 항목 `src/components/todos/TodoItem.tsx`: 체크박스, 취소선, 중요도 색, "기한 지남" 표시 (FR-021, FR-025)
-- [ ] T030 [US2] 페이지 `src/pages/TodosPage.tsx`: 오늘/전체 탭, 미완료 위 완료 아래, 빈 화면 안내
-- [ ] T031 [US2] 항목 눌러 수정, 삭제(확인 창) (FR-022)
-- [ ] T032 [US2] US2 시나리오 1~5 확인
-- [ ] T033 💾 커밋 & 푸시: `feat: 할 일 CRUD와 완료 체크`
+- [x] T026 [US2] 저장소 `src/repositories/todoRepo.ts`: add, update, remove, toggleComplete(completedAt 기록), listAll, listToday
+- [x] T027 [P] [US2] 오늘 할 일/정렬 계산 `src/lib/summary.ts`의 `todayTodos()`, `sortTodos()` + 테스트 (FR-023, FR-024)
+- [x] T028 [US2] 입력 폼 `src/components/todos/TodoForm.tsx`: 제목, 마감일(선택), 중요도(기본 보통) (FR-020)
+- [x] T029 [US2] 항목 `src/components/todos/TodoItem.tsx`: 체크박스, 취소선, 중요도 색, "기한 지남" 표시 (FR-021, FR-025)
+- [x] T030 [US2] 페이지 `src/pages/TodosPage.tsx`: 오늘/전체 탭, 미완료 위 완료 아래, 빈 화면 안내
+- [x] T031 [US2] 항목 눌러 수정, 삭제(확인 창) (FR-022)
+- [x] T032 [US2] US2 시나리오 1~5 확인
+- [x] T033 💾 커밋 & 푸시: `feat: 할 일 CRUD와 완료 체크`
 
 **Checkpoint**: 할 일만으로 하루 일정을 관리할 수 있다
 
@@ -157,7 +157,7 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 **Goal**: 편의 기능과 예외 처리, 디자인 정돈
 
 - [ ] T054 [US6] 가계부 카테고리 필터, 필터 시 합계도 해당 카테고리 기준 (FR-018)
-- [ ] T055 [US6] 할 일 '오늘' 탭에 기한 지난 미완료 맨 위, 오늘 완료한 것은 아래 (FR-023)
+- [x] T055 [US6] 할 일 '오늘' 탭에 기한 지난 미완료 맨 위, 오늘 완료한 것은 아래 (FR-023)
 - [ ] T056 [US6] 스크랩 '전체'/'안 읽음' 필터 (FR-037)
 - [ ] T057 [P] 저장 실패 시 입력 유지 + "저장하지 못했어요" 토스트 (Edge Cases)
 - [ ] T058 [P] 긴 텍스트 말줄임, 글자 수 제한 표시 (Edge Cases)

@@ -1,4 +1,4 @@
-import type { Transaction } from '../db/types'
+import type { Priority, Todo, Transaction } from '../db/types'
 
 export interface MonthSummary {
   income: number
@@ -41,4 +41,45 @@ export function groupByDate(list: Transaction[]): DayGroup[] {
     else group.expense += t.amount
   }
   return groups
+}
+
+// ───────────── 할 일 ─────────────
+
+const PRIORITY_RANK: Record<Priority, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+
+/** 마감일이 지났고 아직 미완료인가 */
+export function isOverdue(todo: Todo, today: string): boolean {
+  return todo.isCompleted === 0 && todo.dueDate !== null && todo.dueDate < today
+}
+
+/**
+ * '전체' 탭 정렬 (FR-024)
+ * 미완료 → 완료, 그 안에서 마감일 빠른 순(없으면 맨 뒤), 중요도 높은 순, 최근 등록 순
+ */
+export function sortTodos(list: Todo[]): Todo[] {
+  return [...list].sort((a, b) => {
+    if (a.isCompleted !== b.isCompleted) return a.isCompleted - b.isCompleted
+    if (a.dueDate !== b.dueDate) {
+      if (a.dueDate === null) return 1
+      if (b.dueDate === null) return -1
+      return a.dueDate < b.dueDate ? -1 : 1
+    }
+    if (a.priority !== b.priority) return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+    return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
+  })
+}
+
+/**
+ * '오늘' 탭 (FR-023)
+ * 마감일이 오늘인 할 일 + 마감일이 지났는데 미완료인 할 일.
+ * 기한 지난 미완료가 맨 위, 완료한 것은 아래.
+ */
+export function todayTodos(list: Todo[], today: string): Todo[] {
+  return sortTodos(list.filter((t) => t.dueDate === today || isOverdue(t, today)))
+}
+
+/** 오늘 할 일 진행률: (완료 수, 전체 수) */
+export function todayProgress(list: Todo[], today: string): { done: number; total: number } {
+  const items = todayTodos(list, today)
+  return { done: items.filter((t) => t.isCompleted === 1).length, total: items.length }
 }

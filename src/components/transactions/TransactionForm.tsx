@@ -6,6 +6,8 @@ import { formatNumber } from '../../lib/format'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
 import type { TransactionInput } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
+import Field from '../common/FormField'
+import { inputClass } from '../common/formStyles'
 
 interface TransactionFormProps {
   /** 수정할 때 기존 값 */
@@ -140,21 +142,5 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
         </Button>
       </div>
     </form>
-  )
-}
-
-function inputClass(invalid: boolean) {
-  return `w-full min-h-11 rounded-lg border bg-white px-3 text-base outline-none focus:ring-2 focus:ring-brand-500 ${
-    invalid ? 'border-expense' : 'border-slate-300'
-  }`
-}
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-600">{label}</span>
-      {children}
-      {error && <span className="mt-1 block text-sm text-expense">{error}</span>}
-    </label>
   )
 }

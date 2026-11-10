@@ -15,7 +15,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const show = useCallback((message: string, kind: ToastKind = 'success') => {
     const id = Date.now() + Math.random()
-    setItems((prev) => [...prev, { id, message, kind }])
+    // 한 번에 하나만 보여 준다 (연속 저장 시 쌓이지 않게)
+    setItems([{ id, message, kind }])
     setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 2500)
   }, [])
 
