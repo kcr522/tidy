@@ -9,6 +9,7 @@ export const EXPENSE_CATEGORIES = [
   '주거/통신',
   '의료/건강',
   '교육',
+  '저축',
   '기타',
 ] as const
 
@@ -31,6 +32,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   '주거/통신': '🏠',
   '의료/건강': '💊',
   교육: '📚',
+  저축: '🐷',
   월급: '💰',
   용돈: '🎁',
   부수입: '✨',

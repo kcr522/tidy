@@ -1,5 +1,6 @@
 import type { Habit } from '../../db/types'
-import { currentStreak, lastDays } from '../../lib/habits'
+import { lastDays, scheduledStreak } from '../../lib/habits'
+import { isDueOn, scheduleLabel } from '../../lib/savings'
 import Button from '../common/Button'
 import EmptyState from '../common/EmptyState'
 import HabitCheckButton from './HabitCheckButton'
@@ -29,7 +30,9 @@ export default function HabitsPanel({ habits, checks, today, onAdd, onToggle, on
   }
 
   const week = lastDays(today, 7)
-  const doneToday = habits.filter((h) => checks.get(h.id!)?.has(today)).length
+  // 오늘 할 습관만 센다 (적금 습관은 넣는 날에만)
+  const dueHabits = habits.filter((h) => !h.schedule || isDueOn(h.schedule, today))
+  const doneToday = dueHabits.filter((h) => checks.get(h.id!)?.has(today)).length
 
   return (
     <div className="space-y-3">
@@ -38,22 +41,24 @@ export default function HabitsPanel({ habits, checks, today, onAdd, onToggle, on
           <div>
             <p className="text-sm font-semibold opacity-85">오늘의 습관</p>
             <p className="text-2xl font-extrabold tracking-tight">
-              {doneToday === habits.length ? '오늘 다 했어요 🎉' : `${habits.length - doneToday}개 남았어요`}
+              {doneToday === dueHabits.length ? '오늘 다 했어요 🎉' : `${dueHabits.length - doneToday}개 남았어요`}
             </p>
           </div>
           <span className="text-lg font-bold">
-            {doneToday}/{habits.length}
+            {doneToday}/{dueHabits.length}
           </span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-on-soft" aria-hidden>
-          <div className="h-full rounded-full opacity-80 transition-all" style={{ width: `${(doneToday / habits.length) * 100}%`, background: "var(--on, #fff)" }} />
+          <div className="h-full rounded-full opacity-80 transition-all" style={{ width: `${dueHabits.length ? (doneToday / dueHabits.length) * 100 : 100}%`, background: "var(--on, #fff)" }} />
         </div>
       </section>
 
       <ul className="card divide-y divide-slate-100 overflow-hidden">
         {habits.map((h) => {
           const done = checks.get(h.id!) ?? new Set<string>()
-          const streak = currentStreak(done, today)
+          const streak = scheduledStreak(done, today, h.schedule)
+          const scheduled = h.schedule && h.schedule.freq !== 'daily'
+          const dueToday = !h.schedule || isDueOn(h.schedule, today)
           return (
             <li key={h.id} className="flex items-center gap-3 px-4 py-3">
               <button type="button" onClick={() => onOpen(h)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={`${h.title} 자세히 보기`}>
@@ -61,8 +66,13 @@ export default function HabitsPanel({ habits, checks, today, onAdd, onToggle, on
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className={`truncate text-[15px] font-semibold ${done.has(today) ? 'text-slate-400' : 'text-slate-800'}`}>{h.title}</span>
-                    {streak > 0 && <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-bold text-orange-500">🔥 {streak}일</span>}
+                    {streak > 0 && <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-bold text-orange-500">🔥 {streak}{scheduled ? '번' : '일'}</span>}
                   </span>
+                  {h.schedule && h.schedule.freq !== 'daily' && (
+                    <span className="mt-0.5 block text-xs text-slate-400">
+                      {scheduleLabel(h.schedule)} · {dueToday ? <b className="text-brand-600">오늘 넣는 날</b> : '오늘은 쉬는 날'}
+                    </span>
+                  )}
                   <span className="mt-1.5 flex gap-1" aria-label="최근 7일">
                     {week.map((d) => (
                       <span key={d} className="flex flex-col items-center gap-0.5">
