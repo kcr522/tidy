@@ -160,6 +160,10 @@
 
 <img src="docs/screenshots/ocr-menu.png" width="220"> <img src="docs/screenshots/ocr-sample-bank.png" width="220"> <img src="docs/screenshots/ocr-review-dialog.png" width="220"> <img src="docs/screenshots/ocr-saved.png" width="220">
 
+**2차 · 적금 (만기 금액 세전/세후, 습관, 알림)**
+
+<img src="docs/screenshots/savings-ai.png" width="240"> <img src="docs/screenshots/savings-form.png" width="240"> <img src="docs/screenshots/savings-detail.png" width="240"> <img src="docs/screenshots/savings-list.png" width="240"> <img src="docs/screenshots/savings-habit.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

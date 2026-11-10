@@ -39,7 +39,7 @@ function subscribe(cb: () => void) {
 function parseSettings(raw: string | null): AiSettings {
   try {
     const v = JSON.parse(raw ?? 'null') as Partial<AiSettings> | null
-    if (v && (v.engine === 'local' || v.engine === 'server' || v.engine === 'key')) return { ...v, engine: v.engine }
+    if (v && (v.engine === 'local' || v.engine === 'gemini' || v.engine === 'server' || v.engine === 'key')) return { ...v, engine: v.engine }
   } catch {
     // 깨진 값이면 기본으로
   }

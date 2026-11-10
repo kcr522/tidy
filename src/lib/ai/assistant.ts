@@ -90,7 +90,7 @@ export function weekdayOf(key: string): string {
   return WEEK[new Date(y, m - 1, d).getDay()]
 }
 
-const SYSTEM = `너는 가계부·일정 앱 "Tidy" 안의 AI 비서야.
+export const ASSISTANT_SYSTEM = `너는 가계부·일정 앱 "Tidy" 안의 AI 비서야.
 사용자가 사진(포스터, 공지, 안내문, 단체 문자, 은행·카드·간편결제 앱의 결제 내역 캡처, 영수증)이나 짧은 글을 보내면
 캘린더에 넣을 일정인지, 가계부에 넣을 결제 내역인지, 일기에 남길 오늘 이야기인지 스스로 판단해서 내용을 뽑아 줘.
 
@@ -316,6 +316,16 @@ export function sanitizeAssistantReply(raw: unknown): AssistantReply | null {
   return { ...none, kind: 'none', reply: reply || '여기서는 일정이나 결제 내역을 찾지 못했어요' }
 }
 
+/** 도구가 없는 AI(Gemini)에게 알려 줄 답 모양 */
+export const JSON_SHAPE = `report 도구 대신, 아래 모양의 JSON 하나로만 답해 (다른 글 없이):
+{"kind":"event|payment|diary|none","reply":"…","events":[{"title":"…","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","time":"HH:mm 또는 null","place":"… 또는 null","note":""}],"payments":[{"type":"EXPENSE|INCOME","merchant":"…","amount":0,"date":"YYYY-MM-DD","time":"HH:mm 또는 null","account":"… 또는 null","category":"…"}],"diary":{"date":"YYYY-MM-DD","text":"…"} 또는 null}
+해당 없는 칸은 빈 배열이나 null.`
+
+/** 글로 받은 JSON 답을 믿을 수 있는 모양으로 (Gemini, 또는 Claude가 도구 대신 글로 썼을 때) */
+export function parseAssistantJson(text: string): AssistantReply | null {
+  return replyFromText(text)
+}
+
 /** 모델이 도구 대신 글로 JSON을 썼을 때 대비 */
 function replyFromText(text: string): AssistantReply | null {
   const m = text.match(/\{[\s\S]*\}/)
@@ -345,7 +355,7 @@ export async function askClaudeAssistant(client: Anthropic, req: AssistantReques
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       output_config: { effort: 'low' },
-      system: SYSTEM,
+      system: ASSISTANT_SYSTEM,
       tools: [REPORT_TOOL],
       tool_choice: { type: 'tool', name: REPORT_TOOL.name },
       messages: [{ role: 'user', content }],

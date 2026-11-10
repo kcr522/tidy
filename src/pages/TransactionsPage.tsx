@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, Camera, List, Menu, Plus } from 'lucide-react'
+import { CalendarDays, Camera, List, Menu, PiggyBank, Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -12,6 +12,7 @@ import BankCapture from '../components/transactions/BankCapture'
 import MealCapture from '../components/transactions/MealCapture'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
+import SavingsManager from '../components/transactions/SavingsManager'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
@@ -54,6 +55,7 @@ export default function TransactionsPage() {
   // 📷: 무엇으로 기록할지 고르기 → 은행·카드 캡처 / 음식 사진
   const [photoMenu, setPhotoMenu] = useState(false)
   const [showBank, setShowBank] = useState(false)
+  const [showSavings, setShowSavings] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelected] = useState(today)
@@ -188,6 +190,10 @@ export default function TransactionsPage() {
             </Button>
             <Button variant="secondary" className="px-3.5" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
+            </Button>
+            <Button variant="secondary" className="px-3.5" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+              <PiggyBank className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">적금</span>
             </Button>
             <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
           </div>
@@ -416,6 +422,10 @@ export default function TransactionsPage() {
       </Modal>
 
       {showMenu && <MoneyMenu onClose={() => setShowMenu(false)} today={today} />}
+
+      <Modal open={showSavings} title="적금" onClose={() => setShowSavings(false)}>
+        {showSavings && <SavingsManager today={today} />}
+      </Modal>
 
       <ConfirmDialog
         open={deleting !== null}
