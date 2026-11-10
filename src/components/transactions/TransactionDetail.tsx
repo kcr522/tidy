@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Pencil, StickyNote, Tag, Trash2, Wallet } from 'lucide-react'
+import { CalendarDays, Clock, Pencil, Repeat, StickyNote, Tag, Trash2, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Transaction } from '../../db/types'
 import { accountEmoji } from '../../lib/accounts'
@@ -33,6 +33,7 @@ export default function TransactionDetail({ item, onEdit, onDelete }: { item: Tr
           value={item.account ? `${accountEmoji(item.account)} ${item.account}` : '기록 안 함'}
           muted={!item.account}
         />
+        {item.recurringId != null && <Row icon={<Repeat />} label="정기 내역" value="매달 자동으로 기록돼요" />}
         {item.memo && <Row icon={<StickyNote />} label={m ? '가게 이름' : '메모'} value={item.memo} />}
         <Row icon={<Clock />} label="기록한 때" value={new Date(item.createdAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })} muted />
       </dl>

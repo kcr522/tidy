@@ -124,6 +124,10 @@
 
 <img src="docs/screenshots/p2-money-list.png" width="240"> <img src="docs/screenshots/p2-money-detail.png" width="240"> <img src="docs/screenshots/p2-money-account.png" width="240"> <img src="docs/screenshots/p2-money-form.png" width="240">
 
+**2차 · 정기 내역, 월급 D-day**
+
+<img src="docs/screenshots/p2-recurring-dashboard.png" width="240"> <img src="docs/screenshots/p2-recurring-list.png" width="240"> <img src="docs/screenshots/p2-recurring-form.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

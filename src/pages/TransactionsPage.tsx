@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Repeat } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -7,6 +8,7 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import MonthSummary from '../components/transactions/MonthSummary'
+import RecurringManager from '../components/transactions/RecurringManager'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
@@ -32,6 +34,7 @@ export default function TransactionsPage() {
   const [filterBy, setFilterBy] = useState<FilterBy>('category')
   const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
+  const [showRecurring, setShowRecurring] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const toast = useToast()
 
@@ -93,7 +96,18 @@ export default function TransactionsPage() {
 
   return (
     <>
-      <PageHeader title="가계부" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>} />
+      <PageHeader
+        title="가계부"
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" className="px-3.5" onClick={() => setShowRecurring(true)} aria-label="정기 내역" title="정기 내역">
+              <Repeat className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">정기</span>
+            </Button>
+            <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
+          </div>
+        }
+      />
 
       <MonthSummary
         year={ym.year}
@@ -191,6 +205,10 @@ export default function TransactionsPage() {
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />
         )}
+      </Modal>
+
+      <Modal open={showRecurring} title="정기 내역" onClose={() => setShowRecurring(false)}>
+        {showRecurring && <RecurringManager today={today} />}
       </Modal>
 
       <ConfirmDialog
