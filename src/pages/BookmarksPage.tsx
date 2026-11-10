@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
 import BookmarkForm from '../components/bookmarks/BookmarkForm'
+import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
@@ -11,6 +13,7 @@ import { useToast } from '../components/common/Toast'
 import type { Bookmark } from '../db/types'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter, type BookmarkInput } from '../repositories/bookmarkRepo'
+import { todoRepo } from '../repositories/todoRepo'
 
 type Editor = { mode: 'add' } | { mode: 'edit'; item: Bookmark } | null
 
@@ -19,7 +22,10 @@ export default function BookmarksPage() {
   const [filter, setFilter] = useState<BookmarkFilter>('all')
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<Bookmark | null>(null)
+  const [converting, setConverting] = useState<Bookmark | null>(null)
   const toast = useToast()
+  const navigate = useNavigate()
+  const linked = useLiveQuery(() => todoRepo.linkedBookmarks(), [])
 
   const items = useLiveQuery(() => bookmarkRepo.list(filter), [filter])
   const counts = useLiveQuery(async () => {
@@ -100,6 +106,9 @@ export default function BookmarksPage() {
               onOpen={() => open(b)}
               onToggleRead={() => b.id != null && bookmarkRepo.toggleRead(b.id)}
               onEdit={() => setEditor({ mode: 'edit', item: b })}
+              converted={b.id != null && !!linked?.has(b.id)}
+              onConvert={() => setConverting(b)}
+              onViewTodo={() => navigate('/todos', { state: { tab: 'all' } })}
             />
           ))}
         </div>
@@ -116,6 +125,8 @@ export default function BookmarksPage() {
           />
         )}
       </Modal>
+
+      <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />
 
       <ConfirmDialog
         open={deleting !== null}

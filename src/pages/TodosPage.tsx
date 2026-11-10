@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
@@ -11,6 +12,8 @@ import TodoItem from '../components/todos/TodoItem'
 import type { Todo } from '../db/types'
 import { todayKey } from '../lib/date'
 import { sortTodos, todayProgress, todayTodos } from '../lib/summary'
+import { openUrl } from '../platform/openUrl'
+import { bookmarkRepo } from '../repositories/bookmarkRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
 type Tab = 'today' | 'all'
@@ -19,12 +22,15 @@ type Editor = { mode: 'add' } | { mode: 'edit'; item: Todo } | null
 /** 할 일 화면 (spec US2) */
 export default function TodosPage() {
   const [today] = useState(() => todayKey())
-  const [tab, setTab] = useState<Tab>('today')
+  const location = useLocation()
+  // 스크랩의 "할 일 보기"로 들어오면 전체 탭을 연다
+  const [tab, setTab] = useState<Tab>(() => ((location.state as { tab?: Tab } | null)?.tab === 'all' ? 'all' : 'today'))
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<Todo | null>(null)
   const toast = useToast()
 
   const all = useLiveQuery(() => todoRepo.listAll(), [])
+  const bookmarkUrls = useLiveQuery(async () => new Map((await bookmarkRepo.list('all')).map((b) => [b.id, b.url])), [])
   const visible = useMemo(() => (all ? (tab === 'today' ? todayTodos(all, today) : sortTodos(all)) : undefined), [all, tab, today])
   const progress = useMemo(() => todayProgress(all ?? [], today), [all, today])
 
@@ -50,6 +56,13 @@ export default function TodosPage() {
     } catch {
       toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
     }
+  }
+
+  async function openLink(todo: Todo) {
+    const url = todo.bookmarkId != null ? bookmarkUrls?.get(todo.bookmarkId) : undefined
+    if (!url || todo.bookmarkId == null) return
+    openUrl(url)
+    await bookmarkRepo.markRead(todo.bookmarkId)
   }
 
   async function confirmDelete() {
@@ -103,7 +116,9 @@ export default function TodosPage() {
         <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
           {visible.map((t, i) => (
             <TodoRow key={t.id} showDoneHeader={i === firstDone && i > 0}>
-              <TodoItem todo={t} today={today} onToggle={() => toggle(t)} onSelect={() => setEditor({ mode: 'edit', item: t })} />
+              <TodoItem todo={t} today={today} onToggle={() => toggle(t)} onSelect={() => setEditor({ mode: 'edit', item: t })}
+                onOpenLink={t.bookmarkId != null && bookmarkUrls?.has(t.bookmarkId) ? () => openLink(t) : undefined}
+              />
             </TodoRow>
           ))}
         </ul>

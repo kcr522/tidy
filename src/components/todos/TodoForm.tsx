@@ -57,7 +57,7 @@ export default function TodoForm({ initial, defaultDueDate = null, onSubmit, onD
         <div className="flex gap-2">
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass()} />
           {dueDate && (
-            <Button variant="ghost" onClick={() => setDueDate('')}>
+            <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => setDueDate('')}>
               지우기
             </Button>
           )}

@@ -63,13 +63,13 @@
 
 > 만들면서 찍은 화면이에요. 날마다 새 화면이 생기면 [docs/screenshots](docs/screenshots)에 추가해요.
 
-| 폰 (가계부) | 폰 (할 일) | 폰 (스크랩) |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/day2-list.png" width="240"> | <img src="docs/screenshots/day3-today.png" width="240"> | <img src="docs/screenshots/day4-list.png" width="240"> |
+| 폰 (대시보드) | 폰 (가계부) | 폰 (할 일) | 폰 (스크랩) |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/day5-dashboard.png" width="200"> | <img src="docs/screenshots/day2-list.png" width="200"> | <img src="docs/screenshots/day3-today.png" width="200"> | <img src="docs/screenshots/day4-list.png" width="200"> |
 
-| 컴퓨터 (가계부) | 컴퓨터 (스크랩) |
+| 컴퓨터 (대시보드) | 컴퓨터 (스크랩) |
 |:---:|:---:|
-| <img src="docs/screenshots/day2-desktop.png" width="420"> | <img src="docs/screenshots/day4-desktop.png" width="420"> |
+| <img src="docs/screenshots/day5-desktop.png" width="420"> | <img src="docs/screenshots/day4-desktop.png" width="420"> |
 
 <details>
 <summary>날짜별 화면 전체 보기</summary>
@@ -89,6 +89,10 @@
 **Day 4 · 스크랩**
 
 <img src="docs/screenshots/day4-list.png" width="240"> <img src="docs/screenshots/day4-desktop.png" width="420">
+
+**Day 5 · 대시보드와 스크랩 → 할 일**
+
+<img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-empty.png" width="240"> <img src="docs/screenshots/day5-convert.png" width="240"> <img src="docs/screenshots/day5-scraps.png" width="240"> <img src="docs/screenshots/day5-todos.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
 
 </details>
 
@@ -137,7 +141,7 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 - [x] Day 2 — 가계부
 - [x] Day 3 — 할 일
 - [x] Day 4 — 스크랩
-- [ ] Day 5 — 대시보드, 스크랩 → 할 일 연동
+- [x] Day 5 — 대시보드, 스크랩 → 할 일 연동
 - [ ] Day 6 — 필터, 예외 처리, 디자인 정돈
 - [ ] Day 7 — 백업, PWA 배포, 폰 앱, 컴퓨터 앱
 
