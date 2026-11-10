@@ -5,7 +5,8 @@ import type { Transaction, TransactionType } from '../../db/types'
 import { categoriesFor, categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
-import { matchMerchant } from '../../lib/merchants'
+import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
+import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
 import { ACCOUNT_PRESETS, accountEmoji, MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
 import { transactionRepo, type TransactionInput } from '../../repositories/transactionRepo'
@@ -40,6 +41,9 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
 
   const categories = categoriesFor(type)
   const merchant = matchMerchant(memo)
+  const unclear = !initial?.originalMemo && isUnclearMerchant(memo)
+  // 새 내역일 때만: 저장하면 알려 준 가게 이름으로 바뀐다
+  const savedAlias = useLiveQuery(() => (!initial && unclear ? merchantAliasRepo.find(memo) : undefined), [initial, unclear, memo])
 
   /** 아는 가게를 적으면, 카테고리를 아직 안 골랐을 때 대신 골라 준다 */
   function changeMemo(text: string) {
@@ -196,7 +200,16 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
           onChange={(e) => changeMemo(e.target.value)}
           className={inputClass(!!errors.memo)}
         />
-        {merchant && (
+        {savedAlias ? (
+          <span className="mt-2 block text-xs text-slate-500">
+            전에 알려 준 대로 <b className="font-semibold text-slate-700">{savedAlias.name}</b>(으)로 저장돼요
+          </span>
+        ) : unclear ? (
+          <span className="mt-2 block text-xs text-amber-700">
+            결제 대행사 이름 같아요. 저장한 뒤 내역을 누르면 실제 가게를 알려 줄 수 있어요.
+          </span>
+        ) : null}
+        {merchant && !savedAlias && (
           <span className="mt-2 flex items-center gap-2 text-xs text-slate-500">
             <MerchantAvatar brand={merchant.brand} category={category} size={22} />
             <span>

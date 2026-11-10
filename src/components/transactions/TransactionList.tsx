@@ -1,7 +1,7 @@
 import type { Transaction } from '../../db/types'
 import { categoryEmoji } from '../../lib/categories'
 import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
-import { matchMerchant } from '../../lib/merchants'
+import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { groupByDate } from '../../lib/summary'
 import MerchantAvatar from './MerchantAvatar'
 
@@ -42,6 +42,7 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                       {t.time && <> · {formatTimeLabel(t.time)}</>}
                       {t.account && <> · {t.account}</>}
                       {t.recurringId != null && <> · 🔁 정기</>}
+                      {!t.originalMemo && isUnclearMerchant(t.memo) && <span className="font-semibold text-amber-600"> · ❓ 어디서 썼나요?</span>}
                     </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>

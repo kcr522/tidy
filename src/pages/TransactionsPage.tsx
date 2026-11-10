@@ -82,6 +82,17 @@ export default function TransactionsPage() {
     }
   }
 
+  async function resolve(item: Transaction, name: string, remember: boolean) {
+    if (item.id == null) return
+    try {
+      const n = await transactionRepo.resolveMerchant(item.id, name, remember)
+      toast(n > 1 ? `같은 이름의 내역 ${n}개를 '${name}'(으)로 바꿨어요` : `'${name}'(으)로 바꿨어요`)
+      setEditor(null)
+    } catch {
+      toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
+    }
+  }
+
   async function confirmDelete() {
     if (deleting?.id == null) return
     try {
@@ -195,7 +206,12 @@ export default function TransactionsPage() {
         onClose={() => setEditor(null)}
       >
         {editor?.mode === 'view' && (
-          <TransactionDetail item={editor.item} onEdit={() => setEditor({ mode: 'edit', item: editor.item })} onDelete={() => setDeleting(editor.item)} />
+          <TransactionDetail
+            item={editor.item}
+            onEdit={() => setEditor({ mode: 'edit', item: editor.item })}
+            onDelete={() => setDeleting(editor.item)}
+            onResolve={(name, remember) => resolve(editor.item, name, remember)}
+          />
         )}
         {editor && editor.mode !== 'view' && (
           <TransactionForm

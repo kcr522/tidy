@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Bookmark, Recurring, Todo, Transaction } from './types'
+import type { Bookmark, MerchantAlias, Recurring, Todo, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -11,6 +11,7 @@ export class TidyDB extends Dexie {
   todos!: Table<Todo, number>
   bookmarks!: Table<Bookmark, number>
   recurring!: Table<Recurring, number>
+  merchantAliases!: Table<MerchantAlias, string>
 
   constructor(name = 'tidy') {
     super(name)
@@ -23,6 +24,10 @@ export class TidyDB extends Dexie {
     // 2차: 정기 내역 규칙 (기존 데이터는 그대로)
     this.version(2).stores({
       recurring: '++id, type, isActive',
+    })
+    // 2차: 사용자가 알려 준 가게 이름
+    this.version(3).stores({
+      merchantAliases: '&raw',
     })
   }
 }

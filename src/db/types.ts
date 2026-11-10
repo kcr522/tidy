@@ -22,6 +22,8 @@ export interface Transaction {
   account?: string
   /** 정기 내역 규칙으로 자동 기록된 경우 그 규칙 id */
   recurringId?: number
+  /** 사용자가 실제 가게를 알려 주기 전 원래 이름 (예: KCP*결제) */
+  originalMemo?: string
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +46,17 @@ export interface Recurring {
   isActive: Flag
   createdAt: string
   updatedAt: string
+}
+
+/** 알려 준 가게 이름: 카드사에 이 이름으로 찍히면 이 가게로 보여 준다 (2차) */
+export interface MerchantAlias {
+  /** 원래 이름을 normalizeName 한 값 */
+  raw: string
+  /** 원래 이름 (화면 표시용) */
+  original: string
+  /** 실제 가게 이름 */
+  name: string
+  createdAt: string
 }
 
 /** 할 일 */
