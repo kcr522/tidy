@@ -40,7 +40,7 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 - [ ] T002 의존성 설치: dexie, dexie-react-hooks, react-router-dom, date-fns, tailwindcss, vite-plugin-pwa, vitest, fake-indexeddb
 - [ ] T003 [P] Tailwind 설정 `tailwind.config.js`, `src/index.css`
 - [ ] T004 [P] Vitest 설정 `vite.config.ts`의 `test` 항목, `npm run test` 스크립트 추가
-- [ ] T005 [P] `.gitignore`에 `node_modules`, `dist`, `android/app/build`, `src-tauri/target` 확인
+- [ ] T005 [P] `.gitignore`에 `node_modules`, `dist`, `android/app/build` 확인
 
 ---
 
@@ -177,7 +177,7 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 ### 백업
 
 - [ ] T063 [US7] `src/repositories/backupRepo.ts`: export(), import()(형식 검사 + 한 트랜잭션), clearAll() + 테스트 (FR-060~062)
-- [ ] T064 [US7] `src/platform/saveFile.ts`: 웹은 다운로드, 앱은 Capacitor Filesystem + Share, 데스크톱은 Tauri 저장 창
+- [ ] T064 [US7] `src/platform/saveFile.ts`: 웹은 다운로드, 앱은 Capacitor Filesystem + Share
 - [ ] T065 [US7] `src/pages/SettingsPage.tsx`: 내보내기, 가져오기(덮어쓰기 확인), 전체 삭제("삭제" 입력), 앱 버전, 백업 안내 (FR-063)
 
 ### 웹 (폰 웹 + 컴퓨터 웹)
@@ -192,8 +192,8 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 ### 컴퓨터 앱
 
-- [ ] T070 [US7] Tauri 추가, `openUrl`에 opener 플러그인 분기 (`quickstart.md` 5번)
-- [ ] T071 [US7] Windows 또는 macOS 설치 파일 빌드 후 확인
+- [ ] T070 [US7] 컴퓨터 Chrome/Edge에서 PWA "앱 설치" 후 별도 창으로 열리는지 확인 (`quickstart.md` 5번)
+- [ ] T071 [US7] 설치한 PWA에서 오프라인 실행, 링크 열기, 백업 확인
 
 ### 마무리
 
@@ -216,6 +216,6 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 ## 일정이 밀릴 때
 
-1. 먼저 미룰 것: T069 iOS, T071 컴퓨터 앱 빌드 (PWA "앱 설치"로 대신 가능)
+1. 먼저 미룰 것: T069 iOS (아이폰은 Safari "홈 화면에 추가"로 대신 가능)
 2. 그다음: T054 카테고리 필터, T056 스크랩 필터
 3. 절대 미루지 않을 것: US1~US4, 백업(T063~T065)

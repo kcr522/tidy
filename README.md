@@ -66,7 +66,7 @@
 | 📱 폰 웹 | 브라우저로 접속, 홈 화면에 추가 | 🛠 개발 중 |
 | 💻 컴퓨터 웹 | 브라우저로 접속, "앱 설치" 가능 | 🛠 개발 중 |
 | 📱 폰 앱 | Android (iOS는 선택) | 🛠 개발 중 |
-| 💻 컴퓨터 앱 | Windows · macOS | 🛠 개발 중 |
+| 💻 컴퓨터 앱 | Chrome/Edge "앱 설치"로 별도 창 앱 (Windows · macOS) | 🛠 개발 중 |
 
 ## 기술 스택
 
@@ -76,10 +76,10 @@
 | 저장 | IndexedDB (Dexie.js) — 서버 없음 |
 | 웹 | PWA (오프라인, 홈 화면 설치) |
 | 폰 앱 | Capacitor |
-| 컴퓨터 앱 | Tauri |
+| 컴퓨터 앱 | PWA 설치 (별도 패키징 없음, 용량 거의 0) |
 | 기획 | [GitHub Spec Kit](https://github.com/github/spec-kit) (스펙 주도 개발) |
 
-**하나의 코드**로 웹을 만들고, 같은 결과물을 Capacitor와 Tauri로 감싸서 네 가지 환경에 배포합니다.
+**하나의 코드**로 웹을 만들고, 같은 결과물을 폰에서는 Capacitor로 감싸 앱으로, 컴퓨터에서는 PWA로 설치해서 네 가지 환경에서 씁니다.
 
 ## 기획 문서
 
@@ -90,7 +90,7 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 | [헌법 (constitution)](.specify/memory/constitution.md) | 프로젝트가 지키는 5가지 원칙 |
 | [상세 요구사항 (spec)](specs/001-tidy-mvp/spec.md) | 사용자 시나리오 7개, 기능 요구사항, 예외 상황, 성공 기준 |
 | [구현 계획 (plan)](specs/001-tidy-mvp/plan.md) | 구조, 화면 구성, 핵심 로직 |
-| [기술 선택 이유 (research)](specs/001-tidy-mvp/research.md) | 왜 React, Dexie, Capacitor, Tauri인지 |
+| [기술 선택 이유 (research)](specs/001-tidy-mvp/research.md) | 왜 React, Dexie, Capacitor, PWA인지 |
 | [데이터 모델](specs/001-tidy-mvp/data-model.md) | 테이블 3개, 필드 규칙, 백업 형식 |
 | [작업 목록 (tasks)](specs/001-tidy-mvp/tasks.md) | 7일 일정, 74개 작업 |
 | [개발 환경 세팅 (quickstart)](specs/001-tidy-mvp/quickstart.md) | 설치와 실행 명령어 |

@@ -202,7 +202,7 @@
 | 기능 | 추천 | 대안 |
 |---|---|---|
 | 캘린더 | 직접 만든 월 달력 컴포넌트 (date-fns) | react-day-picker 등 라이브러리 |
-| 구글 로그인 | **Firebase Authentication** (Google 제공자). 웹은 팝업, 폰 앱은 `@capacitor-firebase/authentication`, 컴퓨터 앱은 시스템 브라우저 로그인 후 앱으로 돌아오기(딥링크) | Supabase Auth |
+| 구글 로그인 | **Firebase Authentication** (Google 제공자). 웹은 팝업, 폰 앱은 `@capacitor-firebase/authentication`, 컴퓨터 앱(PWA 설치)은 웹과 같은 팝업 방식 | Supabase Auth |
 | 동기화 저장소 | **Cloud Firestore** (오프라인 저장 지원, 사용자별 보안 규칙). 기존 Dexie는 오프라인 캐시로 유지 | Dexie Cloud, Supabase(PostgreSQL) |
 | AI 인식 | **Firebase Cloud Functions**에서 Claude 비전 모델 API 호출, 응답은 JSON 형식으로 받기 | 기기 안 OCR(Tesseract.js) + 규칙 — 무료지만 정확도 낮음 |
 | 비용 | Firebase 무료 요금제(Spark)로 시작. 단, Cloud Functions는 종량제(Blaze) 요금제가 필요하고, AI API는 사용량만큼 비용 발생 | |

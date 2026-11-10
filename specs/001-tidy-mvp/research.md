@@ -16,7 +16,7 @@
 
 **Decision**: IndexedDB + Dexie.js (모든 환경 공통)
 
-**Rationale**: IndexedDB는 모든 브라우저와 Capacitor/Tauri 앱 안의 웹뷰에 기본으로 들어 있어서, 환경마다 다른 DB를 쓸 필요가 없다. Dexie는 IndexedDB를 쉽게 쓰게 해 주고, `useLiveQuery`로 데이터가 바뀌면 화면이 자동으로 갱신된다.
+**Rationale**: IndexedDB는 모든 브라우저와 Capacitor 앱 안의 웹뷰에 기본으로 들어 있어서, 환경마다 다른 DB를 쓸 필요가 없다. Dexie는 IndexedDB를 쉽게 쓰게 해 주고, `useLiveQuery`로 데이터가 바뀌면 화면이 자동으로 갱신된다.
 
 **Alternatives considered**:
 - SQLite (앱) + IndexedDB (웹) 이중 구성: 앱에서 더 튼튼하지만 저장 코드를 두 벌 만들어야 해서 7일 안에 어렵다. 저장소 계층(`src/repositories/`)을 두었으므로 2차에서 앱만 SQLite로 바꿀 수 있다.
@@ -40,14 +40,16 @@
 
 ## 5. 컴퓨터 앱은 어떻게 만들까
 
-**Decision**: Tauri 2
+**Decision**: PWA 설치 (별도 패키징 없음) — 2026-11-10 결정
 
-**Rationale**: 웹 결과물을 Windows/macOS 앱으로 감싼다. Electron보다 설치 파일이 훨씬 작다(수 MB vs 100MB 이상). 링크 열기는 `@tauri-apps/plugin-opener`, 파일 저장은 `plugin-dialog` + `plugin-fs`를 쓴다.
+**Rationale**: 컴퓨터 웹을 Chrome/Edge에서 열고 주소창의 "앱 설치" 버튼을 누르면, 바탕화면/시작 메뉴 아이콘이 생기고 브라우저 주소창 없는 별도 창으로 열린다. 추가 도구 설치가 필요 없고, 용량도 거의 없으며(웹 파일 1~2MB), 웹을 업데이트하면 자동으로 최신 버전이 된다. 오프라인 동작과 데이터 저장은 웹과 같다(IndexedDB).
 
-**필요한 것**: Rust 설치(설치 프로그램 한 번 실행). Rust 설치가 어려우면 대안으로 Electron을 쓸 수 있다. 또한 데스크톱에서 PWA "앱 설치"만으로도 창 형태의 앱처럼 쓸 수 있다.
+**한계**: 앱스토어/설치 파일(.exe, .dmg)로 배포할 수 없고, Safari(macOS)는 "Dock에 추가"로 설치한다. 1차와 2차에는 문제가 없다.
 
 **Alternatives considered**:
-- Electron: 자료가 많고 Rust가 필요 없지만 앱 용량이 크다.
+- Tauri 2: 설치 파일이 작지만(약 5~10MB) Rust를 따로 설치해야 한다.
+- Electron: 추가 설치는 없지만 앱 안에 크롬을 통째로 넣어 용량이 크다(약 100~150MB).
+- 나중에 설치 파일이 꼭 필요해지면 같은 웹 결과물을 Tauri나 Electron으로 감싸면 된다(코드 수정 거의 없음).
 
 ## 6. 스타일은?
 
