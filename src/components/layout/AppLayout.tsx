@@ -4,9 +4,11 @@ import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { syncAlarms } from '../../platform/alarms'
+import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
+import { todoRepo } from '../../repositories/todoRepo'
 import ColorModeButton from '../common/ColorModeButton'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
@@ -44,6 +46,13 @@ export default function AppLayout() {
     const done = new Set(todayChecks.split(',').filter(Boolean).map(Number))
     return syncAlarms(plans, (p) => p.habitId != null && done.has(p.habitId), (text) => toast(text))
   }, [plans, todayChecks, today, toast])
+
+  // 할 일 알림: 할 일이 바뀌면(추가, 시간 변경, 완료) 다시 맞춘다
+  const todos = useLiveQuery(() => todoRepo.listAll(), [])
+  useEffect(() => {
+    if (!todos) return
+    return syncTodoAlarms(todos, (text) => toast(text))
+  }, [todos, today, toast])
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />

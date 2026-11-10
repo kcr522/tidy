@@ -43,7 +43,7 @@ export const alarmBody = (p: Pick<SavingsPlan, 'amount' | 'autoDeposit'>) =>
   p.autoDeposit === 1 ? `오늘 ${formatWon(p.amount)}이 자동이체돼요. 통장 잔고를 확인해 주세요` : `오늘 ${formatWon(p.amount)} 넣고 습관을 체크해 주세요`
 
 /** 화면에 알림을 띄운다 (웹) */
-async function showWebNotification(title: string, body: string) {
+export async function showWebNotification(title: string, body: string) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
   try {
     // PWA는 서비스 워커로 띄워야 폰 홈 화면 앱에서도 보인다
