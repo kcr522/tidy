@@ -37,7 +37,7 @@ export default function AiSettingsSection() {
         <Sparkles className="size-[18px] text-brand-600" aria-hidden />
         AI 연결
       </h2>
-      <p className="px-5 pb-3 text-sm break-keep text-slate-500">대시보드의 'AI 소비 한마디'를 어디서 받아 올지 골라요.</p>
+      <p className="px-5 pb-3 text-sm break-keep text-slate-500">대시보드의 'AI 소비 한마디'와 가계부의 '음식 사진으로 기록'에 쓸 AI를 골라요.</p>
 
       <div role="radiogroup" aria-label="AI 연결 방법" className="space-y-2 px-5">
         {ORDER.map((id) => {
@@ -113,7 +113,7 @@ export default function AiSettingsSection() {
             spellCheck={false}
             className={inputClass()}
           />
-          <p className="mt-1.5 text-xs break-keep text-slate-400">Vercel에 ANTHROPIC_API_KEY를 넣어 두면 이 주소가 Claude에게 대신 물어봐요.</p>
+          <p className="mt-1.5 text-xs break-keep text-slate-400">Vercel에 ANTHROPIC_API_KEY를 넣어 두면 이 주소가 Claude에게 대신 물어봐요. 음식 사진은 같은 서버의 /api/meal 로 가고, KAKAO_REST_API_KEY도 넣으면 근처 식당을 지도에서 찾아요.</p>
         </div>
       )}
 

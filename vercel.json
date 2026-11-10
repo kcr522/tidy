@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": { "api/meal.ts": { "maxDuration": 120 } },
   "rewrites": [{ "source": "/((?!api/|assets/|icons/|sw.js|workbox-|manifest.webmanifest|favicon.svg).*)", "destination": "/index.html" }],
   "headers": [
     { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },

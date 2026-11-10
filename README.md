@@ -136,6 +136,10 @@
 
 <img src="docs/screenshots/p2-insights-menu.png" width="240"> <img src="docs/screenshots/p2-insights-chart.png" width="240"> <img src="docs/screenshots/p2-insights-stats.png" width="240"> <img src="docs/screenshots/p2-insights-income.png" width="240">
 
+**2차 · 음식 사진으로 기록 (📷): 사진 위치·시간 → 가게·메뉴 → "이 가격 맞아요?"**
+
+<img src="docs/screenshots/p2-meal-pick.png" width="240"> <img src="docs/screenshots/p2-meal-working.png" width="240"> <img src="docs/screenshots/p2-meal-confirm.png" width="240"> <img src="docs/screenshots/p2-meal-edit.png" width="240"> <img src="docs/screenshots/p2-meal-saved.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
