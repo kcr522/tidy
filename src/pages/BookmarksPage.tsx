@@ -42,7 +42,7 @@ export default function BookmarksPage() {
   const [deleting, setDeleting] = useState<Bookmark | null>(null)
   const [converting, setConverting] = useState<Bookmark | null>(null)
   const [detailId, setDetailId] = useState<number | null>(null)
-  const [askCapture, setAskCapture] = useState<{ id: number; isVideo: boolean } | null>(null)
+  const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [managing, setManaging] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
@@ -102,7 +102,7 @@ export default function BookmarksPage() {
       if (input.source) rememberCategory(input.source, input.categoryId ?? null)
       setEditor(null)
       // 새 링크면 "캡처본도 같이 저장할까요?" (설정에서 끌 수 있다)
-      if (isNew && askCaptureEnabled()) setAskCapture({ id, isVideo: !!input.isVideo })
+      if (isNew && askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
     } catch {
       toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
     }
@@ -232,7 +232,7 @@ export default function BookmarksPage() {
         }}
       />
 
-      <CaptureAskDialog bookmarkId={askCapture?.id ?? null} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
+      <CaptureAskDialog bookmarkId={askCapture?.id ?? null} url={askCapture?.url} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
 
       <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} />
 

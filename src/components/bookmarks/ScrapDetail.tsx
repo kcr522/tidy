@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ExternalLink, ImagePlus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
+import { Camera, ExternalLink, ImagePlus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Bookmark, ScrapMedia } from '../../db/types'
 import { useBlobUrl } from '../../hooks/useBlobUrl'
@@ -13,6 +13,7 @@ import Modal from '../common/Modal'
 import { useToast } from '../common/Toast'
 import AiSummaryButton from './AiSummaryButton'
 import PhotoEditor from './PhotoEditor'
+import { useSiteCapture } from './useSiteCapture'
 import SourceBadge from './SourceBadge'
 
 interface Props {
@@ -41,12 +42,16 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
   const [viewing, setViewing] = useState<ScrapMedia | null>(null)
   const [editing, setEditing] = useState<ScrapMedia | null>(null)
   const [deleting, setDeleting] = useState<ScrapMedia | null>(null)
-  const [showEmbed, setShowEmbed] = useState(bookmark.isVideo === 1)
   const toast = useToast()
+  const site = useSiteCapture(id)
 
   const source = bookmark.source ?? detectSource(bookmark.url)
-  const embed = instagramEmbedUrl(bookmark.url) ?? youtubeEmbedUrl(bookmark.url)
   const isYoutube = source === 'youtube'
+  // 안드로이드 앱: 인스타 퍼가기 화면은 동영상·릴스를 막을 때가 많아서, 앱 안 화면으로 게시물을 직접 연다
+  // (한 번 로그인하면 앱 안에 남는다)
+  const nativeView = site.available && source === 'instagram'
+  const embed = nativeView ? null : (instagramEmbedUrl(bookmark.url) ?? youtubeEmbedUrl(bookmark.url))
+  const [showEmbed, setShowEmbed] = useState(bookmark.isVideo === 1)
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return
@@ -78,6 +83,11 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
           {showEmbed ? '썸네일로 보기' : bookmark.isVideo === 1 ? '▶ 앱 안에서 동영상 보기' : '▶ 앱 안에서 게시물 보기'}
         </button>
       )}
+      {nativeView && (
+        <button type="button" onClick={() => site.start(bookmark.url, 'view')} disabled={site.busy} className="tap -mt-2 text-sm font-bold text-brand-700">
+          {bookmark.isVideo === 1 ? '▶ 앱 안에서 동영상·릴스 보기' : '▶ 앱 안에서 게시물 보기'}
+        </button>
+      )}
 
       <div>
         <div className="mb-1 flex items-center gap-1.5 text-xs">
@@ -103,6 +113,17 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
       <section aria-label="캡처">
         <div className="mb-2 flex items-center">
           <h4 className="flex-1 text-sm font-extrabold text-slate-800">캡처 · 화면 녹화 {media?.length ? media.length : ''}</h4>
+          {site.available && (
+            <button
+              type="button"
+              onClick={() => site.start(bookmark.url)}
+              disabled={site.busy}
+              className="tap mr-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
+            >
+              <Camera className="size-3.5" aria-hidden />
+              사이트에서 캡처
+            </button>
+          )}
           <button type="button" onClick={() => fileRef.current?.click()} className="tap inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
             <ImagePlus className="size-3.5" aria-hidden />
             추가
@@ -146,6 +167,8 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
           onDelete={() => setDeleting(viewing)}
         />
       )}
+
+      {site.editor}
 
       {editing && (
         <PhotoEditor

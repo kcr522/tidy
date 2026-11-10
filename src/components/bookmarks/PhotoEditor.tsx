@@ -17,6 +17,9 @@ interface Props {
   blob: Blob
   onCancel: () => void
   onSave: (blob: Blob) => Promise<void> | void
+  /** 열자마자 고를 도구 (사이트 캡처 직후에는 자르기부터) */
+  initialTool?: Tool
+  title?: string
 }
 
 function cloneCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
@@ -31,9 +34,10 @@ function cloneCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
  * 간단한 사진 편집기: 자르기, 돌리기, 그리기, 글자 넣기, 되돌리기
  * 기기 안에서 canvas로 처리한다 (서버로 보내지 않는다)
  */
-export default function PhotoEditor({ blob, onCancel, onSave }: Props) {
+export default function PhotoEditor({ blob, onCancel, onSave, initialTool = null, title = '사진 편집' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const history = useRef<HTMLCanvasElement[]>([])
+  const startTool = useRef(initialTool)
   const [ready, setReady] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
   const [tool, setTool] = useState<Tool>(null)
@@ -65,6 +69,7 @@ export default function PhotoEditor({ blob, onCancel, onSave }: Props) {
       c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
       URL.revokeObjectURL(url)
       setReady(true)
+      if (startTool.current) setTool(startTool.current)
     }
     img.src = url
     return () => {
@@ -270,7 +275,7 @@ export default function PhotoEditor({ blob, onCancel, onSave }: Props) {
         <button type="button" onClick={onCancel} className="tap rounded-full p-2 text-white/80" aria-label="편집 취소">
           <X className="size-6" aria-hidden />
         </button>
-        <h2 className="flex-1 text-center text-base font-bold">사진 편집</h2>
+        <h2 className="flex-1 text-center text-base font-bold">{title}</h2>
         <button type="button" onClick={undo} disabled={!canUndo} className="tap rounded-full p-2 text-white/80 disabled:opacity-30" aria-label="되돌리기">
           <Undo2 className="size-5" aria-hidden />
         </button>
