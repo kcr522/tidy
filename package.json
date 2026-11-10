@@ -15,9 +15,11 @@
     "app:ios": "npm run app:sync && cap open ios"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
     "@capacitor/browser": "^8.0.5",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/share": "^8.0.3",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.7",

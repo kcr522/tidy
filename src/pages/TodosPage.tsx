@@ -16,6 +16,7 @@ import TodoForm from '../components/todos/TodoForm'
 import TodoItem from '../components/todos/TodoItem'
 import type { Habit, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
+import { isDueOn } from '../lib/savings'
 import { laterTodos, sortTodos, todayProgress, todayTodos } from '../lib/summary'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
@@ -61,7 +62,9 @@ export default function TodosPage() {
   const habits = useLiveQuery(() => habitRepo.list(), [])
   const checkRows = useLiveQuery(() => habitRepo.allChecks(), [])
   const checks = useMemo(() => groupChecks(checkRows ?? []), [checkRows])
-  const habitsDone = (habits ?? []).filter((h) => checks.get(h.id!)?.has(today)).length
+  // 오늘 할 습관만 센다 (적금 습관은 넣는 날에만)
+  const habitsDue = (habits ?? []).filter((h) => !h.schedule || isDueOn(h.schedule, today))
+  const habitsDone = habitsDue.filter((h) => checks.get(h.id!)?.has(today)).length
   const visible = useMemo(
     () => (all ? (tab === 'today' ? todayTodos(all, today) : tab === 'later' ? laterTodos(all, today) : tab === 'all' ? sortTodos(all) : []) : undefined),
     [all, tab, today],
@@ -186,7 +189,7 @@ export default function TodosPage() {
               ['today', `오늘 ${progress.done}/${progress.total}`],
               ['later', `나중 ${laterOpen}`],
               ['all', `전체 ${all?.length ?? 0}`],
-              ['habits', `습관 ${habitsDone}/${habits?.length ?? 0}`],
+              ['habits', `습관 ${habitsDone}/${habitsDue.length}`],
             ] as const
           ).map(([key, label]) => (
             <button

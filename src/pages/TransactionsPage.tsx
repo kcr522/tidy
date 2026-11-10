@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, List, Plus, Repeat } from 'lucide-react'
+import { CalendarDays, List, PiggyBank, Plus, Repeat } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -10,6 +10,7 @@ import { useToast } from '../components/common/Toast'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
 import RecurringManager from '../components/transactions/RecurringManager'
+import SavingsManager from '../components/transactions/SavingsManager'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
@@ -47,6 +48,7 @@ export default function TransactionsPage() {
   const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [showRecurring, setShowRecurring] = useState(false)
+  const [showSavings, setShowSavings] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelected] = useState(today)
@@ -139,6 +141,10 @@ export default function TransactionsPage() {
         title="가계부"
         action={
           <div className="flex gap-2">
+            <Button variant="secondary" className="px-3.5" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+              <PiggyBank className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">적금</span>
+            </Button>
             <Button variant="secondary" className="px-3.5" onClick={() => setShowRecurring(true)} aria-label="정기 내역" title="정기 내역">
               <Repeat className="size-[18px]" aria-hidden />
               <span className="hidden sm:inline">정기</span>
@@ -317,6 +323,10 @@ export default function TransactionsPage() {
 
       <Modal open={showRecurring} title="정기 내역" onClose={() => setShowRecurring(false)}>
         {showRecurring && <RecurringManager today={today} />}
+      </Modal>
+
+      <Modal open={showSavings} title="적금" onClose={() => setShowSavings(false)}>
+        {showSavings && <SavingsManager today={today} />}
       </Modal>
 
       <ConfirmDialog

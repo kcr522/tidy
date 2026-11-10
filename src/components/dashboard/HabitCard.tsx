@@ -1,6 +1,7 @@
 import { Sprout } from 'lucide-react'
 import type { Habit } from '../../db/types'
 import { currentStreak } from '../../lib/habits'
+import { isDueOn } from '../../lib/savings'
 import HabitCheckButton from '../habits/HabitCheckButton'
 import DashboardCard, { CardEmpty } from './DashboardCard'
 
@@ -15,15 +16,17 @@ interface HabitCardProps {
 }
 
 /** 대시보드 습관 카드: 오늘 몇 개 했는지, 연속 기록, 바로 체크 */
-export default function HabitCard({ habits, checks, today, onAdd, onToggle }: HabitCardProps) {
+export default function HabitCard({ habits: all, checks, today, onAdd, onToggle }: HabitCardProps) {
+  // 오늘 할 습관만 (적금 습관은 넣는 날에만 보인다)
+  const habits = all.filter((h) => !h.schedule || isDueOn(h.schedule, today))
   const done = habits.filter((h) => checks.get(h.id!)?.has(today)).length
-  const best = Math.max(0, ...habits.map((h) => currentStreak(checks.get(h.id!) ?? new Set(), today)))
+  const best = Math.max(0, ...habits.filter((h) => !h.schedule || h.schedule.freq === 'daily').map((h) => currentStreak(checks.get(h.id!) ?? new Set(), today)))
   const rest = habits.length - MAX_ITEMS
 
   return (
     <DashboardCard to="/todos?tab=habits" icon={Sprout} title={`오늘 습관 (${done}/${habits.length})`} addLabel="습관 추가" onAdd={onAdd}>
       {habits.length === 0 ? (
-        <CardEmpty>매일 할 습관을 만들어 보세요. + 를 눌러 추가해요.</CardEmpty>
+        <CardEmpty>{all.length > 0 ? '오늘 할 습관은 다 쉬는 날이에요.' : '매일 할 습관을 만들어 보세요. + 를 눌러 추가해요.'}</CardEmpty>
       ) : (
         <>
           <div className="mb-3 flex items-center gap-3">
