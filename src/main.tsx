@@ -7,7 +7,7 @@ import { ToastProvider } from './components/common/Toast.tsx'
 import './index.css'
 import { initColorMode, isDark, onDarkChange } from './lib/colorMode'
 import { loadPhotos } from './lib/customPhotos'
-import { applyCustomization, loadCustomization, onCustomizationChange, photoRefs, withFixedColors } from './lib/customize'
+import { applyCustomization, loadCustomization, onCustomizationChange, photoRefs, withFixedColors, withSplashColors } from './lib/customize'
 import { applyTheme } from './lib/palette'
 import { randomTheme } from './lib/sessionTheme'
 
@@ -16,7 +16,8 @@ import { randomTheme } from './lib/sessionTheme'
 // 꾸미기에서 색을 고정한 구역은 고른 색, 사진·투명도·앱 배경도 여기서 넣는다
 initColorMode()
 const paint = () => {
-  const custom = loadCustomization()
+  // 시작 화면 사진 색 맞추기를 켰으면 그 사진 색으로
+  const custom = withSplashColors(loadCustomization(), isDark())
   const theme = withFixedColors(randomTheme, custom)
   applyTheme(theme, document.documentElement, isDark())
   applyCustomization(custom, theme)

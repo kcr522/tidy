@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
+import Splash from './components/layout/Splash'
 import BookmarksPage from './pages/BookmarksPage'
 import SharePage from './pages/SharePage'
 import CalendarPage from './pages/CalendarPage'
@@ -12,6 +13,8 @@ import TransactionsPage from './pages/TransactionsPage'
 
 export default function App() {
   return (
+    <>
+    <Splash />
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
@@ -25,5 +28,6 @@ export default function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
+    </>
   )
 }

@@ -11,6 +11,7 @@ import type { Section, Theme, Trio } from './palette'
 import { isPhotoRef, photoSrc } from './customPhotos'
 import { toDecodable } from './heic'
 import { SECTIONS, textOn } from './palette'
+import type { PhotoPalette } from './photoPalette'
 
 export type ColorChoice = 'default' | 'random' | 'fixed'
 /** 사진 맞춤: cover = 칸을 꽉 채움(넘치는 곳은 잘림) / contain = 사진 전체가 보이게(안 잘림, 남는 곳은 색으로) */
@@ -49,10 +50,24 @@ export interface CheckStyle {
   fixed: string
 }
 
+/**
+ * 시작 화면 (사용자 요청 2026-11-10): 앱을 켜면 고른 사진을 잘리지 않게 잠깐 보여 주고 저절로 넘어간다.
+ * 사진 색 맞추기를 켜면 그날 고른 사진에서 뽑은 색으로 앱 바탕과 구역 색을 맞춘다.
+ */
+export interface SplashStyle {
+  photos: string[]
+  /** 보여 주는 시간 (초) */
+  seconds: number
+  matchColors: boolean
+  /** 사진 이름 → 뽑아 둔 색 (켤 때 사진을 다시 읽지 않아도 되게) */
+  palettes: Record<string, PhotoPalette>
+}
+
 export interface Customization {
   background: BackgroundStyle
   sections: Record<Section, SectionStyle>
   check: CheckStyle
+  splash: SplashStyle
 }
 
 const KEY = 'tidy-customize'
@@ -61,6 +76,9 @@ const EVENT = 'tidy:customize'
 export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 /** 구역마다 넣을 수 있는 사진 수 */
 export const MAX_PHOTOS = 10
+
+export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, palettes: {} }
+export const SPLASH_SECONDS = [1, 2, 3, 5] as const
 
 export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', clear: 70, cardClear: 0 }
 export const defaultSection = (colors: Trio = ['#4fd1ff', '#3b82f6', '#7c3aed']): SectionStyle => ({
@@ -77,6 +95,7 @@ export function defaultCustomization(): Customization {
     background: { ...DEFAULT_BACKGROUND },
     sections: Object.fromEntries(SECTIONS.map((s) => [s, defaultSection()])) as Record<Section, SectionStyle>,
     check: { ...DEFAULT_CHECK },
+    splash: { ...DEFAULT_SPLASH, palettes: {} },
   }
 }
 
@@ -109,6 +128,20 @@ export function parseCustomization(raw: unknown): Customization {
   }
   const ch = (r.check ?? {}) as Record<string, unknown>
   base.check = { color: ch.color === 'fixed' ? 'fixed' : 'section', fixed: isHex(ch.fixed) ? ch.fixed : DEFAULT_CHECK.fixed }
+  const sp = (r.splash ?? {}) as Record<string, unknown>
+  const splashPhotos = readPhotos(sp)
+  const rawPal = sp.palettes && typeof sp.palettes === 'object' ? (sp.palettes as Record<string, unknown>) : {}
+  const palettes: Record<string, PhotoPalette> = {}
+  for (const ref of splashPhotos) {
+    const v = rawPal[ref] as Partial<PhotoPalette> | undefined
+    if (v && isHex(v.bg) && Array.isArray(v.colors) && v.colors.length === 3 && v.colors.every(isHex)) palettes[ref] = { bg: v.bg, colors: v.colors as Trio }
+  }
+  base.splash = {
+    photos: splashPhotos,
+    seconds: (SPLASH_SECONDS as readonly number[]).includes(sp.seconds as number) ? (sp.seconds as number) : DEFAULT_SPLASH.seconds,
+    matchColors: sp.matchColors !== false,
+    palettes,
+  }
   const secs = (r.sections ?? {}) as Record<string, Record<string, unknown> | undefined>
   for (const s of SECTIONS) {
     const v = secs[s]
@@ -143,7 +176,7 @@ export function saveCustomization(c: Customization) {
 
 /** 꾸미기에 쓰인 모든 사진 이름 */
 export function photoRefs(c: Customization): string[] {
-  return [...c.background.photos, ...SECTIONS.flatMap((s) => c.sections[s].photos)]
+  return [...c.background.photos, ...SECTIONS.flatMap((s) => c.sections[s].photos), ...c.splash.photos]
 }
 
 /** 켤 때 구역마다 정한 무작위 수. 같은 화면에서는 같은 사진이 계속 보인다 */
@@ -158,6 +191,25 @@ export function sessionPhoto(list: string[], key: string, random: () => number =
 export function onCustomizationChange(fn: () => void): () => void {
   window.addEventListener(EVENT, fn)
   return () => window.removeEventListener(EVENT, fn)
+}
+
+/** 이번에 켤 때 보여 줄 시작 화면 사진 (없으면 null) */
+export function splashPhoto(c: Customization): string | null {
+  return sessionPhoto(c.splash.photos, 'splash')
+}
+
+/**
+ * 시작 화면 사진 색 맞추기: 그 사진에서 뽑은 색으로 구역 색(모두)과 앱 바탕을 바꾼 꾸미기 값을 돌려준다.
+ * 배경 사진을 넣었으면 배경은 그대로 둔다. 어두운 화면에서는 연한 바탕색이 눈부셔서 바탕은 바꾸지 않는다.
+ */
+export function withSplashColors(c: Customization, dark: boolean): Customization {
+  const ref = splashPhoto(c)
+  const pal = ref ? c.splash.palettes[ref] : undefined
+  if (!c.splash.matchColors || !pal) return c
+  const sections = Object.fromEntries(SECTIONS.map((s) => [s, { ...c.sections[s], color: 'fixed' as const, colors: pal.colors }])) as Record<Section, SectionStyle>
+  const background =
+    dark || c.background.photos.length > 0 ? c.background : { ...c.background, color: 'fixed' as const, fixed: pal.bg, clear: 0 }
+  return { ...c, sections, background }
 }
 
 /** 켤 때 고른 랜덤 색에, 고정한 구역 색을 덮어쓴다 */

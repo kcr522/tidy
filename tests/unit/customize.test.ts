@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
-import { defaultCustomization, MAX_PHOTOS, parseCustomization, photoRefs, sessionPhoto, withFixedColors } from '../../src/lib/customize'
+import { defaultCustomization, MAX_PHOTOS, parseCustomization, photoRefs, sessionPhoto, withFixedColors, withSplashColors } from '../../src/lib/customize'
 import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../src/lib/customPhotos'
 import { pickTheme } from '../../src/lib/palette'
 
@@ -73,5 +73,29 @@ describe('사진 맞춤', () => {
     const c = parseCustomization({ background: { fit: 'contain', pos: 'top' }, sections: { money: { fit: 'zoom', pos: 'left' } } })
     expect(c.background).toMatchObject({ fit: 'contain', pos: 'top' })
     expect(c.sections.money).toMatchObject({ fit: 'cover', pos: 'center' })
+  })
+})
+
+describe('시작 화면 (2026-11-10)', () => {
+  const pal = { bg: '#f6ece9', colors: ['#eeb2af', '#aa8077', '#6b4e4c'] as [string, string, string] }
+  const withSplash = (over: Record<string, unknown> = {}) =>
+    parseCustomization({ splash: { photos: ['data:image/jpeg;base64,AAA'], seconds: 3, palettes: { 'data:image/jpeg;base64,AAA': pal }, ...over } })
+
+  it('저장된 값을 읽고, 이상한 값은 기본값으로', () => {
+    const c = withSplash()
+    expect(c.splash).toMatchObject({ photos: ['data:image/jpeg;base64,AAA'], seconds: 3, matchColors: true })
+    expect(c.splash.palettes['data:image/jpeg;base64,AAA']).toEqual(pal)
+    expect(parseCustomization({ splash: { seconds: 99, palettes: { x: pal } } }).splash).toEqual({ photos: [], seconds: 2, matchColors: true, palettes: {} })
+    expect(photoRefs(c)).toContain('data:image/jpeg;base64,AAA')
+  })
+
+  it('사진 색 맞추기: 모든 구역과 바탕을 사진 색으로 (어두운 화면은 바탕 그대로)', () => {
+    const light = withSplashColors(withSplash(), false)
+    for (const s of ['main', 'money', 'todo', 'scrap'] as const) expect(light.sections[s]).toMatchObject({ color: 'fixed', colors: pal.colors })
+    expect(light.background).toMatchObject({ color: 'fixed', fixed: pal.bg, clear: 0 })
+    expect(withSplashColors(withSplash(), true).background.color).toBe('default')
+    // 끄면 그대로
+    const off = withSplash({ matchColors: false })
+    expect(withSplashColors(off, false)).toBe(off)
   })
 })
