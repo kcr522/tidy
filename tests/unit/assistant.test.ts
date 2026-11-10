@@ -328,3 +328,19 @@ describe('Gemini 오류 다루기', () => {
     expect(JSON.parse(f.mock.calls[0][1].body).generationConfig.maxOutputTokens).toBe(2048)
   })
 })
+
+describe('AI를 못 쓸 때 기본 모드로 넘어가기', () => {
+  it('Gemini 무료 사용량을 다 쓰면 멈추지 않고 규칙으로 답한다', async () => {
+    const { askAssistant } = await import('../../src/lib/ai/assistantEngines')
+    const real = globalThis.fetch
+    globalThis.fetch = (async () => new Response(JSON.stringify({ error: { message: 'quota' } }), { status: 429 })) as typeof fetch
+    try {
+      const res = await askAssistant({ engine: 'gemini', geminiKey: 'K' } as never, { today: '2026-11-10', text: '내일 오후 3시 치과' })
+      expect(res.engine).toBe('local')
+      expect(res.fallback).toContain('무료 사용량')
+      expect(res.kind).toBe('event')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})

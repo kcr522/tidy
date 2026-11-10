@@ -14,6 +14,8 @@ export function assistantUrlFor(serverUrl?: string): string {
 
 export interface AssistantResult extends AssistantReply {
   engine: EngineId
+  /** AI를 못 써서 기본(AI 없이)으로 대신 답했을 때, 왜 그랬는지 */
+  fallback?: string
 }
 
 /**
@@ -23,6 +25,20 @@ export interface AssistantResult extends AssistantReply {
  * - 서버 / 내 키: Claude가 사진과 글을 읽는다
  */
 export async function askAssistant(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  try {
+    const ai = await askAi(settings, req, signal)
+    if (ai) return ai
+  } catch (err) {
+    if (signal?.aborted) throw err
+    // AI를 못 쓰면(무료 사용량을 다 썼거나, 서버가 붐비거나, 인터넷이 끊기면) 멈추지 않고 기본(AI 없이)으로 답한다
+    const why = err instanceof Error ? err.message : 'AI에 연결하지 못했어요'
+    return { ...(await askLocal(req)), fallback: why }
+  }
+  return askLocal(req)
+}
+
+/** 고른 AI로 묻기. AI를 고르지 않았으면 null */
+async function askAi(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult | null> {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) {
     const parts = [
       ...(req.image ? [{ inlineData: { mimeType: 'image/jpeg', data: req.image } }] : []),
@@ -54,6 +70,10 @@ export async function askAssistant(settings: AiSettings, req: AssistantRequest, 
     const client = new Anthropic({ apiKey: settings.apiKey.trim(), dangerouslyAllowBrowser: true, maxRetries: 1 })
     return { ...(await askClaudeAssistant(client, req, signal)), engine: 'key' }
   }
+  return null
+}
+
+async function askLocal(req: AssistantRequest): Promise<AssistantResult> {
   // 기본(AI 없이): 사진이 있으면 기기 안에서 글자를 읽고, 은행·카드 캡처면 내역을 규칙으로 찾는다
   if (req.image) {
     const { recognizeText } = await import('../ocr/recognize')

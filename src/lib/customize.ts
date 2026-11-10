@@ -4,9 +4,11 @@
  * - 색: 랜덤(켤 때마다 바뀜) 또는 색깔표에서 고른 색으로 고정 (앱 배경은 '기본'도 있다)
  * - 사진: 고른 사진을 배경으로 (구역은 그라데이션 자리에, 앱 배경은 화면 전체에)
  * - 투명도: 0% = 또렷하게, 100% = 안 보이게
- * 이 기기에만 저장한다 (localStorage). 사진은 줄여서 저장한다.
+ * 이 기기에만 저장한다. 설정은 localStorage, 사진은 IndexedDB (customPhotos.ts).
+ * 사진은 구역마다 여러 장 넣을 수 있고, 앱을 켤 때마다 그중 한 장을 고른다.
  */
 import type { Section, Theme, Trio } from './palette'
+import { isPhotoRef, photoSrc } from './customPhotos'
 import { SECTIONS, textOn } from './palette'
 
 export type ColorChoice = 'default' | 'random' | 'fixed'
@@ -14,7 +16,8 @@ export type ColorChoice = 'default' | 'random' | 'fixed'
 export interface SectionStyle {
   color: 'random' | 'fixed'
   colors: Trio
-  photo: string | null
+  /** 사진 이름들 ('idb:…' 또는 예전 data:image). 여러 장이면 켤 때마다 한 장을 고른다 */
+  photos: string[]
   /** 사진 투명도 % (높을수록 사진이 옅어지고 그라데이션 색이 보인다) */
   clear: number
 }
@@ -23,7 +26,7 @@ export interface BackgroundStyle {
   color: ColorChoice
   /** 고정 색 (하나) */
   fixed: string
-  photo: string | null
+  photos: string[]
   /** 색이나 사진의 투명도 % */
   clear: number
   /** 카드 투명도 % (배경이 카드 뒤로 비치는 정도) */
@@ -47,11 +50,14 @@ const KEY = 'tidy-customize'
 const EVENT = 'tidy:customize'
 
 export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
-export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photo: null, clear: 70, cardClear: 0 }
+/** 구역마다 넣을 수 있는 사진 수 */
+export const MAX_PHOTOS = 10
+
+export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], clear: 70, cardClear: 0 }
 export const defaultSection = (colors: Trio = ['#4fd1ff', '#3b82f6', '#7c3aed']): SectionStyle => ({
   color: 'random',
   colors,
-  photo: null,
+  photos: [],
   clear: 35,
 })
 
@@ -66,7 +72,11 @@ export function defaultCustomization(): Customization {
 const clamp = (n: unknown, min: number, max: number, fallback: number) =>
   typeof n === 'number' && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback
 const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
-const isPhoto = (v: unknown): v is string => typeof v === 'string' && v.startsWith('data:image/')
+/** 사진 목록 읽기 (예전 한 장짜리 photo 도 받아 준다) */
+const readPhotos = (v: Record<string, unknown>): string[] => {
+  const list = Array.isArray(v.photos) ? v.photos : v.photo ? [v.photo] : []
+  return [...new Set(list.filter(isPhotoRef))].slice(0, MAX_PHOTOS)
+}
 
 /** 저장된 값을 읽는다. 틀린 값은 기본값으로 */
 export function parseCustomization(raw: unknown): Customization {
@@ -77,7 +87,7 @@ export function parseCustomization(raw: unknown): Customization {
   base.background = {
     color: b.color === 'random' || b.color === 'fixed' ? b.color : 'default',
     fixed: isHex(b.fixed) ? b.fixed : DEFAULT_BACKGROUND.fixed,
-    photo: isPhoto(b.photo) ? b.photo : null,
+    photos: readPhotos(b),
     clear: clamp(b.clear, 0, 100, DEFAULT_BACKGROUND.clear),
     cardClear: clamp(b.cardClear, 0, 70, 0),
   }
@@ -91,7 +101,7 @@ export function parseCustomization(raw: unknown): Customization {
     base.sections[s] = {
       color: v.color === 'fixed' ? 'fixed' : 'random',
       colors,
-      photo: isPhoto(v.photo) ? v.photo : null,
+      photos: readPhotos(v),
       clear: clamp(v.clear, 0, 100, 35),
     }
   }
@@ -111,6 +121,20 @@ export function loadCustomization(): Customization {
 export function saveCustomization(c: Customization) {
   localStorage.setItem(KEY, JSON.stringify(c))
   window.dispatchEvent(new CustomEvent(EVENT))
+}
+
+/** 꾸미기에 쓰인 모든 사진 이름 */
+export function photoRefs(c: Customization): string[] {
+  return [...c.background.photos, ...SECTIONS.flatMap((s) => c.sections[s].photos)]
+}
+
+/** 켤 때 구역마다 정한 무작위 수. 같은 화면에서는 같은 사진이 계속 보인다 */
+const sessionPick = new Map<string, number>()
+/** 이번에 보여 줄 사진 한 장 */
+export function sessionPhoto(list: string[], key: string, random: () => number = Math.random): string | null {
+  if (list.length === 0) return null
+  if (!sessionPick.has(key)) sessionPick.set(key, random())
+  return list[Math.floor(sessionPick.get(key)! * list.length) % list.length]
 }
 
 export function onCustomizationChange(fn: () => void): () => void {
@@ -133,8 +157,9 @@ const cssUrl = (data: string) => `url("${data.replace(/"/g, '%22')}")`
 export function applyCustomization(c: Customization, theme: Theme, root: HTMLElement = document.documentElement) {
   for (const s of SECTIONS) {
     const st = c.sections[s]
-    if (st.photo) {
-      root.style.setProperty(`--${s}-photo`, cssUrl(st.photo))
+    const src = photoSrc(sessionPhoto(st.photos, s))
+    if (src) {
+      root.style.setProperty(`--${s}-photo`, cssUrl(src))
       // 사진이 또렷할수록 그라데이션은 옅게
       root.style.setProperty(`--${s}-veil`, `${st.clear}%`)
       root.style.setProperty(`--${s}-photo-shadow`, '0 1px 3px rgb(0 0 0 / 0.35)')
@@ -149,9 +174,10 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   const alpha = 100 - bg.clear
   const page = 'var(--color-slate-100)'
   const layers: string[] = []
-  if (bg.photo) {
+  const bgSrc = photoSrc(sessionPhoto(bg.photos, 'background'))
+  if (bgSrc) {
     // 사진 위에 바탕색을 덮어서 투명도를 낸다
-    layers.push(`linear-gradient(color-mix(in srgb, ${page} ${bg.clear}%, transparent), color-mix(in srgb, ${page} ${bg.clear}%, transparent))`, cssUrl(bg.photo))
+    layers.push(`linear-gradient(color-mix(in srgb, ${page} ${bg.clear}%, transparent), color-mix(in srgb, ${page} ${bg.clear}%, transparent))`, cssUrl(bgSrc))
   } else if (bg.color === 'random') {
     const [a, b2, c3] = theme.sections.main.colors
     const mix = (x: string) => `color-mix(in srgb, ${x} ${alpha}%, ${page})`
@@ -175,23 +201,40 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   root.classList.toggle('has-page-image', layers.length > 0)
 }
 
-/** 고른 사진을 긴 쪽 1280px JPEG로 줄인다 (저장 공간 아끼기) */
-export async function shrinkPhoto(file: File, max = 1280): Promise<string> {
-  const url = URL.createObjectURL(file)
+/** 고른 사진을 긴 쪽 2048px JPEG로 줄인다 (폰 화면에 충분히 또렷하고, 원본 수십 MB 사진도 넣을 수 있게) */
+export async function shrinkPhoto(file: File, max = 2048): Promise<Blob> {
+  const { source, width, height, done } = await decode(file)
   try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image()
-      i.onload = () => resolve(i)
-      i.onerror = reject
-      i.src = url
-    })
-    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight))
+    const scale = Math.min(1, max / Math.max(width, height))
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(img.naturalWidth * scale)
-    canvas.height = Math.round(img.naturalHeight * scale)
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.8)
+    canvas.width = Math.max(1, Math.round(width * scale))
+    canvas.height = Math.max(1, Math.round(height * scale))
+    canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height)
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('사진 변환 실패'))), 'image/jpeg', 0.85))
   } finally {
-    URL.revokeObjectURL(url)
+    done()
   }
+}
+
+/** 사진 열기. createImageBitmap 이 큰 사진도 메모리를 덜 쓰고 회전 정보도 맞춰 준다. 안 되면 <img> 로 */
+async function decode(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      return { source: bmp, width: bmp.width, height: bmp.height, done: () => bmp.close() }
+    } catch {
+      // 아래 방법으로 다시
+    }
+  }
+  const url = URL.createObjectURL(file)
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = reject
+    i.src = url
+  }).catch((err) => {
+    URL.revokeObjectURL(url)
+    throw err
+  })
+  return { source: img, width: img.naturalWidth, height: img.naturalHeight, done: () => URL.revokeObjectURL(url) }
 }

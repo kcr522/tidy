@@ -1,10 +1,13 @@
-import { Check, Eye, ImagePlus, RotateCcw, Shuffle, Trash2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Check, Eye, ImagePlus, Plus, RotateCcw, Shuffle, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../lib/customPhotos'
 import {
   DEFAULT_BACKGROUND,
   DEFAULT_CHECK,
   defaultSection,
   loadCustomization,
+  MAX_PHOTOS,
+  photoRefs,
   saveCustomization,
   shrinkPhoto,
   type Customization,
@@ -44,6 +47,12 @@ export default function CustomizeCard() {
   // 이 카드 안(견본, 미리보기)에는 바꾼 내용을 바로 입혀서 보여 준다
   useDraftStyles(card, custom)
   const dirty = JSON.stringify(custom) !== JSON.stringify(saved)
+  const [adding, setAdding] = useState(false)
+  // 보관함에 있는 사진을 읽어서 작은 사진(썸네일)을 보여 준다
+  const [, setLoaded] = useState(0)
+  useEffect(() => {
+    void loadPhotos(photoRefs(saved)).then(() => setLoaded((n) => n + 1))
+  }, [saved])
 
   function apply() {
     try {
@@ -51,29 +60,46 @@ export default function CustomizeCard() {
       setSaved(custom)
       setPreviewing(false)
       toast('꾸민 내용을 적용했어요')
+      // 지운 사진은 보관함에서도 지운다
+      void prunePhotos(photoRefs(custom)).catch(() => {})
     } catch {
-      toast('저장 공간이 모자라요. 더 작은 사진을 골라 주세요', 'error')
+      toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
     }
   }
 
   const bg = custom.background
   const sec = target === 'background' || target === 'check' ? null : custom.sections[target]
-  const photo = target === 'background' ? bg.photo : (sec?.photo ?? null)
+  const photos = target === 'background' ? bg.photos : (sec?.photos ?? [])
   const check = custom.check
 
   const setBg = (patch: Partial<Customization['background']>) => setCustom((c) => ({ ...c, background: { ...c.background, ...patch } }))
   const setSec = (s: Section, patch: Partial<Customization['sections'][Section]>) =>
     setCustom((c) => ({ ...c, sections: { ...c.sections, [s]: { ...c.sections[s], ...patch } } }))
   const setCheck = (patch: Partial<Customization['check']>) => setCustom((c) => ({ ...c, check: { ...c.check, ...patch } }))
-  const setPhoto = (p: string | null) => (target === 'background' ? setBg({ photo: p }) : sec && setSec(target as Section, { photo: p }))
+  const setPhotos = (list: string[]) => (target === 'background' ? setBg({ photos: list }) : sec && setSec(target as Section, { photos: list }))
 
-  async function pickPhoto(file: File | undefined) {
-    if (!file) return
-    try {
-      setPhoto(await shrinkPhoto(file))
-    } catch {
-      toast('사진을 열지 못했어요', 'error')
+  /** 고른 사진 여러 장을 줄여서 보관함에 넣는다 */
+  async function pickPhotos(files: File[]) {
+    const room = MAX_PHOTOS - photos.length
+    if (files.length === 0) return
+    if (room <= 0) {
+      toast(`사진은 ${MAX_PHOTOS}장까지 넣을 수 있어요`, 'error')
+      return
     }
+    setAdding(true)
+    const added: string[] = []
+    let failed = 0
+    for (const file of files.slice(0, room)) {
+      try {
+        added.push(await storePhoto(await shrinkPhoto(file)))
+      } catch {
+        failed++
+      }
+    }
+    setAdding(false)
+    if (added.length) setPhotos([...photos, ...added])
+    if (files.length > room) toast(`사진은 ${MAX_PHOTOS}장까지라서 ${files.length - room}장은 빼고 넣었어요`, 'error')
+    else if (failed) toast(`사진 ${failed}장을 열지 못했어요`, 'error')
   }
 
   function reset() {
@@ -201,46 +227,62 @@ export default function CustomizeCard() {
           </div>
         )}
 
-        {/* 사진 */}
-        <Label>사진</Label>
-        <div className="flex items-center gap-3">
-          {photo ? (
-            <img src={photo} alt="고른 사진" className="size-14 rounded-2xl object-cover" />
-          ) : (
-            <span className="flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <ImagePlus className="size-5" aria-hidden />
-            </span>
-          )}
-          <button type="button" onClick={() => fileInput.current?.click()} className="min-h-10 rounded-full bg-slate-100 px-4 text-sm font-semibold text-slate-700">
-            {photo ? '사진 바꾸기' : '사진 고르기'}
-          </button>
-          {photo && (
-            <button type="button" onClick={() => setPhoto(null)} className="tap rounded-full p-2 text-slate-400 hover:bg-slate-100" aria-label="사진 지우기">
-              <Trash2 className="size-4" aria-hidden />
+        {/* 사진: 여러 장 넣으면 앱을 켤 때마다 한 장씩 골라 보여 준다 */}
+        <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
+        <div className="flex flex-wrap gap-2">
+          {photos.map((ref, i) => (
+            <div key={ref} className="relative">
+              {photoSrc(ref) ? (
+                <img src={photoSrc(ref)} alt={`고른 사진 ${i + 1}`} className="size-16 rounded-2xl object-cover" />
+              ) : (
+                <span className="block size-16 rounded-2xl bg-slate-100" />
+              )}
+              <button
+                type="button"
+                onClick={() => setPhotos(photos.filter((p) => p !== ref))}
+                className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full bg-slate-800 text-white shadow"
+                aria-label={`사진 ${i + 1} 지우기`}
+              >
+                <X className="size-3.5" strokeWidth={3} aria-hidden />
+              </button>
+            </div>
+          ))}
+          {photos.length < MAX_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={adding}
+              className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 border-dashed border-slate-300 text-xs font-semibold text-slate-500 disabled:opacity-60"
+              aria-label="사진 추가"
+            >
+              {photos.length === 0 ? <ImagePlus className="size-5" aria-hidden /> : <Plus className="size-5" aria-hidden />}
+              {adding ? '넣는 중' : '추가'}
             </button>
           )}
           <input
             ref={fileInput}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={(e) => {
-              pickPhoto(e.target.files?.[0])
+              void pickPhotos([...(e.target.files ?? [])])
               e.target.value = ''
             }}
           />
         </div>
+        {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
 
         {/* 투명도 */}
         {target === 'background' ? (
           <>
-            {(bg.photo || bg.color !== 'default') && (
-              <Slider label={bg.photo ? '사진 투명도' : '색 투명도'} value={bg.clear} onChange={(v) => setBg({ clear: v })} />
+            {(bg.photos.length > 0 || bg.color !== 'default') && (
+              <Slider label={bg.photos.length > 0 ? '사진 투명도' : '색 투명도'} value={bg.clear} onChange={(v) => setBg({ clear: v })} />
             )}
             <Slider label="카드 투명도" value={bg.cardClear} max={70} onChange={(v) => setBg({ cardClear: v })} hint="배경이 카드 뒤로 비쳐요" />
           </>
         ) : (
-          sec?.photo && (
+          sec && sec.photos.length > 0 && (
             <Slider label="사진 투명도" value={sec!.clear} onChange={(v) => setSec(target as Section, { clear: v })} hint="0%면 사진이 또렷하게, 높일수록 그라데이션 색이 비쳐요" />
           )
         )}
@@ -293,7 +335,7 @@ function Preview({ target }: { target: Target }) {
   )
 }
 
-function Label({ children }: { children: string }) {
+function Label({ children }: { children: React.ReactNode }) {
   return <p className="mt-5 mb-2 text-sm font-bold text-slate-700">{children}</p>
 }
 
