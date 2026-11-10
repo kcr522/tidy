@@ -67,7 +67,7 @@ export default function HabitsPanel({ habits, checks, today, onAdd, onToggle, on
                     {week.map((d) => (
                       <span key={d} className="flex flex-col items-center gap-0.5">
                         <span
-                          className={`size-3.5 rounded-full ${done.has(d) ? 'bg-grad' : 'bg-slate-200'} ${d === today ? 'ring-2 ring-slate-700 ring-offset-1' : ''}`}
+                          className={`size-3.5 rounded-full ${done.has(d) ? 'bg-check' : 'bg-slate-200'} ${d === today ? 'ring-2 ring-slate-700 ring-offset-1' : ''}`}
                           title={d}
                         />
                         <span className="text-[9px] leading-none text-slate-400">{WEEK[new Date(`${d}T00:00`).getDay()]}</span>

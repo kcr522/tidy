@@ -159,3 +159,9 @@ button {
   color: var(--on, #fff);
   text-shadow: var(--on-shadow, none);
 }
+
+/* 습관 체크 표시: #19의 bg-check와 같은 정의 (#19를 먼저 합치면 겹쳐도 같은 값이라 괜찮다) */
+@utility bg-check {
+  background-image: var(--check-image, var(--grad));
+  color: var(--check-on, var(--on, #fff));
+}

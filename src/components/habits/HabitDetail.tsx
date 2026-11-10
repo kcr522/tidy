@@ -74,7 +74,7 @@ export default function HabitDetail({ habit, done, today, onToggle, onEdit }: Ha
                 aria-pressed={isDone}
                 aria-label={`${Number(d.slice(8))}일 ${isDone ? '했음' : '안 함'}`}
                 className={`flex aspect-square items-center justify-center rounded-xl text-sm font-semibold transition active:scale-90 ${
-                  isDone ? 'bg-grad on-grad' : future ? 'text-slate-300' : 'bg-white text-slate-600'
+                  isDone ? 'bg-check' : future ? 'text-slate-300' : 'bg-white text-slate-600'
                 } ${d === today ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`}
               >
                 {Number(d.slice(8))}
