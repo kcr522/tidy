@@ -154,6 +154,12 @@
   background-position: center;
 }
 
+/* 완료 체크 표시 (할 일, 습관). 꾸미기에서 색을 고르면 그 색, 아니면 구역 그라데이션 */
+@utility bg-check {
+  background-image: var(--check-image, var(--grad));
+  color: var(--check-on, var(--on, #fff));
+}
+
 /* 그라데이션 글자 */
 @utility text-grad {
   background-image: var(--grad);

@@ -144,6 +144,8 @@
 
 <img src="docs/screenshots/p2-custom-background.png" width="240"> <img src="docs/screenshots/p2-custom-fixed.png" width="240"> <img src="docs/screenshots/p2-custom-dashboard.png" width="240"> <img src="docs/screenshots/p2-custom-dark.png" width="240">
 
+<img src="docs/screenshots/p2-custom-check.png" width="240"> <img src="docs/screenshots/p2-custom-preview.png" width="240"> <img src="docs/screenshots/p2-custom-check-todos.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

@@ -7,7 +7,7 @@
  * 이 기기에만 저장한다 (localStorage). 사진은 줄여서 저장한다.
  */
 import type { Section, Theme, Trio } from './palette'
-import { SECTIONS } from './palette'
+import { SECTIONS, textOn } from './palette'
 
 export type ColorChoice = 'default' | 'random' | 'fixed'
 
@@ -30,14 +30,23 @@ export interface BackgroundStyle {
   cardClear: number
 }
 
+/** 완료 체크 표시 색 (할 일, 습관) */
+export interface CheckStyle {
+  /** section: 그 구역 그라데이션 그대로 / fixed: 고른 색 하나 */
+  color: 'section' | 'fixed'
+  fixed: string
+}
+
 export interface Customization {
   background: BackgroundStyle
   sections: Record<Section, SectionStyle>
+  check: CheckStyle
 }
 
 const KEY = 'tidy-customize'
 const EVENT = 'tidy:customize'
 
+export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photo: null, clear: 70, cardClear: 0 }
 export const defaultSection = (colors: Trio = ['#4fd1ff', '#3b82f6', '#7c3aed']): SectionStyle => ({
   color: 'random',
@@ -50,6 +59,7 @@ export function defaultCustomization(): Customization {
   return {
     background: { ...DEFAULT_BACKGROUND },
     sections: Object.fromEntries(SECTIONS.map((s) => [s, defaultSection()])) as Record<Section, SectionStyle>,
+    check: { ...DEFAULT_CHECK },
   }
 }
 
@@ -71,6 +81,8 @@ export function parseCustomization(raw: unknown): Customization {
     clear: clamp(b.clear, 0, 100, DEFAULT_BACKGROUND.clear),
     cardClear: clamp(b.cardClear, 0, 70, 0),
   }
+  const ch = (r.check ?? {}) as Record<string, unknown>
+  base.check = { color: ch.color === 'fixed' ? 'fixed' : 'section', fixed: isHex(ch.fixed) ? ch.fixed : DEFAULT_CHECK.fixed }
   const secs = (r.sections ?? {}) as Record<string, Record<string, unknown> | undefined>
   for (const s of SECTIONS) {
     const v = secs[s]
@@ -151,6 +163,15 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   if (layers.length) root.style.setProperty('--page-image', layers.join(', '))
   else root.style.removeProperty('--page-image')
   root.style.setProperty('--card-clear', `${bg.cardClear}%`)
+
+  // 체크 표시: 고른 색이면 그 색, 아니면 구역 그라데이션 (index.css의 bg-check)
+  if (c.check.color === 'fixed') {
+    root.style.setProperty('--check-image', `linear-gradient(${c.check.fixed}, ${c.check.fixed})`)
+    root.style.setProperty('--check-on', textOn([c.check.fixed, c.check.fixed, c.check.fixed]))
+  } else {
+    root.style.removeProperty('--check-image')
+    root.style.removeProperty('--check-on')
+  }
   root.classList.toggle('has-page-image', layers.length > 0)
 }
 

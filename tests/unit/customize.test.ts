@@ -25,4 +25,10 @@ describe('꾸미기 (customize)', () => {
     expect(t.sections.todo.colors).toEqual(['#ff0000', '#00ff00', '#0000ff'])
     expect(t.sections.money).toEqual(theme.sections.money)
   })
+
+  it('체크 표시 색: 기본은 구역 색, 고른 색은 #rrggbb 만', () => {
+    expect(parseCustomization({}).check).toEqual({ color: 'section', fixed: '#34c759' })
+    expect(parseCustomization({ check: { color: 'fixed', fixed: '#ff00aa' } }).check).toEqual({ color: 'fixed', fixed: '#ff00aa' })
+    expect(parseCustomization({ check: { color: 'fixed', fixed: 'url(x)' } }).check.fixed).toBe('#34c759')
+  })
 })
