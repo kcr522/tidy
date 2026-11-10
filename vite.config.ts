@@ -26,7 +26,7 @@ export default defineConfig({
           },
         ],
       },
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Tidy',
         short_name: 'Tidy',
@@ -35,7 +35,7 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         background_color: '#f2f4f6',
-        theme_color: '#4cc3fa',
+        theme_color: '#f2f4f6',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

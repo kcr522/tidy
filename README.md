@@ -108,6 +108,10 @@
 
 <img src="docs/screenshots/design-launch-grid.png" width="720">
 
+**Day 7 · 백업과 앱 준비**
+
+<img src="docs/screenshots/day7-settings.png" width="240"> <img src="docs/screenshots/day7-import.png" width="240"> <img src="docs/screenshots/day7-clear.png" width="240"> <img src="docs/screenshots/day7-app-icon.png" width="120">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
@@ -164,7 +168,7 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 - [x] Day 4 — 스크랩
 - [x] Day 5 — 대시보드, 스크랩 → 할 일 연동
 - [x] Day 6 — 필터, 예외 처리, 디자인 정돈
-- [ ] Day 7 — 백업, PWA 배포, 폰 앱, 컴퓨터 앱
+- [x] Day 7 — 백업, PWA, 폰 앱 준비 (배포와 폰 설치는 [quickstart.md](specs/001-tidy-mvp/quickstart.md) 4~6번)
 
 ## 시작하기
 
@@ -174,6 +178,8 @@ cd tidy
 npm install
 npm run dev      # http://localhost:5173 에서 열기
 npm test         # 단위 테스트
+npm run app:ios      # 아이폰 앱 (Mac + Xcode)
+npm run app:android  # 안드로이드 앱 (Android Studio)
 ```
 
 자세한 내용은 [quickstart.md](specs/001-tidy-mvp/quickstart.md)를 보세요.
