@@ -10,7 +10,7 @@ interface EmptyStateProps {
 /** 목록이 비었을 때 안내 (spec FR-008) */
 export default function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+    <div className="flex flex-col items-center card px-6 py-14 text-center">
       <span className="mb-3 text-4xl" aria-hidden>
         {icon}
       </span>

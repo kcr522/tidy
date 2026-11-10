@@ -65,7 +65,7 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {/* 구분 */}
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="구분">
+      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="구분">
         {(['EXPENSE', 'INCOME'] as const).map((t) => (
           <button
             key={t}
@@ -73,8 +73,8 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
             role="radio"
             aria-checked={type === t}
             onClick={() => changeType(t)}
-            className={`min-h-11 rounded-lg text-sm font-semibold transition-colors ${
-              type === t ? (t === 'EXPENSE' ? 'bg-white text-expense shadow-sm' : 'bg-white text-income shadow-sm') : 'text-slate-500'
+            className={`min-h-11 rounded-xl text-sm font-semibold transition-colors ${
+              type === t ? (t === 'EXPENSE' ? 'bg-white text-expense shadow-card' : 'bg-white text-income shadow-card') : 'text-slate-500'
             }`}
           >
             {t === 'EXPENSE' ? '지출' : '수입'}

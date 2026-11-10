@@ -1,15 +1,55 @@
 @import "tailwindcss";
 
-/* Tidy 기본 색상 — 청록(teal) 계열 */
+/*
+ * Tidy 디자인 토큰
+ * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)
+ * - 포인트: 인스타그램 느낌의 보라 → 핑크 → 주황 그라데이션
+ */
 @theme {
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-income: #2563eb;
-  --color-expense: #dc2626;
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --color-slate-50: #f9fafb;
+  --color-slate-100: #f2f4f6;
+  --color-slate-200: #e5e8eb;
+  --color-slate-300: #d1d6db;
+  --color-slate-400: #b0b8c1;
+  --color-slate-500: #8b95a1;
+  --color-slate-600: #6b7684;
+  --color-slate-700: #4e5968;
+  --color-slate-800: #333d4b;
+  --color-slate-900: #191f28;
+
+  --color-brand-50: #fff0f6;
+  --color-brand-100: #ffdeeb;
+  --color-brand-500: #e1306c;
+  --color-brand-600: #c13584;
+  --color-brand-700: #a01f73;
+
+  --color-income: #3182f6;
+  --color-expense: #f04452;
+
+  --shadow-card: 0 2px 16px rgb(25 31 40 / 0.05);
+  --shadow-float: 0 6px 20px rgb(193 53 132 / 0.22);
+
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+
+/* 인스타 그라데이션 배경 */
+@utility bg-insta {
+  background-image: linear-gradient(120deg, #833ab4 0%, #c13584 35%, #e1306c 62%, #fd5949 82%, #fcaf45 100%);
+}
+
+/* 인스타 그라데이션 글자 */
+@utility text-insta {
+  background-image: linear-gradient(120deg, #833ab4 0%, #c13584 40%, #e1306c 65%, #fd5949 85%, #fcaf45 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 흰 카드 */
+@utility card {
+  border-radius: 1.5rem;
+  background-color: #fff;
+  box-shadow: var(--shadow-card);
 }
 
 /* 작은 버튼도 폰에서 누르기 쉽게: 보이는 크기는 그대로, 누르는 영역만 최소 44px */
@@ -33,5 +73,11 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-100 text-slate-900 antialiased;
+  letter-spacing: -0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
 }

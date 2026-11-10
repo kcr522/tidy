@@ -50,7 +50,7 @@ function ConvertForm({ bookmark, onDone }: { bookmark: Bookmark; onDone: () => v
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div className="rounded-xl bg-slate-50 px-4 py-3">
+      <div className="rounded-2xl bg-slate-50 px-4 py-3">
         <p className="text-xs text-slate-500">이렇게 등록돼요</p>
         <p className="mt-1 font-semibold text-slate-900">{titleFromBookmark(bookmark.title)}</p>
         <p className="mt-0.5 text-xs text-slate-500">중요도 보통 · 완료하면 스크랩도 읽음으로 바뀌어요</p>

@@ -3,8 +3,8 @@ import type { ButtonHTMLAttributes } from 'react'
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-600',
-  secondary: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50',
+  primary: 'bg-insta text-white shadow-float hover:brightness-105 active:brightness-95',
+  secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
   danger: 'bg-expense text-white hover:opacity-90',
   ghost: 'text-slate-600 hover:bg-slate-100',
 }
@@ -18,7 +18,7 @@ export default function Button({ variant = 'primary', className = '', type = 'bu
   return (
     <button
       type={type}
-      className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASS[variant]} ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-1.5 rounded-2xl px-5 text-[15px] font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASS[variant]} ${className}`}
       {...props}
     />
   )

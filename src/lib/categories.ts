@@ -21,3 +21,22 @@ export function categoriesFor(type: TransactionType): readonly string[] {
 export function isValidCategory(type: TransactionType, category: string): boolean {
   return categoriesFor(type).includes(category)
 }
+
+/** 카테고리 아이콘 (목록에서 동그라미 안에 보여 준다) */
+const CATEGORY_EMOJI: Record<string, string> = {
+  식비: '🍚',
+  교통: '🚇',
+  쇼핑: '🛍️',
+  '문화/여가': '🎬',
+  '주거/통신': '🏠',
+  '의료/건강': '💊',
+  교육: '📚',
+  월급: '💰',
+  용돈: '🎁',
+  부수입: '✨',
+  기타: '📦',
+}
+
+export function categoryEmoji(category: string): string {
+  return CATEGORY_EMOJI[category] ?? '📦'
+}

@@ -66,7 +66,7 @@ export default function TodoForm({ initial, defaultDueDate = null, onSubmit, onD
 
       <div>
         <span className="mb-1 block text-sm font-medium text-slate-600">중요도</span>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="중요도">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="중요도">
           {(['HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
             <button
               key={p}
@@ -74,8 +74,8 @@ export default function TodoForm({ initial, defaultDueDate = null, onSubmit, onD
               role="radio"
               aria-checked={priority === p}
               onClick={() => setPriority(p)}
-              className={`min-h-11 rounded-lg text-sm font-semibold transition-colors ${
-                priority === p ? `bg-white shadow-sm ${PRIORITY_LABEL[p].text}` : 'text-slate-500'
+              className={`min-h-11 rounded-xl text-sm font-semibold transition-colors ${
+                priority === p ? `bg-white shadow-card ${PRIORITY_LABEL[p].text}` : 'text-slate-500'
               }`}
             >
               {PRIORITY_LABEL[p].label}

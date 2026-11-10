@@ -65,11 +65,11 @@
 
 | 폰 (대시보드) | 폰 (가계부) | 폰 (할 일) | 폰 (스크랩) |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/day5-dashboard.png" width="200"> | <img src="docs/screenshots/day2-list.png" width="200"> | <img src="docs/screenshots/day3-today.png" width="200"> | <img src="docs/screenshots/day4-list.png" width="200"> |
+| <img src="docs/screenshots/design-dashboard.png" width="200"> | <img src="docs/screenshots/design-money-all.png" width="200"> | <img src="docs/screenshots/design-todos.png" width="200"> | <img src="docs/screenshots/design-scraps.png" width="200"> |
 
-| 컴퓨터 (대시보드) | 컴퓨터 (스크랩) |
-|:---:|:---:|
-| <img src="docs/screenshots/day5-desktop.png" width="420"> | <img src="docs/screenshots/day4-desktop.png" width="420"> |
+<img src="docs/screenshots/design-desktop.png" width="720">
+
+**디자인**: 토스처럼 둥글고 깔끔한 카드 + 인스타그램 느낌의 보라 → 핑크 → 주황 그라데이션, 글씨체는 Pretendard.
 
 <details>
 <summary>날짜별 화면 전체 보기</summary>
@@ -98,6 +98,16 @@
 
 <img src="docs/screenshots/day6-money-all.png" width="240"> <img src="docs/screenshots/day6-filter.png" width="240"> <img src="docs/screenshots/day6-save-fail.png" width="240"> <img src="docs/screenshots/day6-midnight.png" width="240">
 
+**디자인 새로 입히기 (Day 6 뒤)**
+
+<img src="docs/screenshots/design-dashboard.png" width="240"> <img src="docs/screenshots/design-filter.png" width="240"> <img src="docs/screenshots/design-convert.png" width="240"> <img src="docs/screenshots/design-desktop.png" width="420">
+
+<details><summary>예전 디자인 (Day 5까지)</summary>
+
+<img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
+
+</details>
+
 </details>
 
 ## 어디서 쓸 수 있나요?
@@ -114,6 +124,7 @@
 | 구분 | 사용 기술 |
 |---|---|
 | 화면 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 |
+| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 인스타 그라데이션 |
 | 저장 | IndexedDB (Dexie.js) — 서버 없음 |
 | 웹 | PWA (오프라인, 홈 화면 설치) |
 | 폰 앱 | Capacitor |

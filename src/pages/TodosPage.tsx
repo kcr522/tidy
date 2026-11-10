@@ -84,7 +84,7 @@ export default function TodosPage() {
       <PageHeader title="할 일" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 할 일 추가</Button>} />
 
       <div className="mb-4 flex items-center gap-3">
-        <div className="grid flex-1 grid-cols-2 gap-1 rounded-xl bg-slate-200/60 p-1 md:max-w-xs" role="tablist">
+        <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
           {(
             [
               ['today', `오늘 (${progress.done}/${progress.total})`],
@@ -97,7 +97,7 @@ export default function TodosPage() {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`min-h-11 rounded-lg text-sm font-semibold ${tab === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+              className={`min-h-11 rounded-xl text-sm font-semibold ${tab === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
             >
               {label}
             </button>
@@ -113,7 +113,7 @@ export default function TodosPage() {
           action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 할 일 추가</Button>}
         />
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <ul className="divide-y divide-slate-100 card overflow-hidden">
           {visible.map((t, i) => (
             <TodoRow key={t.id} showDoneHeader={i === firstDone && i > 0}>
               <TodoItem todo={t} today={today} onToggle={() => toggle(t)} onSelect={() => setEditor({ mode: 'edit', item: t })}
