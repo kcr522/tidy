@@ -72,8 +72,23 @@ export interface Todo {
   priority: Priority
   /** 스크랩에서 전환된 경우 그 스크랩의 id (1:1) */
   bookmarkId?: number
+  /** 할 일 카테고리 (없으면 '기본'). 스키마 8부터 */
+  categoryId?: number
   createdAt: string
   updatedAt: string
+}
+
+/** 할 일 카테고리 색 */
+export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'
+
+/** 할 일 카테고리 (스키마 8부터): 할 일 캘린더 아래 묶음 */
+export interface TodoCategory {
+  id?: number
+  name: string
+  color: TodoCategoryColor
+  /** 보여 줄 순서 */
+  order: number
+  createdAt: string
 }
 
 /** 스크랩 */

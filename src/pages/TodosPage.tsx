@@ -25,7 +25,7 @@ import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
 type Tab = 'today' | 'later' | 'all' | 'habits'
 type View = 'list' | 'calendar'
-type Editor = { mode: 'add'; dueDate?: string } | { mode: 'edit'; item: Todo } | null
+type Editor = { mode: 'add'; dueDate?: string; categoryId?: number } | { mode: 'edit'; item: Todo } | null
 type HabitSheet = { mode: 'add' } | { mode: 'edit'; habit: Habit } | { mode: 'detail'; id: number } | null
 
 const VIEW_KEY = 'tidy:todo-view'
@@ -205,7 +205,7 @@ export default function TodosPage() {
           ))}
         </div>
         )}
-        {view === 'calendar' && <p className="flex-1 text-sm text-slate-500">날짜를 눌러 그날 할 일을 봐요</p>}
+        {view === 'calendar' && <p className="flex-1 text-sm text-slate-500">날짜를 눌러 그날 할 일을 카테고리별로 봐요</p>}
         {!isHabits && (
         <div className="ml-auto flex shrink-0 gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
           {(
@@ -241,9 +241,9 @@ export default function TodosPage() {
             selected={selected}
             onMonthChange={setMonth}
             onSelect={setSelected}
-            onAdd={(d) => {
+            onAdd={(d, categoryId) => {
               setSelected(d)
-              setEditor({ mode: 'add', dueDate: d })
+              setEditor({ mode: 'add', dueDate: d, categoryId })
             }}
             onToggle={toggle}
             onEdit={(t) => setEditor({ mode: 'edit', item: t })}
@@ -288,9 +288,10 @@ export default function TodosPage() {
       <Modal open={editor !== null} title={editor?.mode === 'edit' ? '할 일 수정' : '할 일 추가'} onClose={() => setEditor(null)}>
         {editor && (
           <TodoForm
-            key={editor.mode === 'edit' ? editor.item.id : `new-${editor.dueDate ?? ''}`}
+            key={editor.mode === 'edit' ? editor.item.id : `new-${editor.dueDate ?? ''}-${editor.categoryId ?? ''}`}
             initial={editor.mode === 'edit' ? editor.item : undefined}
             defaultDueDate={editor.mode === 'add' && editor.dueDate ? editor.dueDate : view === 'list' && tab === 'today' ? today : null}
+            defaultCategoryId={editor.mode === 'add' ? editor.categoryId : undefined}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />
