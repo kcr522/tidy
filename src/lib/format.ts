@@ -17,6 +17,14 @@ export function formatDateLabel(dateKey: string): string {
   return format(parseDateKey(dateKey), 'M월 d일 (EEE)', { locale: ko })
 }
 
+/** "14:05" → "오후 2:05" */
+export function formatTimeLabel(time: string): string {
+  const [h, m] = time.split(':').map(Number)
+  const ampm = h < 12 ? '오전' : '오후'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${ampm} ${h12}:${String(m).padStart(2, '0')}`
+}
+
 /** 2026, 11 → "2026년 11월" */
 export function formatMonthLabel(year: number, month: number): string {
   return `${year}년 ${month}월`

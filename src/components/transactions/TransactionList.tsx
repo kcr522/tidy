@@ -1,6 +1,6 @@
 import type { Transaction } from '../../db/types'
 import { categoryEmoji } from '../../lib/categories'
-import { formatDateLabel, formatWon } from '../../lib/format'
+import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
 import { matchMerchant } from '../../lib/merchants'
 import { groupByDate } from '../../lib/summary'
 import MerchantAvatar from './MerchantAvatar'
@@ -39,6 +39,8 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                     <span className="block truncate text-[15px] font-semibold text-slate-800">{m ? m.display : t.memo || t.category}</span>
                     <span className="block truncate text-xs text-slate-400">
                       {categoryEmoji(t.category)} {t.category}
+                      {t.time && <> · {formatTimeLabel(t.time)}</>}
+                      {t.account && <> · {t.account}</>}
                     </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>

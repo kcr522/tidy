@@ -1,3 +1,5 @@
+import { format } from 'date-fns'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
 import { categoriesFor, categoryEmoji } from '../../lib/categories'
@@ -5,7 +7,8 @@ import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
 import { matchMerchant } from '../../lib/merchants'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
-import type { TransactionInput } from '../../repositories/transactionRepo'
+import { ACCOUNT_PRESETS, accountEmoji, MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
+import { transactionRepo, type TransactionInput } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
@@ -27,6 +30,11 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
   const [date, setDate] = useState(initial?.date ?? todayKey())
   const [category, setCategory] = useState(initial?.category ?? '')
   const [memo, setMemo] = useState(initial?.memo ?? '')
+  // 새 내역은 지금 시각으로 채운다
+  const [time, setTime] = useState(() => (initial ? (initial.time ?? '') : format(new Date(), 'HH:mm')))
+  const [account, setAccount] = useState(initial?.account ?? '')
+  const usedAccounts = useLiveQuery(() => transactionRepo.usedAccounts(), []) ?? []
+  const accountChips = [...new Set([...usedAccounts, '현금', '토스', '카카오페이'])].slice(0, 6)
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
 
@@ -66,7 +74,17 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
 
     setSaving(true)
     try {
-      await onSubmit({ type, amount: amount.value, date, category, memo: memoResult.value })
+      const acc = account.trim().slice(0, MAX_ACCOUNT_LENGTH)
+      await onSubmit({
+        type,
+        amount: amount.value,
+        date,
+        category,
+        memo: memoResult.value,
+        // 비우면 undefined → 수정할 때 예전 값이 지워진다
+        time: time || undefined,
+        account: acc || undefined,
+      })
     } finally {
       setSaving(false)
     }
@@ -128,6 +146,45 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
             ))}
           </select>
         </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* 시각 */}
+        <Field label="시간 (선택)">
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputClass(false)} aria-label="쓴 시간" />
+        </Field>
+        {/* 결제 수단 */}
+        <Field label="결제 수단 (선택)">
+          <input
+            value={account}
+            list="tidy-accounts"
+            maxLength={MAX_ACCOUNT_LENGTH}
+            placeholder="예: 신한카드"
+            onChange={(e) => setAccount(e.target.value)}
+            className={inputClass(false)}
+            aria-label="결제 수단"
+          />
+          <datalist id="tidy-accounts">
+            {[...new Set([...usedAccounts, ...ACCOUNT_PRESETS])].map((a) => (
+              <option key={a} value={a} />
+            ))}
+          </datalist>
+        </Field>
+      </div>
+      <div className="-mt-2 flex flex-wrap gap-1.5" role="group" aria-label="자주 쓰는 결제 수단">
+        {accountChips.map((a) => (
+          <button
+            key={a}
+            type="button"
+            aria-pressed={account === a}
+            onClick={() => setAccount(account === a ? '' : a)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              account === a ? 'bg-grad on-grad' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {accountEmoji(a)} {a}
+          </button>
+        ))}
       </div>
 
       {/* 메모 */}

@@ -22,6 +22,7 @@ export class InvalidBackupError extends Error {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isStr = (v: unknown) => typeof v === 'string'
+const isOptStr = (v: unknown) => v === undefined || typeof v === 'string'
 const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v)
 const isFlag = (v: unknown) => v === 0 || v === 1
 const isId = (v: unknown) => v === undefined || (isNum(v) && (v as number) > 0)
@@ -29,7 +30,7 @@ const isId = (v: unknown) => v === undefined || (isNum(v) && (v as number) > 0)
 function isTransaction(v: unknown): v is Transaction {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
-    isStr(v.date) && isStr(v.memo) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
