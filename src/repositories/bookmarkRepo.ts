@@ -7,6 +7,21 @@ export interface BookmarkInput {
   url: string
   title: string
   memo: string
+  /** 아래는 2차(스크랩 카테고리·미리보기)부터. 없으면 그대로 둔다 */
+  categoryId?: number | null
+  source?: string
+  description?: string
+  siteName?: string
+  isVideo?: boolean
+}
+
+/** 화면 값 → 저장할 값 (categoryId: null이면 미분류로) */
+function toRecord(input: BookmarkInput): Partial<Bookmark> {
+  const { categoryId, isVideo, ...rest } = input
+  const out: Partial<Bookmark> = { ...rest }
+  if (categoryId !== undefined) out.categoryId = categoryId ?? undefined
+  if (isVideo !== undefined) out.isVideo = isVideo ? 1 : 0
+  return out
 }
 
 export type BookmarkFilter = 'all' | 'unread'
@@ -15,16 +30,24 @@ export function createBookmarkRepo(database: TidyDB = defaultDb) {
   return {
     async add(input: BookmarkInput): Promise<number> {
       const now = nowIso()
-      return database.bookmarks.add({ ...input, isRead: 0, createdAt: now, updatedAt: now })
+      return database.bookmarks.add({ ...(toRecord(input) as Bookmark), isRead: 0, createdAt: now, updatedAt: now })
     },
 
     async update(id: number, input: BookmarkInput): Promise<void> {
-      await database.bookmarks.update(id, { ...input, updatedAt: nowIso() })
+      const rec = toRecord(input)
+      // categoryId가 undefined로 들어 있으면 Dexie가 그 칸을 지운다 (= 미분류)
+      await database.bookmarks.update(id, { ...rec, updatedAt: nowIso() })
     },
 
-    /** 삭제. 이 스크랩에서 전환된 할 일은 남기고 연결만 끊는다 (FR-044) */
+    /** AI(또는 기본) 요약 저장 */
+    async setSummary(id: number, summary: string): Promise<void> {
+      await database.bookmarks.update(id, { summary, summaryAt: nowIso() })
+    },
+
+    /** 삭제. 이 스크랩에서 전환된 할 일은 남기고 연결만 끊는다 (FR-044). 붙은 사진·영상도 지운다 */
     async remove(id: number): Promise<void> {
-      await database.transaction('rw', database.bookmarks, database.todos, async () => {
+      await database.transaction('rw', database.bookmarks, database.todos, database.scrapMedia, async () => {
+        await database.scrapMedia.where('bookmarkId').equals(id).delete()
         await database.todos
           .where('bookmarkId')
           .equals(id)

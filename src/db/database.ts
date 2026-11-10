@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Bookmark, MerchantAlias, Recurring, Todo, Transaction } from './types'
+import type { Bookmark, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -12,6 +12,8 @@ export class TidyDB extends Dexie {
   bookmarks!: Table<Bookmark, number>
   recurring!: Table<Recurring, number>
   merchantAliases!: Table<MerchantAlias, string>
+  scrapCategories!: Table<ScrapCategory, number>
+  scrapMedia!: Table<ScrapMedia, number>
 
   constructor(name = 'tidy') {
     super(name)
@@ -29,7 +31,26 @@ export class TidyDB extends Dexie {
     this.version(3).stores({
       merchantAliases: '&raw',
     })
+    // 2차: 스크랩 카테고리, 미리보기 썸네일, 캡처 사진·영상
+    // (4번은 할 일 캘린더 PR이 쓴다. 두 PR을 순서대로 합치면 4 → 5로 올라간다)
+    this.version(5)
+      .stores({
+        bookmarks: '++id, url, isRead, createdAt, categoryId',
+        scrapCategories: '++id, &name, order',
+        scrapMedia: '++id, bookmarkId, [bookmarkId+kind]',
+      })
+      .upgrade((tx) => seedCategories(tx.table('scrapCategories')))
+    this.on('populate', (tx) => seedCategories(tx.table('scrapCategories')))
   }
+}
+
+/** 처음 쓸 때 넣어 두는 카테고리 (이름은 나중에 바꾸거나 지울 수 있다) */
+export const DEFAULT_SCRAP_CATEGORIES = ['맛집·카페', '여행', '쇼핑', '공부', '꿀팁']
+
+export async function seedCategories(table: Table<ScrapCategory, number>) {
+  if ((await table.count()) > 0) return
+  const now = new Date().toISOString()
+  await table.bulkAdd(DEFAULT_SCRAP_CATEGORIES.map((name, order) => ({ name, order, createdAt: now })))
 }
 
 export const db = new TidyDB()
