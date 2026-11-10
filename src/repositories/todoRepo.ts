@@ -10,6 +10,8 @@ export interface TodoInput {
   priority: Priority
   /** 할 일 카테고리 (없으면 '기본') */
   categoryId?: number
+  /** 알림 시각 HH:mm (마감일이 있을 때만) */
+  remindAt?: string
 }
 
 /** 이미 할 일로 전환한 스크랩을 다시 전환하려 할 때 (FR-041) */
@@ -37,7 +39,7 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
 
     async update(id: number, input: TodoInput): Promise<void> {
       // 카테고리를 '기본'으로 돌리면 값을 지운다 (undefined는 update에서 무시되므로)
-      await database.todos.update(id, { ...input, categoryId: input.categoryId, updatedAt: nowIso() })
+      await database.todos.update(id, { ...input, categoryId: input.categoryId, remindAt: input.remindAt, updatedAt: nowIso() })
     },
 
     async remove(id: number): Promise<void> {

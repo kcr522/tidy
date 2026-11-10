@@ -1,7 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Bell, BellOff } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Priority, Todo } from '../../db/types'
+import { timeLabel } from '../../lib/todoAlarms'
 import { MAX_TITLE_LENGTH, validateTitle } from '../../lib/validate'
+import { requestAlarmPermission } from '../../platform/alarms'
 import { todoCategoryRepo } from '../../repositories/todoCategoryRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
 import Button from '../common/Button'
@@ -20,15 +23,34 @@ interface TodoFormProps {
   onDelete?: () => void
 }
 
+/** 자주 쓰는 알림 시간 */
+const REMIND_PRESETS = ['09:00', '13:00', '18:00', '21:00']
+
 /** 할 일 입력 폼 (FR-020) */
 export default function TodoForm({ initial, defaultDueDate = null, defaultCategoryId, onSubmit, onDelete }: TodoFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [dueDate, setDueDate] = useState(initial ? (initial.dueDate ?? '') : (defaultDueDate ?? ''))
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? 'MEDIUM')
   const [categoryId, setCategoryId] = useState<number | undefined>(initial ? initial.categoryId : defaultCategoryId)
+  const [remindAt, setRemindAt] = useState(initial?.remindAt ?? '')
+  const [permNote, setPermNote] = useState<string>()
   const categories = useLiveQuery(() => todoCategoryRepo.list(), [])
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
+
+  /** 알림 시간을 고르면 알림 허용을 묻는다 */
+  async function pickRemind(t: string) {
+    setRemindAt(t)
+    if (!t) return setPermNote(undefined)
+    const p = await requestAlarmPermission().catch(() => 'unsupported' as const)
+    setPermNote(
+      p === 'granted'
+        ? undefined
+        : p === 'unsupported'
+          ? '이 브라우저는 알림을 못 띄워서, 앱이 열려 있을 때 화면 안에서만 알려 줘요'
+          : '알림이 꺼져 있어요. 휴대폰 설정에서 Tidy 알림을 켜야 울려요',
+    )
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -40,7 +62,7 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
     setError(undefined)
     setSaving(true)
     try {
-      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId })
+      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId, remindAt: dueDate && remindAt ? remindAt : undefined })
     } finally {
       setSaving(false)
     }
@@ -70,6 +92,46 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
           )}
         </div>
       </Field>
+
+      <div>
+        <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600">
+          <Bell className="size-4" aria-hidden /> 알림 (선택)
+        </span>
+        {dueDate ? (
+          <>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="알림 시간 빨리 고르기">
+              {REMIND_PRESETS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={remindAt === t}
+                  onClick={() => void pickRemind(remindAt === t ? '' : t)}
+                  className={`min-h-10 rounded-full px-3.5 text-sm font-semibold transition ${remindAt === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                >
+                  {timeLabel(t)}
+                </button>
+              ))}
+              <input
+                type="time"
+                value={remindAt}
+                onChange={(e) => void pickRemind(e.target.value)}
+                className="min-h-10 rounded-full border-0 bg-slate-100 px-3 text-sm text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-brand-500"
+                aria-label="알림 시간 직접 고르기"
+              />
+              {remindAt && (
+                <button type="button" onClick={() => void pickRemind('')} className="flex min-h-10 items-center gap-1 rounded-full px-3 text-sm font-semibold text-slate-500" aria-label="알림 끄기">
+                  <BellOff className="size-4" aria-hidden /> 끄기
+                </button>
+              )}
+            </div>
+            <p className="mt-1.5 text-xs text-slate-500">
+              {permNote ?? (remindAt ? `마감일 ${timeLabel(remindAt)}에 알려 줘요. 끝내면 울리지 않아요` : '시간을 고르면 그 시간에 알림이 울려요')}
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-slate-400">마감일을 정하면 알림 시간을 고를 수 있어요</p>
+        )}
+      </div>
 
       <div>
         <span className="mb-1 block text-sm font-medium text-slate-600">중요도</span>

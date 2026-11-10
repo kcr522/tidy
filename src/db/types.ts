@@ -74,6 +74,8 @@ export interface Todo {
   bookmarkId?: number
   /** 할 일 카테고리 (없으면 '기본'). 스키마 8부터 */
   categoryId?: number
+  /** 알림 시각 HH:mm (마감일 그날 이 시각에 울린다). 없으면 알림 없음 */
+  remindAt?: string
   createdAt: string
   updatedAt: string
 }
