@@ -116,6 +116,10 @@
 
 <img src="docs/screenshots/p2-calendar-calendar.png" width="240"> <img src="docs/screenshots/p2-calendar-day.png" width="240"> <img src="docs/screenshots/p2-calendar-add.png" width="240"> <img src="docs/screenshots/p2-calendar-desktop.png" width="420">
 
+**2차 · 가게 로고**
+
+<img src="docs/screenshots/p2-logos-list.png" width="240"> <img src="docs/screenshots/p2-logos-form.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

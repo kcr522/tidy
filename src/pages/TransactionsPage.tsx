@@ -11,6 +11,7 @@ import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
 import type { Transaction } from '../db/types'
 import { useToday } from '../hooks/useToday'
+import { categoryEmoji } from '../lib/categories'
 import { categoriesUsed, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
@@ -98,7 +99,7 @@ export default function TransactionsPage() {
                 category === c ? 'bg-grad on-grad shadow-float' : 'bg-white text-slate-600 shadow-card hover:bg-slate-50'
               }`}
             >
-              {c ?? '전체'}
+              {c === null ? '전체' : `${categoryEmoji(c)} ${c}`}
             </button>
           ))}
         </div>
