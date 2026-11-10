@@ -18,8 +18,9 @@ export interface GeminiRequest {
   signal?: AbortSignal
 }
 
-/** 별칭이 안 되는 계정·지역이면 이 모델로 한 번 더 */
-export const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash'
+/** 별칭이 안 되거나 붐비면 차례로 이 모델들로 다시 묻는다 (모두 무료 등급) */
+export const GEMINI_FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+export const GEMINI_FALLBACK_MODEL = GEMINI_FALLBACK_MODELS[0]
 
 type GeminiData = {
   candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[]
@@ -55,12 +56,13 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
     }
   }
 
+  // 모델 이름을 못 찾거나(404) 구글 서버가 붐비면(500·503) 다른 무료 모델로 차례로 다시 묻는다
+  const retry = (r: Response) => r.status === 404 || r.status === 500 || r.status === 503
   let res = await send(GEMINI_MODEL)
-  // 모델 이름을 못 찾으면 고정 모델로, 구글 서버가 붐비면(500·503) 잠깐 쉬고 한 번 더
-  if (res.status === 404) res = await send(GEMINI_FALLBACK_MODEL)
-  else if (res.status === 500 || res.status === 503) {
-    await wait(1500)
-    res = await send(GEMINI_MODEL)
+  for (const model of GEMINI_FALLBACK_MODELS) {
+    if (!retry(res)) break
+    if (res.status !== 404) await wait(800)
+    res = await send(model)
   }
   const data = (await res.json().catch(() => ({}))) as GeminiData
   const why = data.error?.message ?? ''
