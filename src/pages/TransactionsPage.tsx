@@ -184,18 +184,20 @@ export default function TransactionsPage() {
       <PageHeader
         title="가계부"
         action={
-          <div className="flex gap-2">
-            <Button variant="secondary" className="px-3.5" onClick={() => setShowMenu(true)} aria-label="차트, 통계, 고정 금액 메뉴" title="메뉴">
+          <div className="flex gap-1 sm:gap-2">
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setShowMenu(true)} aria-label="차트, 통계, 고정 금액 메뉴" title="메뉴">
               <Menu className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="px-3.5" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="px-3.5" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
               <PiggyBank className="size-[18px]" aria-hidden />
               <span className="hidden sm:inline">적금</span>
             </Button>
-            <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
+            <Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
+              + <span className="hidden sm:inline">내역 </span>추가
+            </Button>
           </div>
         }
       />
@@ -325,7 +327,9 @@ export default function TransactionsPage() {
           icon="💳"
           title="첫 내역을 기록해 보세요"
           description="이 달에는 아직 기록이 없어요."
-          action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>}
+          action={<Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
+              + <span className="hidden sm:inline">내역 </span>추가
+            </Button>}
         />
       ) : (
         filtered.length === 0 ? (
