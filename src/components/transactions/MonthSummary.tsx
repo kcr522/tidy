@@ -46,7 +46,15 @@ function Item({ label, value, className }: { label: string; value: string; class
   return (
     <div className="rounded-2xl bg-slate-50 px-1 py-3">
       <dt className="text-xs font-medium text-slate-500">{label}</dt>
-      <dd className={`mt-1 text-sm font-bold break-all sm:text-base ${className}`}>{value}</dd>
+      {/* 금액이 길면 글씨를 줄여서 한 줄로 (칸 밖으로 넘치거나 '원'만 다음 줄로 가지 않게) */}
+      <dd className={`mt-1 font-bold tracking-tight whitespace-nowrap tabular-nums ${amountSize(value)} ${className}`}>{value}</dd>
     </div>
   )
+}
+
+/** 글자 수에 맞춘 글씨 크기: 1,533,263원(10자)까지는 그대로, 더 길면 작게 */
+export function amountSize(value: string): string {
+  if (value.length <= 10) return 'text-sm sm:text-base'
+  if (value.length <= 12) return 'text-[12px] sm:text-base'
+  return 'text-[11px] sm:text-sm'
 }
