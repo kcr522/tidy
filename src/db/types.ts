@@ -114,3 +114,24 @@ export interface Diary {
   createdAt: string
   updatedAt: string
 }
+
+/** 습관: 매일 체크하는 반복 목표 (2차) */
+export interface Habit {
+  id?: number
+  /** 예: 물 2L 마시기 */
+  title: string
+  /** 목록에 보일 이모지 하나 */
+  emoji: string
+  /** 목록 순서 (작을수록 위) */
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** 습관 체크: 그 습관을 그날 했다는 기록. 기록이 있으면 한 날, 없으면 안 한 날 */
+export interface HabitCheck {
+  habitId: number
+  /** YYYY-MM-DD */
+  date: string
+  createdAt: string
+}

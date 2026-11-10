@@ -1,5 +1,5 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Bookmark, CalendarEvent, Diary, MerchantAlias, Recurring, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -19,6 +19,10 @@ export interface Backup {
   events?: CalendarEvent[]
   /** 일기 (스키마 4부터) */
   diaries?: Diary[]
+  /** 습관 (스키마 5부터) */
+  habits?: Habit[]
+  /** 습관 체크 기록 (스키마 5부터) */
+  habitChecks?: HabitCheck[]
 }
 
 export class InvalidBackupError extends Error {
@@ -81,6 +85,14 @@ function isDiary(v: unknown): v is Diary {
   return isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
 }
 
+function isHabit(v: unknown): v is Habit {
+  return isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.emoji) && isNum(v.order) && isStr(v.createdAt) && isStr(v.updatedAt)
+}
+
+function isHabitCheck(v: unknown): v is HabitCheck {
+  return isObj(v) && isNum(v.habitId) && isStr(v.date) && isStr(v.createdAt)
+}
+
 /** JSON 문자열을 검사해서 백업으로 바꾼다. 하나라도 틀리면 InvalidBackupError (FR-061) */
 export function parseBackup(text: string, currentSchema: number): Backup {
   let data: unknown
@@ -99,8 +111,10 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const aliases = data.merchantAliases ?? []
   const events = data.events ?? []
   const diaries = data.diaries ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(events) || !Array.isArray(diaries)) throw new InvalidBackupError()
-  if (!transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) || !events.every(isEvent) || !diaries.every(isDiary)) {
+  const habits = data.habits ?? []
+  const habitChecks = data.habitChecks ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks)) throw new InvalidBackupError()
+  if (!transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck)) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
   return data as unknown as Backup
@@ -114,7 +128,7 @@ export function backupFileName(dateKey: string): string {
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
     async exportAll(): Promise<Backup> {
-      return database.transaction('r', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries], async () => ({
+      return database.transaction('r', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries, database.habits, database.habitChecks], async () => ({
         app: 'tidy' as const,
         appVersion,
         schemaVersion: database.verno,
@@ -126,18 +140,22 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         merchantAliases: await database.merchantAliases.toArray(),
         events: await database.events.toArray(),
         diaries: await database.diaries.toArray(),
+        habits: await database.habits.toArray(),
+        habitChecks: await database.habitChecks.toArray(),
       }))
     },
 
     /** 기존 데이터를 백업 내용으로 덮어쓴다. 한 트랜잭션이라 중간에 실패하면 아무것도 안 바뀐다 */
     async importAll(text: string): Promise<{ transactions: number; todos: number; bookmarks: number }> {
       const backup = parseBackup(text, database.verno)
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear(), database.events.clear(), database.diaries.clear()])
+      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries, database.habits, database.habitChecks], async () => {
+        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear(), database.events.clear(), database.diaries.clear(), database.habits.clear(), database.habitChecks.clear()])
         await database.recurring.bulkAdd(backup.recurring ?? [])
         await database.merchantAliases.bulkAdd(backup.merchantAliases ?? [])
         await database.events.bulkAdd(backup.events ?? [])
         await database.diaries.bulkAdd(backup.diaries ?? [])
+        await database.habits.bulkAdd(backup.habits ?? [])
+        await database.habitChecks.bulkAdd(backup.habitChecks ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)
@@ -147,8 +165,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
 
     /** 전체 삭제 (FR-062). 확인 문구는 화면에서 검사한다 */
     async clearAll(): Promise<void> {
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear(), database.events.clear(), database.diaries.clear()])
+      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases, database.events, database.diaries, database.habits, database.habitChecks], async () => {
+        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear(), database.events.clear(), database.diaries.clear(), database.habits.clear(), database.habitChecks.clear()])
       })
     },
   }
