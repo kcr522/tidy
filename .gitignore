@@ -31,5 +31,3 @@ android/.gradle/
 ios/App/Pods/
 ios/App/build/
 
-# 컴퓨터 앱 (Tauri)
-src-tauri/target/

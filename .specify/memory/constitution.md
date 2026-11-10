@@ -46,7 +46,7 @@ Tidy는 학교 서버나 외부 서버에 연결하지 않는다.
 
 - 언어와 화면: TypeScript + React (웹 기술 하나로 네 환경 모두 대응)
 - 로컬 DB: 브라우저/앱 내장 IndexedDB (Dexie.js 사용)
-- 앱 패키징: 모바일 앱은 Capacitor, 데스크톱 앱은 Tauri
+- 앱 패키징: 모바일 앱은 Capacitor, 데스크톱 앱은 PWA 설치(Chrome/Edge의 "앱 설치")로 별도 패키징 없이 제공
 - 화폐는 원(KRW), 언어는 한국어, 날짜는 기기의 현지 시간 기준
 
 ## 개발 흐름

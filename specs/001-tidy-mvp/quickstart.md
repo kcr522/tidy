@@ -8,7 +8,6 @@
 | Git | 버전 기록 | `git --version` |
 | VS Code (추천) | 코드 편집 | |
 | Android Studio | 폰 앱 (Day 7) | |
-| Rust | 컴퓨터 앱, Tauri (Day 7) | `rustc --version` |
 | Mac + Xcode | iOS 앱 (선택) | |
 
 ## 2. 프로젝트 만들기 (Day 1)
@@ -46,17 +45,16 @@ iOS (Mac만): `npm install -D @capacitor/ios && npx cap add ios && npx cap open 
 
 ## 5. 컴퓨터 앱 (Day 7)
 
-```bash
-npm install -D @tauri-apps/cli
-npm install @tauri-apps/plugin-opener @tauri-apps/plugin-dialog @tauri-apps/plugin-fs
-npx tauri init        # dev URL: http://localhost:5173, dist 경로: ../dist
-npx tauri dev         # 창으로 실행
-npx tauri build       # 설치 파일 생성
-```
+따로 빌드하지 않는다. PWA로 배포한 웹 주소를 컴퓨터에서 연 뒤:
+
+- **Chrome / Edge**: 주소창 오른쪽의 "앱 설치" 아이콘(모니터에 ↓ 모양) → 설치
+- **macOS Safari**: 메뉴 "파일" → "Dock에 추가"
+
+바탕화면(또는 Dock) 아이콘으로 별도 창에서 열린다.
 
 ## 6. 확인 순서
 
 1. 컴퓨터 브라우저(폭 1280px)에서 spec.md의 Acceptance Scenarios 확인
 2. 개발자 도구의 기기 모드(폭 375px)에서 같은 시나리오 확인
 3. 개발자 도구 → Network → Offline으로 오프라인 확인
-4. 빌드한 폰 앱, 컴퓨터 앱에서 링크 열기와 백업 확인
+4. 빌드한 폰 앱과 컴퓨터에 설치한 PWA에서 링크 열기와 백업 확인
