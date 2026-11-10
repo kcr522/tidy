@@ -57,9 +57,9 @@ jobs:
           path: tidy-debug.apk
           retention-days: 30
 
-      # 폰에서 바로 받을 수 있게 "Releases"에도 올린다 (main 에서 만들 때만, 항상 같은 주소: releases/latest)
+      # 폰에서 바로 받을 수 있게 "Releases"에도 올린다 (main 이나 preview/all-features 에서 만들 때만, 항상 같은 주소: releases/latest)
       - name: 릴리스에 올리기
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview/all-features'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
