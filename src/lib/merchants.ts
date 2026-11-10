@@ -166,6 +166,31 @@ function findBranch(raw: string, alias: string): string | null {
   return null
 }
 
+// 결제 대행사(PG)나 간편결제 이름: 이것만 찍히면 실제로 어디서 썼는지 알 수 없다
+const UNCLEAR_PATTERNS = [
+  /kcp/i,
+  /nice|나이스/i,
+  /inicis|이니시스/i,
+  /토스페이먼츠|tosspayments/i,
+  /다날|danal/i,
+  /kicc|한국정보통신/i,
+  /smartro|스마트로/i,
+  /ksnet/i,
+  /세틀뱅크|settlebank/i,
+  /헥토|hecto/i,
+  /페이레터|payletter/i,
+  /갤럭시아|galaxia/i,
+  /paypal|페이팔/i,
+  /결제대행|전자결제|pg사/i,
+]
+
+/** 결제 대행사 이름처럼 보여서 어디서 썼는지 물어봐야 하는지 */
+export function isUnclearMerchant(text: string): boolean {
+  const t = text.trim()
+  if (!t || matchMerchant(t)) return false
+  return UNCLEAR_PATTERNS.some((p) => p.test(t)) || /^[A-Z0-9*\-_ ]{2,}\*/.test(t)
+}
+
 /** 로고 이미지 주소 (브랜드 홈페이지 아이콘) */
 export function logoUrl(brand: Brand): string {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(brand.domain)}&sz=128`

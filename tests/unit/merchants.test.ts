@@ -44,3 +44,20 @@ describe('matchMerchant', () => {
     expect(brandTextColor('#E60012')).toBe('#ffffff')
   })
 })
+
+describe('isUnclearMerchant', () => {
+  it('결제 대행사 이름은 물어본다', async () => {
+    const { isUnclearMerchant } = await import('../../src/lib/merchants')
+    expect(isUnclearMerchant('KCP*결제')).toBe(true)
+    expect(isUnclearMerchant('NICE페이먼츠')).toBe(true)
+    expect(isUnclearMerchant('(주)KG이니시스')).toBe(true)
+    expect(isUnclearMerchant('토스페이먼츠')).toBe(true)
+    expect(isUnclearMerchant('PAYPAL *STEAM')).toBe(true)
+  })
+  it('가게를 알 수 있으면 묻지 않는다', async () => {
+    const { isUnclearMerchant } = await import('../../src/lib/merchants')
+    expect(isUnclearMerchant('NICE*배달의민족')).toBe(false)
+    expect(isUnclearMerchant('동네 분식')).toBe(false)
+    expect(isUnclearMerchant('')).toBe(false)
+  })
+})

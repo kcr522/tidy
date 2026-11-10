@@ -1,5 +1,5 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Bookmark, Recurring, Todo, Transaction } from '../db/types'
+import type { Bookmark, MerchantAlias, Recurring, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -13,6 +13,8 @@ export interface Backup {
   bookmarks: Bookmark[]
   /** 정기 내역 규칙 (스키마 2부터, 예전 백업에는 없다) */
   recurring?: Recurring[]
+  /** 알려 준 가게 이름 (스키마 3부터) */
+  merchantAliases?: MerchantAlias[]
 }
 
 export class InvalidBackupError extends Error {
@@ -32,7 +34,7 @@ const isId = (v: unknown) => v === undefined || (isNum(v) && (v as number) > 0)
 function isTransaction(v: unknown): v is Transaction {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
-    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isOptStr(v.originalMemo) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
@@ -59,6 +61,10 @@ function isRecurring(v: unknown): v is Recurring {
   )
 }
 
+function isAlias(v: unknown): v is MerchantAlias {
+  return isObj(v) && isStr(v.raw) && isStr(v.original) && isStr(v.name) && isStr(v.createdAt)
+}
+
 /** JSON 문자열을 검사해서 백업으로 바꾼다. 하나라도 틀리면 InvalidBackupError (FR-061) */
 export function parseBackup(text: string, currentSchema: number): Backup {
   let data: unknown
@@ -74,8 +80,9 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const { transactions, todos, bookmarks } = data
   if (!Array.isArray(transactions) || !Array.isArray(todos) || !Array.isArray(bookmarks)) throw new InvalidBackupError()
   const recurring = data.recurring ?? []
-  if (!Array.isArray(recurring)) throw new InvalidBackupError()
-  if (!transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring)) {
+  const aliases = data.merchantAliases ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases)) throw new InvalidBackupError()
+  if (!transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias)) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
   return data as unknown as Backup
@@ -89,7 +96,7 @@ export function backupFileName(dateKey: string): string {
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
     async exportAll(): Promise<Backup> {
-      return database.transaction('r', [database.transactions, database.todos, database.bookmarks, database.recurring], async () => ({
+      return database.transaction('r', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => ({
         app: 'tidy' as const,
         appVersion,
         schemaVersion: database.verno,
@@ -98,15 +105,17 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         todos: await database.todos.toArray(),
         bookmarks: await database.bookmarks.toArray(),
         recurring: await database.recurring.toArray(),
+        merchantAliases: await database.merchantAliases.toArray(),
       }))
     },
 
     /** 기존 데이터를 백업 내용으로 덮어쓴다. 한 트랜잭션이라 중간에 실패하면 아무것도 안 바뀐다 */
     async importAll(text: string): Promise<{ transactions: number; todos: number; bookmarks: number }> {
       const backup = parseBackup(text, database.verno)
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear()])
+      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => {
+        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear()])
         await database.recurring.bulkAdd(backup.recurring ?? [])
+        await database.merchantAliases.bulkAdd(backup.merchantAliases ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)
@@ -116,8 +125,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
 
     /** 전체 삭제 (FR-062). 확인 문구는 화면에서 검사한다 */
     async clearAll(): Promise<void> {
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear()])
+      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => {
+        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear()])
       })
     },
   }

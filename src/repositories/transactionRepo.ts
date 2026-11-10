@@ -1,6 +1,7 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
 import type { Transaction, TransactionType } from '../db/types'
 import { nowIso } from '../lib/date'
+import { normalizeName } from '../lib/merchants'
 
 /** 화면에서 입력받는 값 (id, 생성/수정 시각 제외) */
 export interface TransactionInput {
@@ -36,10 +37,40 @@ export function sortTransactions(list: Transaction[]): Transaction[] {
 
 export function createTransactionRepo(database: TidyDB = defaultDb) {
   return {
+    /** 저장한다. 전에 알려 준 가게 이름이면 그 이름으로 바꿔 저장한다 */
     async add(input: TransactionInput): Promise<number> {
       const now = nowIso()
       const clean = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)) as TransactionInput
-      return database.transactions.add({ ...clean, createdAt: now, updatedAt: now })
+      return database.transaction('rw', database.transactions, database.merchantAliases, async () => {
+        const raw = normalizeName(clean.memo)
+        const alias = raw ? await database.merchantAliases.get(raw) : undefined
+        const named = alias ? { memo: alias.name, originalMemo: clean.memo } : {}
+        return database.transactions.add({ ...clean, ...named, createdAt: now, updatedAt: now })
+      })
+    },
+
+    /**
+     * "KCP*결제" 같은 내역에 실제 가게를 알려 준다.
+     * remember면 다음에 같은 이름으로 찍힌 내역도 이 가게로 보여 준다 (이미 있는 내역 포함)
+     * @returns 이름을 바꾼 내역 개수
+     */
+    async resolveMerchant(id: number, name: string, remember: boolean): Promise<number> {
+      return database.transaction('rw', database.transactions, database.merchantAliases, async () => {
+        const t = await database.transactions.get(id)
+        if (!t) return 0
+        const original = t.originalMemo ?? t.memo
+        const now = nowIso()
+        if (!remember) {
+          await database.transactions.update(id, { memo: name, originalMemo: original, updatedAt: now })
+          return 1
+        }
+        const raw = normalizeName(original)
+        await database.merchantAliases.put({ raw, original, name, createdAt: now })
+        const same = await database.transactions.filter((x) => x.originalMemo === undefined && normalizeName(x.memo) === raw).toArray()
+        const ids = new Set([id, ...same.map((x) => x.id as number)])
+        for (const tid of ids) await database.transactions.update(tid, { memo: name, originalMemo: original, updatedAt: now })
+        return ids.size
+      })
     },
 
     async update(id: number, input: TransactionInput): Promise<void> {
