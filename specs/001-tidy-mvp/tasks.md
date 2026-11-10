@@ -72,15 +72,15 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 **Independent Test**: spec.md US1의 Acceptance Scenarios 1~6
 
-- [ ] T017 [US1] 저장소 `src/repositories/transactionRepo.ts`: add, update, remove, listByMonth(year, month)
-- [ ] T018 [P] [US1] 월 합계 계산 `src/lib/summary.ts`의 `monthSummary()` (수입, 지출, 잔액) + 테스트 `tests/unit/summary.test.ts`
-- [ ] T019 [US1] 입력 폼 `src/components/transactions/TransactionForm.tsx`: 구분 토글(기본 지출), 금액(쉼표 자동), 날짜(기본 오늘), 카테고리, 메모, 검사 안내 (FR-010~013)
-- [ ] T020 [US1] 월 요약 `src/components/transactions/MonthSummary.tsx`: 이전/다음 달 버튼, 총 수입/지출/잔액 (FR-015, FR-016)
-- [ ] T021 [US1] 목록 `src/components/transactions/TransactionList.tsx`: 날짜별 묶음, 그날 지출 합계, 수입 파랑/지출 빨강 (FR-014)
-- [ ] T022 [US1] 내역 눌러 수정, 삭제(확인 창) (FR-017, FR-007)
-- [ ] T023 [US1] 페이지 조립 `src/pages/TransactionsPage.tsx` + 빈 화면 안내 + 추가(+) 버튼
-- [ ] T024 [US1] US1 시나리오 1~6을 폰 폭/컴퓨터 폭에서 확인
-- [ ] T025 💾 커밋 & 푸시: `feat: 가계부 입력과 월별 내역`
+- [x] T017 [US1] 저장소 `src/repositories/transactionRepo.ts`: add, update, remove, listByMonth(year, month)
+- [x] T018 [P] [US1] 월 합계 계산 `src/lib/summary.ts`의 `monthSummary()` (수입, 지출, 잔액) + 테스트 `tests/unit/summary.test.ts`
+- [x] T019 [US1] 입력 폼 `src/components/transactions/TransactionForm.tsx`: 구분 토글(기본 지출), 금액(쉼표 자동), 날짜(기본 오늘), 카테고리, 메모, 검사 안내 (FR-010~013)
+- [x] T020 [US1] 월 요약 `src/components/transactions/MonthSummary.tsx`: 이전/다음 달 버튼, 총 수입/지출/잔액 (FR-015, FR-016)
+- [x] T021 [US1] 목록 `src/components/transactions/TransactionList.tsx`: 날짜별 묶음, 그날 지출 합계, 수입 파랑/지출 빨강 (FR-014)
+- [x] T022 [US1] 내역 눌러 수정, 삭제(확인 창) (FR-017, FR-007)
+- [x] T023 [US1] 페이지 조립 `src/pages/TransactionsPage.tsx` + 빈 화면 안내 + 추가(+) 버튼
+- [x] T024 [US1] US1 시나리오 1~6을 폰 폭/컴퓨터 폭에서 확인
+- [x] T025 💾 커밋 & 푸시: `feat: 가계부 입력과 월별 내역`
 
 **Checkpoint**: 가계부만으로 매일 기록할 수 있다
 
