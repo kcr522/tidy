@@ -18,9 +18,41 @@ export interface GeminiRequest {
   signal?: AbortSignal
 }
 
-/** 별칭이 안 되거나 붐비면 차례로 이 모델들로 다시 묻는다 (모두 무료 등급) */
-export const GEMINI_FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
-export const GEMINI_FALLBACK_MODEL = GEMINI_FALLBACK_MODELS[0]
+/** 이 키로 쓸 수 있는 Flash 모델 목록 (구글에 물어본 결과를 앱을 켜 둔 동안 기억) */
+const modelCache = new Map<string, Promise<string[]>>()
+
+/** 모델 이름에서 버전 숫자 (gemini-3.1-flash → 3.1) */
+const versionOf = (name: string) => Number(name.match(/gemini-(\d+(?:\.\d+)?)/)?.[1] ?? 0)
+
+/**
+ * 구글에 "지금 쓸 수 있는 모델"을 물어보고 Flash 모델을 좋은 순으로 고른다.
+ * 오래된 모델은 새 사용자에게 막히기 때문에 이름을 박아 두지 않는다.
+ * 순서: 새 버전 먼저, 같은 버전이면 lite 가 아닌 것, 미리보기(preview)·실험(exp)은 뒤로
+ */
+export function rankFlashModels(names: string[]): string[] {
+  const score = (n: string) => (/lite/.test(n) ? 1 : 0) + (/preview|exp/.test(n) ? 2 : 0) + (/image|tts|audio|live|embedding|thinking/.test(n) ? 10 : 0)
+  return names
+    .map((n) => n.replace(/^models\//, ''))
+    .filter((n) => /^gemini-.*flash/.test(n) && score(n) < 10)
+    .sort((a, b) => versionOf(b) - versionOf(a) || score(a) - score(b) || a.localeCompare(b))
+}
+
+async function listFlashModels(apiKey: string, fetcher: typeof fetch, signal?: AbortSignal): Promise<string[]> {
+  let cached = modelCache.get(apiKey)
+  if (!cached) {
+    cached = (async () => {
+      const res = await fetcher('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': apiKey }, signal })
+      if (!res.ok) return []
+      const data = (await res.json().catch(() => ({}))) as { models?: { name: string; supportedGenerationMethods?: string[] }[] }
+      return rankFlashModels((data.models ?? []).filter((m) => m.supportedGenerationMethods?.includes('generateContent')).map((m) => m.name))
+    })().catch(() => [])
+    modelCache.set(apiKey, cached)
+  }
+  return cached
+}
+
+/** 시험용: 기억해 둔 모델 목록 지우기 */
+export const clearGeminiModelCache = () => modelCache.clear()
 
 type GeminiData = {
   candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[]
@@ -59,10 +91,15 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
   // 모델 이름을 못 찾거나(404) 구글 서버가 붐비면(500·503) 다른 무료 모델로 차례로 다시 묻는다
   const retry = (r: Response) => r.status === 404 || r.status === 500 || r.status === 503
   let res = await send(GEMINI_MODEL)
-  for (const model of GEMINI_FALLBACK_MODELS) {
-    if (!retry(res)) break
-    if (res.status !== 404) await wait(800)
-    res = await send(model)
+  if (retry(res)) {
+    // 이 키로 지금 쓸 수 있는 Flash 모델을 구글에 물어보고, 좋은 순으로 많아야 3개 더 시도
+    const tried = new Set([GEMINI_MODEL])
+    const others = (await listFlashModels(apiKey, fetcher, req.signal)).filter((m) => !tried.has(m)).slice(0, 3)
+    for (const model of others) {
+      if (!retry(res)) break
+      if (res.status !== 404) await wait(800)
+      res = await send(model)
+    }
   }
   const data = (await res.json().catch(() => ({}))) as GeminiData
   const why = data.error?.message ?? ''
@@ -71,7 +108,7 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
   if (/location is not supported/i.test(why)) throw new Error('지금 있는 곳에서는 Gemini 무료 등급을 쓸 수 없어요')
   if (res.status === 500 || res.status === 503) throw new Error('구글 Gemini 서버가 붐벼요. 잠시 뒤에 다시 해 주세요')
   // 그 밖의 오류는 원인을 찾을 수 있게 구글이 준 이유를 같이 보여 준다
-  if (!res.ok) throw new Error(`Gemini에서 오류가 났어요 (${res.status}${why ? `: ${why.slice(0, 120)}` : ''})`)
+  if (!res.ok) throw new Error(`Gemini에서 오류가 났어요 (${res.status}${why ? `: ${why.slice(0, 300)}` : ''})`)
   if (data.promptFeedback?.blockReason) throw new Error('Gemini가 이번엔 답하지 않았어요')
   const text = (data.candidates?.[0]?.content?.parts ?? [])
     .filter((p) => !p.thought)
