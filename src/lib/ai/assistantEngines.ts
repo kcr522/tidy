@@ -1,4 +1,5 @@
-import { askClaudeAssistant, AssistantError, type AssistantReply, type AssistantRequest } from './assistant'
+import { askClaudeAssistant, assistantPrompt, AssistantError, ASSISTANT_SYSTEM, JSON_SHAPE, parseAssistantJson, type AssistantReply, type AssistantRequest } from './assistant'
+import { callGemini } from './gemini'
 import { localAssistant } from './assistantLocal'
 import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
 
@@ -18,9 +19,25 @@ export interface AssistantResult extends AssistantReply {
 /**
  * 설정 > AI 연결에서 고른 방법으로 묻는다 (AI 소비 한마디와 같은 설정)
  * - 기본(AI 없이): 글에서 날짜·금액을 규칙으로 찾는다 (사진은 못 읽는다)
+ * - Gemini (무료): 내 Gemini 키로 사진과 글을 읽는다
  * - 서버 / 내 키: Claude가 사진과 글을 읽는다
  */
 export async function askAssistant(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  if (settings.engine === 'gemini' && settings.geminiKey?.trim()) {
+    const parts = [
+      ...(req.image ? [{ inlineData: { mimeType: 'image/jpeg', data: req.image } }] : []),
+      { text: `${assistantPrompt(req).replace(/report로 알려 줘\.$/, '알려 줘.')}\n\n${JSON_SHAPE}` },
+    ]
+    try {
+      const text = await callGemini(settings.geminiKey.trim(), { system: ASSISTANT_SYSTEM, parts, schema: {}, maxTokens: 4096, signal })
+      const out = parseAssistantJson(text)
+      if (!out) throw new AssistantError('Gemini 답을 알아보지 못했어요')
+      return { ...out, engine: 'gemini' }
+    } catch (err) {
+      if (signal?.aborted || err instanceof AssistantError) throw err
+      throw new AssistantError(err instanceof Error ? err.message : 'Gemini에 연결하지 못했어요')
+    }
+  }
   if (settings.engine === 'server') {
     const res = await fetch(assistantUrlFor(settings.serverUrl), {
       method: 'POST',

@@ -124,7 +124,7 @@ export function localAssistant(req: AssistantRequest): AssistantReply {
     return {
       ...none,
       kind: 'none',
-      reply: "지금은 AI 연결이 '기본'이라 사진 속 글자를 읽지 못해요. 설정 > AI 연결에서 Claude를 켜 주시거나, 사진 속 날짜와 내용을 글로 적어 주세요.",
+      reply: "지금은 AI 연결이 '기본'이라 사진 속 글자를 읽지 못해요. 설정 > AI 연결에서 'Gemini (무료)'를 켜 주시거나, 사진 속 날짜와 내용을 글로 적어 주세요.",
     }
   }
   const today = req.today

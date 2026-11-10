@@ -221,3 +221,41 @@ describe('첫인사', () => {
     expect(greeting(new Date(2026, 10, 10, 23), () => 0.99)).toContain('밤')
   })
 })
+
+describe('Gemini (무료)', () => {
+  const ok = (text: string, status = 200) =>
+    vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status }))
+
+  it('키를 헤더로 보내고, 사진을 inlineData 로 보내고, JSON 으로 답하게 한다', async () => {
+    const { callGemini, GEMINI_MODEL } = await import('../../src/lib/ai/gemini')
+    const f = ok('{"a":1}')
+    await expect(callGemini('KEY', { system: 'S', parts: [{ inlineData: { mimeType: 'image/jpeg', data: 'QQ==' } }, { text: 'hi' }], schema: {} }, f)).resolves.toBe('{"a":1}')
+    const [url, init] = f.mock.calls[0]
+    expect(url).toContain(`models/${GEMINI_MODEL}:generateContent`)
+    expect(init.headers['x-goog-api-key']).toBe('KEY')
+    const body = JSON.parse(init.body)
+    expect(body.generationConfig.responseMimeType).toBe('application/json')
+    expect(body.generationConfig.responseJsonSchema).toBeUndefined()
+    expect(body.contents[0].parts[0].inlineData.data).toBe('QQ==')
+  })
+
+  it('무료 한도를 넘으면 알려 준다', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }))
+    await expect(callGemini('KEY', { system: 'S', parts: [{ text: 'x' }] }, f)).rejects.toThrow('오늘 무료 사용량을 다 썼어요')
+  })
+
+  it('대화창: Gemini 의 JSON 답(```json 감싸도)을 알아본다', async () => {
+    const { askAssistant } = await import('../../src/lib/ai/assistantEngines')
+    const answer = { kind: 'event', reply: '플리마켓이 있네요!', events: [{ title: '플리마켓', startDate: '2026-11-21', endDate: '2026-11-21', time: null, place: null, note: '' }], payments: [], diary: null }
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(ok('```json\n' + JSON.stringify(answer) + '\n```'))
+    const r = await askAssistant({ engine: 'gemini', geminiKey: 'KEY' }, { today: TODAY, image: 'QQ==' })
+    expect(r).toMatchObject({ engine: 'gemini', kind: 'event', events: [{ title: '플리마켓' }] })
+    spy.mockRestore()
+  })
+
+  it('키가 없으면 기본(AI 없이)으로', async () => {
+    const { askAssistant } = await import('../../src/lib/ai/assistantEngines')
+    expect((await askAssistant({ engine: 'gemini' }, { today: TODAY, text: '내일 치과' })).engine).toBe('local')
+  })
+})
