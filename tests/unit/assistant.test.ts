@@ -271,13 +271,27 @@ describe('Gemini 오류 다루기', () => {
     expect(f.mock.calls[1][0]).toContain(GEMINI_FALLBACK_MODEL)
   })
 
-  it('붐비면(503) 잠깐 쉬고 한 번 더', async () => {
+  it('붐비면(503) 다른 무료 모델로 차례로 다시', async () => {
+    vi.useFakeTimers()
+    const { callGemini, GEMINI_FALLBACK_MODELS } = await import('../../src/lib/ai/gemini')
+    const busy = () => reply(503, { error: { message: 'overloaded' } })
+    const f = vi.fn().mockResolvedValueOnce(busy()).mockResolvedValueOnce(busy()).mockResolvedValueOnce(reply(200, good))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)
+    await vi.advanceTimersByTimeAsync(3000)
+    await expect(p).resolves.toBe('안녕')
+    expect(f.mock.calls.map((c) => c[0])).toEqual([expect.stringContaining('flash-latest'), expect.stringContaining(GEMINI_FALLBACK_MODELS[0] + ':'), expect.stringContaining(GEMINI_FALLBACK_MODELS[1])])
+    vi.useRealTimers()
+  })
+
+  it('모두 붐비면 붐빈다고 알려 준다', async () => {
     vi.useFakeTimers()
     const { callGemini } = await import('../../src/lib/ai/gemini')
-    const f = vi.fn().mockResolvedValueOnce(reply(503, { error: { message: 'overloaded' } })).mockResolvedValueOnce(reply(200, good))
+    const f = vi.fn().mockImplementation(async () => reply(503, { error: { message: 'overloaded' } }))
     const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)
-    await vi.advanceTimersByTimeAsync(2000)
-    await expect(p).resolves.toBe('안녕')
+    const check = expect(p).rejects.toThrow('붐벼요')
+    await vi.advanceTimersByTimeAsync(5000)
+    await check
+    expect(f).toHaveBeenCalledTimes(3)
     vi.useRealTimers()
   })
 
