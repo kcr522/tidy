@@ -122,7 +122,7 @@ export default function AiFeedbackCard({ items, today }: Props) {
           {isLocal ? (
             <Link to="/settings" className="tap flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 font-bold text-brand-700">
               <Settings2 className="size-3.5" aria-hidden />
-              AI 연결하기
+              무료 AI 연결하기
             </Link>
           ) : (
             <button

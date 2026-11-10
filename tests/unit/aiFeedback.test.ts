@@ -135,3 +135,36 @@ describe('askClaude', () => {
     await expect(askClaude(client, 'feedback', s)).rejects.toThrow('답하지 않았어요')
   })
 })
+
+describe('Gemini', () => {
+  const s = buildSnapshot(month, today)
+  const mockFetch = (status: number, body: object) => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }))
+    vi.stubGlobal('fetch', f)
+    return f
+  }
+
+  it('키가 있으면 Gemini로 묻고, 키를 헤더에 넣는다', async () => {
+    const f = mockFetch(200, { candidates: [{ content: { parts: [{ text: '생각', thought: true }, { text: '오늘 잘 썼어! ' }] } }] })
+    const engine = engineFor({ engine: 'gemini', geminiKey: 'AIza-test' })
+    expect(engine.id).toBe('gemini')
+    await expect(engine.generate('saver', s)).resolves.toBe('오늘 잘 썼어!')
+    const [url, init] = f.mock.calls[0]
+    expect(url).toContain('gemini-flash-latest:generateContent')
+    expect(init.headers['x-goog-api-key']).toBe('AIza-test')
+    const body = JSON.parse(init.body)
+    expect(body.systemInstruction.parts[0].text).toContain('절약 잔소리')
+    expect(body.contents[0].parts[0].text).toContain('올리브영')
+    vi.unstubAllGlobals()
+  })
+
+  it('무료 사용량을 다 쓰면 알려 준다', async () => {
+    mockFetch(429, { error: { message: 'quota' } })
+    await expect(engineFor({ engine: 'gemini', geminiKey: 'k' }).generate('cheer', s)).rejects.toThrow('무료 사용량')
+    vi.unstubAllGlobals()
+  })
+
+  it('키가 없으면 기본으로', () => {
+    expect(engineFor({ engine: 'gemini' })).toBe(localEngine)
+  })
+})
