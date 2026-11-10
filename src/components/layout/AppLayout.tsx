@@ -1,8 +1,12 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
+import { syncAlarms } from '../../platform/alarms'
+import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
+import { savingsRepo } from '../../repositories/savingsRepo'
 import ColorModeButton from '../common/ColorModeButton'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
@@ -25,7 +29,21 @@ export default function AppLayout() {
       .runDue(today)
       .then((n) => n > 0 && toast(`정기 내역 ${n}건을 가계부에 기록했어요`))
       .catch(() => toast('정기 내역을 기록하지 못했어요', 'error'))
+    // 자동이체 적금도 넣는 날 가계부에 기록한다
+    savingsRepo
+      .runDue(today)
+      .then((n) => n > 0 && toast(`적금 납입 ${n}건을 가계부에 기록했어요`))
+      .catch(() => toast('적금 납입을 기록하지 못했어요', 'error'))
   }, [today, toast])
+
+  // 적금 알림: 적금이나 오늘 체크가 바뀌면 다시 맞춘다
+  const plans = useLiveQuery(() => savingsRepo.list(), [])
+  const todayChecks = useLiveQuery(async () => (await habitRepo.allChecks()).filter((c) => c.date === today).map((c) => c.habitId).join(','), [today])
+  useEffect(() => {
+    if (!plans || todayChecks === undefined) return
+    const done = new Set(todayChecks.split(',').filter(Boolean).map(Number))
+    return syncAlarms(plans, (p) => p.habitId != null && done.has(p.habitId), (text) => toast(text))
+  }, [plans, todayChecks, today, toast])
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />

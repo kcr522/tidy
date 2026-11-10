@@ -1,5 +1,7 @@
 import { addDays, endOfMonth, getDay, startOfMonth } from 'date-fns'
+import type { Schedule } from '../db/types'
 import { parseDateKey, toDateKey } from './date'
+import { isDueOn } from './savings'
 
 /** 하루 전 날짜 */
 export function prevDay(key: string): string {
@@ -56,4 +58,20 @@ export function monthCells(month: string): (string | null)[] {
 export function monthRate(done: Set<string>, month: string, today: string, since: string): { done: number; days: number } {
   const cells = monthCells(month).filter((d): d is string => d !== null && d <= today && d >= since)
   return { done: cells.filter((d) => done.has(d)).length, days: cells.length }
+}
+
+/**
+ * 매일이 아닌 습관(적금 넣는 날 등)의 연속 기록: 넣는 날만 센다
+ * 오늘이 넣는 날인데 아직 안 했으면 끊긴 게 아니다
+ */
+export function scheduledStreak(done: Set<string>, today: string, schedule?: Schedule): number {
+  if (!schedule || schedule.freq === 'daily') return currentStreak(done, today)
+  let day = today
+  let count = 0
+  for (let i = 0; i < 1200; i++, day = prevDay(day)) {
+    if (!isDueOn(schedule, day)) continue
+    if (done.has(day)) count += 1
+    else if (day !== today) break
+  }
+  return count
 }

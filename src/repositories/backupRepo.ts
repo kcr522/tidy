@@ -1,5 +1,5 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -27,6 +27,8 @@ export interface Backup {
   habits?: Habit[]
   /** 습관 체크 기록 (스키마 6부터) */
   habitChecks?: HabitCheck[]
+  /** 적금 (스키마 6부터) */
+  savings?: SavingsPlan[]
 }
 
 export interface BackupMedia {
@@ -56,7 +58,7 @@ const isId = (v: unknown) => v === undefined || (isNum(v) && (v as number) > 0)
 function isTransaction(v: unknown): v is Transaction {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
-    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isOptStr(v.originalMemo) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isOptStr(v.originalMemo) && isId(v.savingsId) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
@@ -128,8 +130,24 @@ function isDiary(v: unknown): v is Diary {
   return isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
 }
 
+const isSchedule = (v: unknown) =>
+  isObj(v) && (v.freq === 'daily' || v.freq === 'weekly' || v.freq === 'monthly') && (v.weekday === undefined || isNum(v.weekday)) && (v.day === undefined || isNum(v.day))
+
 function isHabit(v: unknown): v is Habit {
-  return isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.emoji) && isNum(v.order) && isStr(v.createdAt) && isStr(v.updatedAt)
+  return (
+    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.emoji) && isNum(v.order) && isId(v.savingsId) &&
+    (v.schedule === undefined || isSchedule(v.schedule)) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
+}
+
+function isSavings(v: unknown): v is SavingsPlan {
+  return (
+    isObj(v) && isId(v.id) && isStr(v.name) && isOptStr(v.bank) && isNum(v.amount) && isStr(v.startDate) && isStr(v.endDate) &&
+    isNum(v.rate) && (v.interestType === 'simple' || v.interestType === 'compound') &&
+    (v.taxType === 'normal' || v.taxType === 'preferential' || v.taxType === 'free') && isSchedule(v.schedule) &&
+    isFlag(v.autoDeposit) && isFlag(v.alarmOn) && isStr(v.alarmTime) && isId(v.habitId) && (v.lastDate === null || isStr(v.lastDate)) &&
+    isStr(v.memo) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
 }
 
 function isHabitCheck(v: unknown): v is HabitCheck {
@@ -156,12 +174,13 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const diaries = data.diaries ?? []
   const habits = data.habits ?? []
   const habitChecks = data.habitChecks ?? []
+  const savings = data.savings ?? []
   const categories = data.scrapCategories ?? []
   const media = data.scrapMedia ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks)) throw new InvalidBackupError()
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
-    !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck)
+    !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -173,7 +192,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.scrapCategories, d.scrapMedia]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -192,6 +211,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         diaries: await database.diaries.toArray(),
         habits: await database.habits.toArray(),
         habitChecks: await database.habitChecks.toArray(),
+        savings: await database.savings.toArray(),
         scrapCategories: await database.scrapCategories.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
@@ -222,6 +242,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.diaries.bulkAdd(backup.diaries ?? [])
         await database.habits.bulkAdd(backup.habits ?? [])
         await database.habitChecks.bulkAdd(backup.habitChecks ?? [])
+        await database.savings.bulkAdd(backup.savings ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)
