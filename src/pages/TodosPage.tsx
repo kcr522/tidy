@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { CalendarDays, List } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -7,6 +8,7 @@ import EmptyState from '../components/common/EmptyState'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import CalendarView from '../components/todos/CalendarView'
 import TodoForm from '../components/todos/TodoForm'
 import TodoItem from '../components/todos/TodoItem'
 import type { Todo } from '../db/types'
@@ -17,7 +19,18 @@ import { bookmarkRepo } from '../repositories/bookmarkRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
 type Tab = 'today' | 'all'
-type Editor = { mode: 'add' } | { mode: 'edit'; item: Todo } | null
+type View = 'list' | 'calendar'
+type Editor = { mode: 'add'; dueDate?: string } | { mode: 'edit'; item: Todo } | null
+
+const VIEW_KEY = 'tidy:todo-view'
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list'
+  } catch {
+    return 'list'
+  }
+}
 
 /** 할 일 화면 (spec US2) */
 export default function TodosPage() {
@@ -25,6 +38,9 @@ export default function TodosPage() {
   const location = useLocation()
   // 스크랩의 "할 일 보기"로 들어오면 전체 탭을 연다
   const [tab, setTab] = useState<Tab>(() => ((location.state as { tab?: Tab } | null)?.tab === 'all' ? 'all' : 'today'))
+  const [view, setViewState] = useState<View>(loadView)
+  const [month, setMonth] = useState(() => today.slice(0, 7))
+  const [selected, setSelected] = useState(today)
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<Todo | null>(null)
   const toast = useToast()
@@ -33,6 +49,15 @@ export default function TodosPage() {
   const bookmarkUrls = useLiveQuery(async () => new Map((await bookmarkRepo.list('all')).map((b) => [b.id, b.url])), [])
   const visible = useMemo(() => (all ? (tab === 'today' ? todayTodos(all, today) : sortTodos(all)) : undefined), [all, tab, today])
   const progress = useMemo(() => todayProgress(all ?? [], today), [all, today])
+
+  function setView(v: View) {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* 저장 못 해도 화면은 바뀐다 */
+    }
+  }
 
   async function save(input: TodoInput) {
     try {
@@ -77,13 +102,16 @@ export default function TodosPage() {
     setEditor(null)
   }
 
+  const openLinkFor = (t: Todo) => (t.bookmarkId != null && bookmarkUrls?.has(t.bookmarkId) ? () => openLink(t) : undefined)
+
   const firstDone = visible?.findIndex((t) => t.isCompleted === 1) ?? -1
 
   return (
     <>
-      <PageHeader title="할 일" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 할 일 추가</Button>} />
+      <PageHeader title="할 일" action={<Button onClick={() => setEditor({ mode: 'add', dueDate: view === 'calendar' ? selected : undefined })}>+ 할 일 추가</Button>} />
 
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-2">
+        {view === 'list' && (
         <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
           {(
             [
@@ -103,7 +131,52 @@ export default function TodosPage() {
             </button>
           ))}
         </div>
+        )}
+        {view === 'calendar' && <p className="flex-1 text-sm text-slate-500">날짜를 눌러 그날 할 일을 봐요</p>}
+        <div className="ml-auto flex shrink-0 gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
+          {(
+            [
+              ['list', '목록', List],
+              ['calendar', '캘린더', CalendarDays],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              aria-label={`${label}으로 보기`}
+              title={label}
+              onClick={() => setView(key)}
+              className={`flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-semibold ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+            >
+              <Icon className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {view === 'calendar' ? (
+        all && (
+          <CalendarView
+            todos={all}
+            today={today}
+            month={month}
+            selected={selected}
+            onMonthChange={setMonth}
+            onSelect={setSelected}
+            onAdd={(d) => {
+              setSelected(d)
+              setEditor({ mode: 'add', dueDate: d })
+            }}
+            onToggle={toggle}
+            onEdit={(t) => setEditor({ mode: 'edit', item: t })}
+            openLinkFor={openLinkFor}
+          />
+        )
+      ) : (
+      <>
 
       {visible === undefined ? null : visible.length === 0 ? (
         <EmptyState
@@ -117,19 +190,21 @@ export default function TodosPage() {
           {visible.map((t, i) => (
             <TodoRow key={t.id} showDoneHeader={i === firstDone && i > 0}>
               <TodoItem todo={t} today={today} onToggle={() => toggle(t)} onSelect={() => setEditor({ mode: 'edit', item: t })}
-                onOpenLink={t.bookmarkId != null && bookmarkUrls?.has(t.bookmarkId) ? () => openLink(t) : undefined}
+                onOpenLink={openLinkFor(t)}
               />
             </TodoRow>
           ))}
         </ul>
       )}
+      </>
+      )}
 
       <Modal open={editor !== null} title={editor?.mode === 'edit' ? '할 일 수정' : '할 일 추가'} onClose={() => setEditor(null)}>
         {editor && (
           <TodoForm
-            key={editor.mode === 'edit' ? editor.item.id : 'new'}
+            key={editor.mode === 'edit' ? editor.item.id : `new-${editor.dueDate ?? ''}`}
             initial={editor.mode === 'edit' ? editor.item : undefined}
-            defaultDueDate={tab === 'today' ? today : null}
+            defaultDueDate={editor.mode === 'add' && editor.dueDate ? editor.dueDate : view === 'list' && tab === 'today' ? today : null}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />

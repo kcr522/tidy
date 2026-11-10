@@ -1,0 +1,70 @@
+import { addDays, addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns'
+import type { Todo, Transaction } from '../db/types'
+import { parseDateKey, toDateKey } from './date'
+
+/** 이번 달 키 (YYYY-MM) */
+export function monthKeyOf(dateKey: string): string {
+  return dateKey.slice(0, 7)
+}
+
+/** 달 이동: +1 다음 달, -1 이전 달 */
+export function shiftMonth(monthKey: string, delta: number): string {
+  return format(addMonths(parseDateKey(`${monthKey}-01`), delta), 'yyyy-MM')
+}
+
+/** 달력 칸 날짜 목록 (일요일 시작, 앞뒤 달 날짜 포함, 7의 배수) */
+export function monthGrid(monthKey: string): string[] {
+  const first = startOfMonth(parseDateKey(`${monthKey}-01`))
+  const start = startOfWeek(first, { weekStartsOn: 0 })
+  const end = endOfWeek(endOfMonth(first), { weekStartsOn: 0 })
+  const days: string[] = []
+  for (let d = start; d <= end; d = addDays(d, 1)) days.push(toDateKey(d))
+  return days
+}
+
+/**
+ * 날짜 칸 표시 (FR-103, FR-106)
+ * - overdue: 지난 날짜에 못 끝낸 할 일이 있음 (빨간 점)
+ * - open: 끝내지 않은 할 일이 있음 (진한 점)
+ * - done: 모두 끝냄 (흐린 점)
+ */
+export type DayMark = 'overdue' | 'open' | 'done'
+
+export interface DayInfo {
+  mark: DayMark
+  total: number
+  open: number
+}
+
+export function dayMarks(todos: Todo[], today: string): Map<string, DayInfo> {
+  const map = new Map<string, DayInfo>()
+  for (const t of todos) {
+    if (!t.dueDate) continue
+    const info = map.get(t.dueDate) ?? { mark: 'done' as DayMark, total: 0, open: 0 }
+    info.total += 1
+    if (t.isCompleted === 0) info.open += 1
+    map.set(t.dueDate, info)
+  }
+  for (const [date, info] of map) {
+    info.mark = info.open === 0 ? 'done' : date < today ? 'overdue' : 'open'
+  }
+  return map
+}
+
+/** 그날 마감인 할 일 (미완료 먼저, 그다음 만든 순서) */
+export function todosOn(todos: Todo[], dateKey: string): Todo[] {
+  return todos
+    .filter((t) => t.dueDate === dateKey)
+    .sort((a, b) => a.isCompleted - b.isCompleted || a.createdAt.localeCompare(b.createdAt))
+}
+
+/** 그날 지출 합계 (FR-107) */
+export function expenseOn(transactions: Transaction[], dateKey: string): number {
+  return transactions.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === dateKey ? sum + t.amount : sum), 0)
+}
+
+/** "11월 15일 (토)" */
+export function dayTitle(dateKey: string): string {
+  const d = parseDateKey(dateKey)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`
+}

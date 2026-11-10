@@ -112,6 +112,10 @@
 
 <img src="docs/screenshots/day7-settings.png" width="240"> <img src="docs/screenshots/day7-import.png" width="240"> <img src="docs/screenshots/day7-clear.png" width="240"> <img src="docs/screenshots/day7-app-icon.png" width="120">
 
+**2차 · 캘린더**
+
+<img src="docs/screenshots/p2-calendar-calendar.png" width="240"> <img src="docs/screenshots/p2-calendar-day.png" width="240"> <img src="docs/screenshots/p2-calendar-add.png" width="240"> <img src="docs/screenshots/p2-calendar-desktop.png" width="420">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
@@ -190,9 +194,10 @@ npm run app:android  # 안드로이드 앱 (Android Studio)
 
 | 순서 | 기능 | 내용 |
 |---|---|---|
-| 1 | 📅 캘린더 | 날짜별 할 일 보기, 날짜를 눌러 바로 할 일 추가 |
+| 1 | 📅 캘린더 ✅ | 날짜별 할 일 보기, 날짜를 눌러 바로 할 일 추가 |
 | 2 | 🔐 구글 로그인 | 회원가입 없이 구글 계정으로 로그인, 폰·컴퓨터·웹 데이터 자동 동기화 (로그인 없이도 사용 가능) |
 | 3 | 🤖 AI 캡처 입력 | 은행/카드 앱 캡처를 올리면 AI가 날짜·금액·가게를 읽어 가계부에 입력, 잔액 캡처로 실제 잔액 확인 |
+| + | 🏷️ 가게 로고 | 다이소, 올리브영 같은 브랜드는 로고와 "지점 + 가게 이름"으로 표시, 모르는 결제처는 물어보고 기억 |
 
 ### 그 이후
 
