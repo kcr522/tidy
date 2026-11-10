@@ -52,7 +52,7 @@ export interface MealGuess {
 export const MAX_IMAGE_CHARS = 3_000_000 // 약 2.2MB 사진 (Vercel 요청 4.5MB 한도 안)
 export const MAX_NEARBY = 10
 
-const SYSTEM = `너는 가계부 앱 "Tidy"에서 음식 사진을 보고 지출을 기록하도록 돕는 도우미야.
+export const SYSTEM = `너는 가계부 앱 "Tidy"에서 음식 사진을 보고 지출을 기록하도록 돕는 도우미야.
 사용자가 식당이나 카페에서 찍은 음식 사진과, 사진을 찍은 시각·위치·근처 가게 목록을 줄 거야.
 
 할 일:
@@ -67,6 +67,13 @@ const SYSTEM = `너는 가계부 앱 "Tidy"에서 음식 사진을 보고 지출
 - 가격을 지어내지 마. 찾지 못했으면 price는 null. 그때 guessPrice에는 비슷한 가게의 흔한 가격을 짐작해서 넣어도 돼.
 - 가격은 1인분(1개) 기준 원 단위 정수. servings는 사진에 같은 메뉴가 몇 그릇 보이는지 (보통 1).
 - 검색은 꼭 필요할 때만, 많아야 몇 번.`
+
+/** 도구가 없는 AI(Gemini)용: 검색 도구 이름과 마지막 보고 방법만 바꾼다 */
+export const SYSTEM_JSON = SYSTEM.replace('web_search로', '구글 검색으로').replace(
+  '4. 마지막에 꼭 report_meal 도구를 한 번 불러서 결과를 알려 줘. 그 밖의 말은 하지 마.',
+  `4. 마지막에 아래 모양의 JSON 하나만 답해. 코드 블록이나 다른 말은 쓰지 마.
+{"dish": "음식 이름", "place": "가게 이름 또는 null", "placeSure": true/false, "price": 원 정수 또는 null, "priceUrl": "출처 주소 또는 null", "priceNote": "가격 출처 한 줄", "guessPrice": 원 정수 또는 null, "servings": 1}`,
+)
 
 /** 결과를 받는 도구. strict 라서 모양이 항상 맞게 온다 */
 export const REPORT_TOOL = {
@@ -104,7 +111,7 @@ export function mealPrompt(req: MealRequest): string {
   } else if (req.location) {
     lines.push('근처 가게 목록: 없음 (지도 검색을 못 했어)')
   }
-  lines.push('', '무엇을 먹었고 어느 가게이고 메뉴판 가격이 얼마인지 알아내서 report_meal로 알려 줘.')
+  lines.push('', '무엇을 먹었고 어느 가게이고 메뉴판 가격이 얼마인지 알아내서 알려 줘.')
   return lines.join('\n')
 }
 
@@ -146,8 +153,8 @@ export function sanitizeGuess(raw: unknown): MealGuess | null {
   }
 }
 
-/** 모델이 도구 대신 글로 JSON을 썼을 때 대비 */
-function guessFromText(text: string): MealGuess | null {
+/** 글로 받은 JSON 답 (Gemini, 또는 Claude가 도구 대신 글로 썼을 때) */
+export function guessFromText(text: string): MealGuess | null {
   const m = text.match(/\{[\s\S]*\}/)
   if (!m) return null
   try {

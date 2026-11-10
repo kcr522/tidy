@@ -15,8 +15,15 @@ export interface GeminiRequest {
   /** 주면 JSON 으로만 답하게 한다. 빈 객체 {} 면 모양은 정하지 않고 JSON 만 */
   schema?: Record<string, unknown>
   maxTokens?: number
+  /** 구글 검색으로 근거 찾기 (무료 등급은 하루 횟수 제한이 따로 있다). 이때는 schema 를 같이 쓰지 않는다 */
+  search?: boolean
   signal?: AbortSignal
 }
+
+/** 무료 사용량(분당·하루)을 넘었을 때 */
+export class GeminiLimitError extends Error {}
+/** 키가 틀렸을 때 */
+export class GeminiKeyError extends Error {}
 
 /** Gemini 에게 묻고 글 답을 돌려준다 */
 export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<string> {
@@ -28,6 +35,7 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: req.system }] },
         contents: [{ role: 'user', parts: req.parts }],
+        ...(req.search ? { tools: [{ google_search: {} }] } : {}),
         generationConfig: {
           maxOutputTokens: req.maxTokens ?? 2048,
           ...(req.schema ? { responseMimeType: 'application/json' } : {}),
@@ -45,9 +53,9 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
     promptFeedback?: { blockReason?: string }
     error?: { message?: string }
   }
-  if (res.status === 429) throw new Error('오늘 무료 사용량을 다 썼어요. 잠시 뒤에 다시 해 주세요')
-  if (res.status === 400 && /api key/i.test(data.error?.message ?? '')) throw new Error('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
-  if (res.status === 401 || res.status === 403) throw new Error('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
+  if (res.status === 429) throw new GeminiLimitError('오늘 무료 사용량을 다 썼어요. 잠시 뒤에 다시 해 주세요')
+  if (res.status === 400 && /api key/i.test(data.error?.message ?? '')) throw new GeminiKeyError('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
+  if (res.status === 401 || res.status === 403) throw new GeminiKeyError('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
   if (!res.ok) throw new Error('Gemini에서 오류가 났어요')
   if (data.promptFeedback?.blockReason) throw new Error('Gemini가 이번엔 답하지 않았어요')
   const text = (data.candidates?.[0]?.content?.parts ?? [])
