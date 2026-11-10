@@ -1,6 +1,7 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
 import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
+import { isWebUrl } from '../lib/validate'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
 export interface Backup {
@@ -72,7 +73,7 @@ function isTodo(v: unknown): v is Todo {
 
 function isBookmark(v: unknown): v is Bookmark {
   return (
-    isObj(v) && isId(v.id) && isStr(v.url) && isStr(v.title) && isStr(v.memo) && isFlag(v.isRead) && isStr(v.createdAt) &&
+    isObj(v) && isId(v.id) && isWebUrl(v.url) && isStr(v.title) && isStr(v.memo) && isFlag(v.isRead) && isStr(v.createdAt) &&
     isStr(v.updatedAt)
   )
 }
