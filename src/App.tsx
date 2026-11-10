@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
+import LockScreen from './components/layout/LockScreen'
 import Splash from './components/layout/Splash'
 import BookmarksPage from './pages/BookmarksPage'
 import SharePage from './pages/SharePage'
@@ -16,6 +17,7 @@ export default function App() {
   return (
     <>
     <Splash />
+    <LockScreen />
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
