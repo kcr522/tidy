@@ -31,7 +31,7 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
       >
         <span
           className={`flex size-6 items-center justify-center rounded-full transition-all ${
-            done ? 'bg-grad on-grad scale-100' : 'border-2 border-slate-300 bg-white'
+            done ? 'bg-check scale-100' : 'border-2 border-slate-300 bg-white'
           }`}
         >
           {done && <Check className="size-3.5" strokeWidth={3.5} aria-hidden />}

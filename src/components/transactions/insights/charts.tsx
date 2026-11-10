@@ -40,7 +40,7 @@ export function DonutChart({
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[200px]">
       <svg viewBox={`0 0 ${size} ${size}`} className="size-full -rotate-90" role="img" aria-label={ariaLabel}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f2f4f6" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-slate-100)" strokeWidth={stroke} />
         {sum > 0 &&
           visible.map((s, i) => {
             const len = (Math.min(s.value, sum) / sum) * c

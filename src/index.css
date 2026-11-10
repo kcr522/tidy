@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 다크 모드: <html class="dark"> 일 때 (src/lib/colorMode.ts 가 붙인다) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Tidy 디자인 토큰
  * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)
@@ -60,30 +63,78 @@
 :root,
 .theme-main {
   --grad: linear-gradient(var(--grad-angle), var(--main-c1), var(--main-c2) 52%, var(--main-c3));
-  --on: var(--main-on); --on-shadow: var(--main-on-shadow); --on-soft: var(--main-on-soft);
+  --veil: var(--main-veil, 100%);
+  --grad-bg: linear-gradient(var(--grad-angle), color-mix(in srgb, var(--main-c1) var(--veil), transparent), color-mix(in srgb, var(--main-c2) var(--veil), transparent) 52%, color-mix(in srgb, var(--main-c3) var(--veil), transparent));
+  --photo: var(--main-photo, none);
+  --on: var(--main-on); --on-shadow: var(--main-photo-shadow, var(--main-on-shadow)); --on-soft: var(--main-on-soft);
   --color-brand-50: var(--main-50); --color-brand-100: var(--main-100); --color-brand-500: var(--main-500);
   --color-brand-600: var(--main-600); --color-brand-700: var(--main-700);
 }
 
 .theme-money {
   --grad: linear-gradient(var(--grad-angle), var(--money-c1), var(--money-c2) 52%, var(--money-c3));
-  --on: var(--money-on); --on-shadow: var(--money-on-shadow); --on-soft: var(--money-on-soft);
+  --veil: var(--money-veil, 100%);
+  --grad-bg: linear-gradient(var(--grad-angle), color-mix(in srgb, var(--money-c1) var(--veil), transparent), color-mix(in srgb, var(--money-c2) var(--veil), transparent) 52%, color-mix(in srgb, var(--money-c3) var(--veil), transparent));
+  --photo: var(--money-photo, none);
+  --on: var(--money-on); --on-shadow: var(--money-photo-shadow, var(--money-on-shadow)); --on-soft: var(--money-on-soft);
   --color-brand-50: var(--money-50); --color-brand-100: var(--money-100); --color-brand-500: var(--money-500);
   --color-brand-600: var(--money-600); --color-brand-700: var(--money-700);
 }
 
 .theme-todo {
   --grad: linear-gradient(var(--grad-angle), var(--todo-c1), var(--todo-c2) 52%, var(--todo-c3));
-  --on: var(--todo-on); --on-shadow: var(--todo-on-shadow); --on-soft: var(--todo-on-soft);
+  --veil: var(--todo-veil, 100%);
+  --grad-bg: linear-gradient(var(--grad-angle), color-mix(in srgb, var(--todo-c1) var(--veil), transparent), color-mix(in srgb, var(--todo-c2) var(--veil), transparent) 52%, color-mix(in srgb, var(--todo-c3) var(--veil), transparent));
+  --photo: var(--todo-photo, none);
+  --on: var(--todo-on); --on-shadow: var(--todo-photo-shadow, var(--todo-on-shadow)); --on-soft: var(--todo-on-soft);
   --color-brand-50: var(--todo-50); --color-brand-100: var(--todo-100); --color-brand-500: var(--todo-500);
   --color-brand-600: var(--todo-600); --color-brand-700: var(--todo-700);
 }
 
 .theme-scrap {
   --grad: linear-gradient(var(--grad-angle), var(--scrap-c1), var(--scrap-c2) 52%, var(--scrap-c3));
-  --on: var(--scrap-on); --on-shadow: var(--scrap-on-shadow); --on-soft: var(--scrap-on-soft);
+  --veil: var(--scrap-veil, 100%);
+  --grad-bg: linear-gradient(var(--grad-angle), color-mix(in srgb, var(--scrap-c1) var(--veil), transparent), color-mix(in srgb, var(--scrap-c2) var(--veil), transparent) 52%, color-mix(in srgb, var(--scrap-c3) var(--veil), transparent));
+  --photo: var(--scrap-photo, none);
+  --on: var(--scrap-on); --on-shadow: var(--scrap-photo-shadow, var(--scrap-on-shadow)); --on-soft: var(--scrap-on-soft);
   --color-brand-50: var(--scrap-50); --color-brand-100: var(--scrap-100); --color-brand-500: var(--scrap-500);
   --color-brand-600: var(--scrap-600); --color-brand-700: var(--scrap-700);
+}
+
+/*
+ * 다크 모드 색.
+ * 회색 단계를 뒤집고(slate-900 = 가장 밝은 글자, slate-100 = 가장 어두운 바탕),
+ * "흰색"(bg-white, 카드)은 어두운 카드 색이 된다. 그래서 화면마다 dark: 를 따로 붙이지 않아도 된다.
+ * 그라데이션과 포인트 색(brand)은 palette.ts 가 어두운 바탕에 맞춰 다시 계산해 넣는다.
+ */
+:root.dark {
+  --color-white: #1c1f26;
+  --color-slate-50: #23272f;
+  --color-slate-100: #111318;
+  --color-slate-200: #2c313a;
+  --color-slate-300: #3b414c;
+  --color-slate-400: #66707d;
+  --color-slate-500: #8d97a3;
+  --color-slate-600: #aab3be;
+  --color-slate-700: #c5ccd5;
+  --color-slate-800: #dde2e8;
+  --color-slate-900: #f2f4f6;
+
+  --color-income: #5b9dff;
+  --color-expense: #ff626e;
+  --color-red-50: #3a1d22;
+  --color-red-400: #ff7c86;
+  --color-red-500: #f04452;
+  --color-red-600: #ff8f97;
+  --color-amber-50: #2c2517;
+  --color-amber-200: #5c4822;
+  --color-amber-600: #f3b54a;
+  --color-amber-700: #f5c46e;
+  --color-amber-800: #f8d590;
+  --color-amber-900: #fde8bd;
+
+  --shadow-card: 0 2px 16px rgb(0 0 0 / 0.28);
+  --shadow-float: 0 6px 20px color-mix(in srgb, var(--color-brand-500) 24%, transparent);
 }
 
 /* 그라데이션 위에 얹는 반투명 바탕 (밝은 그라데이션이면 살짝 어둡게) */
@@ -93,12 +144,20 @@
 
 /* 아주 연한 그라데이션 바탕 (아이콘 동그라미 등) */
 @utility bg-grad-soft {
-  background-image: linear-gradient(135deg, var(--color-brand-50), color-mix(in srgb, var(--color-brand-100) 45%, white));
+  background-image: linear-gradient(135deg, var(--color-brand-50), color-mix(in srgb, var(--color-brand-100) 45%, var(--color-white)));
 }
 
-/* 그라데이션 배경 */
+/* 그라데이션 배경 (꾸미기에서 사진을 고르면 사진 위에 그라데이션이 비친다) */
 @utility bg-grad {
-  background-image: var(--grad);
+  background-image: var(--grad-bg, var(--grad)), var(--photo, none);
+  background-size: cover;
+  background-position: center;
+}
+
+/* 완료 체크 표시 (할 일, 습관). 꾸미기에서 색을 고르면 그 색, 아니면 구역 그라데이션 */
+@utility bg-check {
+  background-image: var(--check-image, var(--grad));
+  color: var(--check-on, var(--on, #fff));
 }
 
 /* 그라데이션 글자 */
@@ -109,10 +168,11 @@
   color: transparent;
 }
 
-/* 흰 카드 */
+/* 흰 카드 (다크에서는 어두운 카드) */
 @utility card {
   border-radius: 1.5rem;
-  background-color: #fff;
+  /* 꾸미기의 카드 투명도만큼 배경이 비친다 */
+  background-color: color-mix(in srgb, var(--color-white) calc(100% - var(--card-clear, 0%)), transparent);
   box-shadow: var(--shadow-card);
 }
 
@@ -138,6 +198,11 @@ body,
 
 body {
   @apply bg-slate-100 text-slate-900 antialiased;
+  /* 꾸미기: 앱 배경 색이나 사진 (src/lib/customize.ts) */
+  background-image: var(--page-image, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
 }
@@ -158,4 +223,10 @@ button {
 @utility on-grad {
   color: var(--on, #fff);
   text-shadow: var(--on-shadow, none);
+}
+
+/* 배경 사진이 있으면 카드 뒤를 살짝 흐리게 해서 글자가 잘 읽히게 */
+.has-page-image .card {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
