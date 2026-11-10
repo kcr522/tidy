@@ -45,7 +45,10 @@ export default function TransactionsPage() {
   const today = useToday()
   const [thisYear, thisMonthNum] = today.split('-').map(Number)
   const thisMonth = useMemo(() => ({ year: thisYear, month: thisMonthNum }), [thisYear, thisMonthNum])
-  const [ym, setYm] = useState(thisMonth)
+  const location = useLocation()
+  // 캘린더의 "금액" 버튼: 이 화면의 금액 달력을 그 날짜로 연다
+  const jump = (location.state as { view?: string; date?: string } | null)?.view === 'calendar' ? ((location.state as { date?: string }).date ?? today) : null
+  const [ym, setYm] = useState(() => (jump ? { year: Number(jump.slice(0, 4)), month: Number(jump.slice(5, 7)) } : thisMonth))
   const [category, setCategory] = useState<string | null>(null)
   const [filterBy, setFilterBy] = useState<FilterBy>('category')
   const [account, setAccount] = useState<string | null>(null)
@@ -57,11 +60,15 @@ export default function TransactionsPage() {
   const [showBank, setShowBank] = useState(false)
   const [showSavings, setShowSavings] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
-  const [view, setViewState] = useState<View>(loadView)
-  const [selected, setSelected] = useState(today)
+  const [view, setViewState] = useState<View>(() => (jump ? 'calendar' : loadView()))
+  const [selected, setSelected] = useState(jump ?? today)
   const toast = useToast()
   const navigate = useNavigate()
-  const location = useLocation()
+  useEffect(() => {
+    if (jump) navigate(location.pathname, { replace: true, state: null })
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // AI 대화창의 "내가 등록할게": 찾은 내역을 하나씩 채워서 추가 창을 연다
   const [queue, setQueue] = useState<TransactionInput[]>(() => (location.state as { drafts?: TransactionInput[] } | null)?.drafts ?? [])
   useEffect(() => {

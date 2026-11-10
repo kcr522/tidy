@@ -114,4 +114,16 @@ describe('가계부 달력', () => {
     expect(shortWon(1449053)).toBe('144.9만')
     expect(shortWon(403223)).toBe('40.3만')
   })
+
+  it('달력 칸 금액은 짧게 (칸을 넘지 않게)', async () => {
+    const { cellWon } = await import('../../src/lib/calendar')
+    expect(cellWon(9800)).toBe('9,800')
+    expect(cellWon(26987)).toBe('2.7만')
+    expect(cellWon(30000)).toBe('3만')
+    expect(cellWon(265720)).toBe('27만')
+    expect(cellWon(1449053)).toBe('145만')
+    expect(cellWon(12_345_678)).toBe('1235만')
+    expect(cellWon(150_000_000)).toBe('1.5억')
+    for (const n of [1, 9999, 99999, 999999, 9_999_999, 99_999_999, 999_999_999]) expect(cellWon(n).length).toBeLessThanOrEqual(5)
+  })
 })

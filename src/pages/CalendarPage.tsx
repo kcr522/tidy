@@ -9,25 +9,15 @@ import { useToast } from '../components/common/Toast'
 import TodoForm from '../components/todos/TodoForm'
 import type { CalendarEvent, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
-import { dailyTotals, dayTitle, monthGrid, shiftMonth, shortWon, todosOn } from '../lib/calendar'
+import { dayTitle, monthGrid, shiftMonth, todosOn } from '../lib/calendar'
 import { EVENT_COLORS, eventCovers, eventDays, layoutWeeks, type Bar } from '../lib/eventLayout'
 import { diaryRepo } from '../repositories/diaryRepo'
 import { eventRepo, type EventInput } from '../repositories/eventRepo'
-import { transactionRepo } from '../repositories/transactionRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
 /** 한 칸에 그리는 막대 줄 수. 넘치면 "+n" */
 const MAX_LANES = 3
-
-const MONEY_KEY = 'tidy:calendar-money'
-function loadMoney(): boolean {
-  try {
-    return localStorage.getItem(MONEY_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 type Editor = { mode: 'add'; draft?: EventInput } | { mode: 'event'; item: CalendarEvent } | { mode: 'todo'; item: Todo } | null
 
@@ -39,16 +29,6 @@ export default function CalendarPage() {
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<CalendarEvent | Todo | null>(null)
   const toast = useToast()
-  // 가계부 금액 보기 (켜고 끄기, 기억해 둔다)
-  const [showMoney, setShowMoneyState] = useState(loadMoney)
-  function setShowMoney(v: boolean) {
-    setShowMoneyState(v)
-    try {
-      localStorage.setItem(MONEY_KEY, v ? '1' : '0')
-    } catch {
-      /* 저장 못 해도 화면은 바뀐다 */
-    }
-  }
 
   const grid = useMemo(() => monthGrid(month), [month])
   const events = useLiveQuery(() => eventRepo.listBetween(grid[0], grid[grid.length - 1]), [grid])
@@ -89,8 +69,6 @@ export default function CalendarPage() {
   const selTodos = useMemo(() => todosOn(todos ?? [], selected), [todos, selected])
 
   const [y, m] = month.split('-').map(Number)
-  const monthTx = useLiveQuery(() => (showMoney ? transactionRepo.listByMonth(y, m) : Promise.resolve([])), [showMoney, y, m])
-  const money = useMemo(() => dailyTotals(monthTx ?? []), [monthTx])
   const [, sm, sd] = selected.split('-').map(Number)
 
   const touchX = useRef<number | null>(null)
@@ -168,13 +146,13 @@ export default function CalendarPage() {
             </h1>
             <button
               type="button"
-              aria-pressed={showMoney}
-              onClick={() => setShowMoney(!showMoney)}
-              className={`mr-1 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold ${showMoney ? 'bg-grad on-grad' : 'bg-slate-100 text-slate-500'}`}
-              title="가계부 금액 보기"
+              // 금액은 칸이 좁아 넘쳐서, 가계부의 금액 전용 달력으로 보낸다 (사용자 요청 2026-11-10)
+              onClick={() => navigate('/money', { state: { view: 'calendar', date: selected } })}
+              className="mr-1 flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
+              title="금액 달력 열기 (가계부)"
             >
               <Wallet className="size-3.5" aria-hidden />
-              금액
+              금액 달력
             </button>
             {(month !== today.slice(0, 7) || selected !== today) && (
               <button type="button" onClick={() => pick(today)} className="mr-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
@@ -206,7 +184,6 @@ export default function CalendarPage() {
                     const isSel = d === selected
                     const isToday = d === today
                     const diary = diaries.get(d)
-                    const cash = showMoney && inMonth ? money.get(d) : undefined
                     return (
                       <button
                         key={d}
@@ -243,15 +220,8 @@ export default function CalendarPage() {
                         >
                           {Number(d.slice(8))}
                         </span>
-                        {(week.hidden[c] > 0 || cash) && (
-                          <span className="relative mt-auto mb-0.5 flex w-full items-center justify-between gap-0.5 px-1 text-[10px] leading-none font-semibold">
-                            <span className="text-slate-400">{week.hidden[c] > 0 ? `+${week.hidden[c]}` : ''}</span>
-                            {cash?.expense ? (
-                              <span className="truncate text-expense tabular-nums">-{shortWon(cash.expense)}</span>
-                            ) : cash?.income ? (
-                              <span className="truncate text-income tabular-nums">+{shortWon(cash.income)}</span>
-                            ) : null}
-                          </span>
+                        {week.hidden[c] > 0 && (
+                          <span className="relative mt-auto mb-0.5 w-full px-1 text-left text-[10px] leading-none font-semibold text-slate-400">+{week.hidden[c]}</span>
                         )}
                       </button>
                     )
