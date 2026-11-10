@@ -18,6 +18,8 @@ import MerchantAvatar from './MerchantAvatar'
 interface TransactionFormProps {
   /** 수정할 때 기존 값 */
   initial?: Transaction
+  /** 새 내역에 채워 둘 값 (AI 대화창의 "내가 등록할게") */
+  draft?: TransactionInput
   onSubmit: (input: TransactionInput) => Promise<void>
   onDelete?: () => void
   /** 새로 추가할 때 날짜 기본값 (가계부 달력에서 고른 날) */
@@ -27,15 +29,16 @@ interface TransactionFormProps {
 type Errors = Partial<Record<'amount' | 'date' | 'category' | 'memo', string>>
 
 /** 수입/지출 입력 폼 (FR-010~013) */
-export default function TransactionForm({ initial, onSubmit, onDelete, defaultDate }: TransactionFormProps) {
-  const [type, setType] = useState<TransactionType>(initial?.type ?? 'EXPENSE')
-  const [amountText, setAmountText] = useState(initial ? formatNumber(initial.amount) : '')
-  const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey())
-  const [category, setCategory] = useState(initial?.category ?? '')
-  const [memo, setMemo] = useState(initial?.memo ?? '')
+export default function TransactionForm({ initial, draft, onSubmit, onDelete, defaultDate }: TransactionFormProps) {
+  const base = initial ?? draft
+  const [type, setType] = useState<TransactionType>(base?.type ?? 'EXPENSE')
+  const [amountText, setAmountText] = useState(base ? formatNumber(base.amount) : '')
+  const [date, setDate] = useState(base?.date ?? defaultDate ?? todayKey())
+  const [category, setCategory] = useState(base?.category ?? '')
+  const [memo, setMemo] = useState(base?.memo ?? '')
   // 새 내역은 지금 시각으로 채운다
-  const [time, setTime] = useState(() => (initial ? (initial.time ?? '') : format(new Date(), 'HH:mm')))
-  const [account, setAccount] = useState(initial?.account ?? '')
+  const [time, setTime] = useState(() => (base ? (base.time ?? '') : format(new Date(), 'HH:mm')))
+  const [account, setAccount] = useState(base?.account ?? '')
   const usedAccounts = useLiveQuery(() => transactionRepo.usedAccounts(), []) ?? []
   const accountChips = [...new Set([...usedAccounts, '현금', '토스', '카카오페이'])].slice(0, 6)
   const [errors, setErrors] = useState<Errors>({})

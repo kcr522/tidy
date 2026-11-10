@@ -67,6 +67,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/design-dashboard.png" width="200"> | <img src="docs/screenshots/design-money-all.png" width="200"> | <img src="docs/screenshots/design-todos.png" width="200"> | <img src="docs/screenshots/design-scraps.png" width="200"> |
 
+**AI 비서** (첫 화면 오른쪽 아래 동그라미): 포스터 → 캘린더, 결제 내역 캡처 → 가계부, 오늘 이야기 → 일기
+
+| 포스터 사진 | 결제 내역 캡처 | 오늘 있었던 일 | 내가 등록할게 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/ai-3-poster.png" width="200"> | <img src="docs/screenshots/ai-5-payment.png" width="200"> | <img src="docs/screenshots/ai-7-diary.png" width="200"> | <img src="docs/screenshots/ai-4-calendar-form.png" width="200"> |
+
 <img src="docs/screenshots/design-desktop.png" width="720">
 
 **디자인**: 토스처럼 둥글고 깔끔한 카드, 글씨체는 Pretendard. 색은 **앱을 켤 때마다 랜덤**이에요. 대시보드, 가계부, 할 일, 스크랩이 각자 세 가지 색 그라데이션을 하나씩 받아요. 견본 18개(파스텔, 쨍한 색, 무채색) 중에서 고르거나 어울리는 세 색을 새로 만들고, 밝은 색이면 글자를 검정으로 바꿔요.

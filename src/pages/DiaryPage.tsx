@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, ImagePlus, X } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, ImagePlus, Mic, Square, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import { addDays } from 'date-fns'
+import { useSpeech } from '../hooks/useSpeech'
 import { useToday } from '../hooks/useToday'
 import { dayTitle } from '../lib/calendar'
 import { parseDateKey, toDateKey } from '../lib/date'
@@ -20,7 +21,18 @@ const MAX_TEXT = 2000
 export default function DiaryPage() {
   const today = useToday()
   const location = useLocation()
+  const navigate = useNavigate()
   const [date, setDate] = useState<string>(() => (location.state as { date?: string } | null)?.date ?? today)
+  // AI 대화창의 "내가 등록할게": 이 글을 일기 칸에 채워서 연다 (한 번만 쓰고 지운다)
+  const [draft, setDraft] = useState(() => {
+    const s = location.state as { draft?: string; photo?: string } | null
+    return s?.draft || s?.photo ? { text: s.draft ?? '', photo: s.photo } : null
+  })
+  useEffect(() => {
+    if (draft) navigate(location.pathname, { replace: true, state: null })
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const entry = useLiveQuery(() => diaryRepo.get(date).then((d) => d ?? null), [date])
   const recent = useLiveQuery(() => diaryRepo.recent(30), [])
   const shift = (n: number) => setDate(toDateKey(addDays(parseDateKey(date), n)))
@@ -33,7 +45,17 @@ export default function DiaryPage() {
         {entry === undefined || (entry && entry.date !== date) ? (
           <section className="card min-h-96 p-4" />
         ) : (
-          <DiaryEditor key={`${date}-${entry?.updatedAt ?? 'new'}`} date={date} today={today} entry={entry} onShift={shift} />
+          <DiaryEditor
+            key={`${date}-${entry?.updatedAt ?? 'new'}`}
+            date={date}
+            today={today}
+            entry={entry}
+            draft={draft ?? undefined}
+            onShift={(n) => {
+              setDraft(null)
+              shift(n)
+            }}
+          />
         )}
 
         <section className="card overflow-hidden" aria-label="지난 일기">
@@ -70,18 +92,24 @@ interface EditorProps {
   date: string
   today: string
   entry: Diary | null
+  /** 채워 둘 글 (이미 쓴 일기가 있으면 뒤에 붙인다) */
+  draft?: { text: string; photo?: string }
   onShift: (n: number) => void
 }
 
 /** 그날 일기 쓰기 칸 (날짜나 저장된 내용이 바뀌면 key로 새로 그린다) */
-function DiaryEditor({ date, today, entry, onShift: shift }: EditorProps) {
-  const [text, setText] = useState(entry?.text ?? '')
-  const [photo, setPhoto] = useState<string | undefined>(entry?.photo)
+function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps) {
+  const [text, setText] = useState(() => [entry?.text, draft?.text].filter(Boolean).join('\n\n'))
+  const [photo, setPhoto] = useState<string | undefined>(entry?.photo ?? draft?.photo)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
-
+  // 말로 쓰기: 끝난 문장을 글 끝에 붙인다
+  const speech = useSpeech(
+    (said) => setText((t) => (t && !/\s$/.test(t) ? `${t} ${said}` : t + said).slice(0, MAX_TEXT)),
+    (msg) => toast(msg, 'error'),
+  )
 
   const dirty = (text !== (entry?.text ?? '') || photo !== entry?.photo)
   const empty = text.trim() === '' && !photo
@@ -159,9 +187,25 @@ function DiaryEditor({ date, today, entry, onShift: shift }: EditorProps) {
           className="w-full resize-none rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
           aria-label="일기 내용"
         />
-        <p className="mt-1 text-right text-xs text-slate-400">
-          {text.length}/{MAX_TEXT}
-        </p>
+        {speech.listening && (
+          <p className="mt-1 line-clamp-2 text-sm text-brand-600" aria-live="polite">
+            {speech.interim || '듣고 있어요… 말씀하세요'}
+          </p>
+        )}
+        <div className="mt-1 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={speech.listening ? speech.stop : speech.start}
+            aria-pressed={speech.listening}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${speech.listening ? 'bg-expense text-white' : 'bg-slate-100 text-slate-600'}`}
+          >
+            {speech.listening ? <Square className="size-3.5" fill="currentColor" aria-hidden /> : <Mic className="size-4" aria-hidden />}
+            {speech.listening ? '그만 말하기' : '말로 쓰기'}
+          </button>
+          <span className="text-xs text-slate-400">
+            {text.length}/{MAX_TEXT}
+          </span>
+        </div>
 
         <div className="mt-2 flex gap-2">
           {entry && (

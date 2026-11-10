@@ -6,6 +6,7 @@ import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import AssistantButton from '../components/assistant/AssistantButton'
 import AiFeedbackCard from '../components/dashboard/AiFeedbackCard'
 import HabitCard from '../components/dashboard/HabitCard'
 import MoneyCard from '../components/dashboard/MoneyCard'
@@ -145,6 +146,7 @@ export default function DashboardPage() {
       </Modal>
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />
+      <AssistantButton />
     </>
   )
 }
