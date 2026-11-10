@@ -18,6 +18,20 @@ export function monthSummary(list: Transaction[]): MonthSummary {
   return { income, expense, balance: income - expense }
 }
 
+/**
+ * 사용률 = 지출 ÷ 수입 × 100, 반올림 (FR-051)
+ * 수입이 0원이면 계산할 수 없으므로 null ("-"로 표시)
+ */
+export function usageRate(summary: Pick<MonthSummary, 'income' | 'expense'>): number | null {
+  if (summary.income <= 0) return null
+  return Math.round((summary.expense / summary.income) * 100)
+}
+
+/** 오늘 지출 합계 (FR-051) */
+export function todayExpense(list: Transaction[], today: string): number {
+  return list.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === today ? sum + t.amount : sum), 0)
+}
+
 export interface DayGroup {
   date: string
   items: Transaction[]

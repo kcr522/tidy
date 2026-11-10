@@ -8,10 +8,14 @@ interface BookmarkCardProps {
   onOpen: () => void
   onToggleRead: () => void
   onEdit: () => void
+  /** 이 스크랩으로 만든 할 일이 있는가 (FR-041) */
+  converted: boolean
+  onConvert: () => void
+  onViewTodo: () => void
 }
 
 /** 스크랩 카드 (FR-034~036) */
-export default function BookmarkCard({ bookmark, onOpen, onToggleRead, onEdit }: BookmarkCardProps) {
+export default function BookmarkCard({ bookmark, onOpen, onToggleRead, onEdit, converted, onConvert, onViewTodo }: BookmarkCardProps) {
   const read = bookmark.isRead === 1
   return (
     <article className={`flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 ${read ? 'opacity-70' : ''}`}>
@@ -26,6 +30,20 @@ export default function BookmarkCard({ bookmark, onOpen, onToggleRead, onEdit }:
         </button>
       </div>
       {bookmark.memo && <p className="mb-3 line-clamp-2 pl-4 text-sm text-slate-600">{bookmark.memo}</p>}
+      <div className="mb-3 pl-4 text-xs">
+        {converted ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-semibold text-brand-700">
+            ✓ 할 일 등록됨 ·
+            <button type="button" onClick={onViewTodo} className="underline underline-offset-2">
+              할 일 보기
+            </button>
+          </span>
+        ) : (
+          <button type="button" onClick={onConvert} className="rounded-full px-2.5 py-1 font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50">
+            + 할 일로 전환
+          </button>
+        )}
+      </div>
       <div className="mt-auto flex items-center gap-2 pl-4 text-xs">
         <span className="text-slate-400">{formatDateLabel(toDateKey(new Date(bookmark.createdAt)))}</span>
         <button

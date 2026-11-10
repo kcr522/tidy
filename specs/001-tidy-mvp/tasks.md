@@ -131,22 +131,22 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 ### US4 대시보드
 
-- [ ] T041 [P] [US4] 대시보드 계산 `src/lib/summary.ts`의 `usageRate()`(수입 0이면 null), `todayExpense()` + 테스트
-- [ ] T042 [US4] 가계부 카드 `src/components/dashboard/MoneyCard.tsx`: 수입, 지출, 오늘 지출, 사용률 막대 (FR-051)
-- [ ] T043 [US4] 할 일 카드 `src/components/dashboard/TodayTodoCard.tsx`: "(3/5)", 최대 5개, 바로 체크 (FR-052)
-- [ ] T044 [US4] 스크랩 카드 `src/components/dashboard/UnreadScrapCard.tsx`: "(2)", 최대 3개 (FR-053)
-- [ ] T045 [US4] `src/pages/DashboardPage.tsx`: 폰 세로 3단, 컴퓨터 가로 3칸, 카드 제목 누르면 이동, 빠른 추가(+) (FR-050, FR-054, FR-055)
-- [ ] T046 [US4] 각 카드의 빈 상태 안내
+- [x] T041 [P] [US4] 대시보드 계산 `src/lib/summary.ts`의 `usageRate()`(수입 0이면 null), `todayExpense()` + 테스트
+- [x] T042 [US4] 가계부 카드 `src/components/dashboard/MoneyCard.tsx`: 수입, 지출, 오늘 지출, 사용률 막대 (FR-051)
+- [x] T043 [US4] 할 일 카드 `src/components/dashboard/TodayTodoCard.tsx`: "(3/5)", 최대 5개, 바로 체크 (FR-052)
+- [x] T044 [US4] 스크랩 카드 `src/components/dashboard/UnreadScrapCard.tsx`: "(2)", 최대 3개 (FR-053)
+- [x] T045 [US4] `src/pages/DashboardPage.tsx`: 폰 세로 3단, 컴퓨터 가로 3칸, 카드 제목 누르면 이동, 빠른 추가(+) (FR-050, FR-054, FR-055)
+- [x] T046 [US4] 각 카드의 빈 상태 안내
 
 ### US5 스크랩 → 할 일
 
-- [ ] T047 [US5] `todoRepo.createFromBookmark(bookmarkId, dueDate)`: 제목 "읽기: {제목}", 중복 전환 막기 (FR-040, FR-041)
-- [ ] T048 [US5] `todoRepo.toggleComplete()`에서 완료 시 연결 스크랩 읽음 처리, 같은 Dexie 트랜잭션 (FR-042) + 테스트
-- [ ] T049 [US5] 날짜 선택 창 `src/components/bookmarks/ConvertToTodoDialog.tsx` (기본 오늘)
-- [ ] T050 [US5] 스크랩 카드와 대시보드 스크랩 카드에 [할 일로 전환] / "할 일 등록됨 · 할 일 보기" 표시
-- [ ] T051 [US5] TodoItem에 링크 아이콘 → `openUrl` (FR-043)
-- [ ] T052 [US4][US5] US4, US5 시나리오 확인
-- [ ] T053 💾 커밋 & 푸시: `feat: 대시보드와 스크랩→할 일 연동`
+- [x] T047 [US5] `todoRepo.createFromBookmark(bookmarkId, dueDate)`: 제목 "읽기: {제목}", 중복 전환 막기 (FR-040, FR-041)
+- [x] T048 [US5] `todoRepo.toggleComplete()`에서 완료 시 연결 스크랩 읽음 처리, 같은 Dexie 트랜잭션 (FR-042) + 테스트
+- [x] T049 [US5] 날짜 선택 창 `src/components/bookmarks/ConvertToTodoDialog.tsx` (기본 오늘)
+- [x] T050 [US5] 스크랩 카드와 대시보드 스크랩 카드에 [할 일로 전환] / "할 일 등록됨 · 할 일 보기" 표시
+- [x] T051 [US5] TodoItem에 링크 아이콘 → `openUrl` (FR-043)
+- [x] T052 [US4][US5] US4, US5 시나리오 확인
+- [x] T053 💾 커밋 & 푸시: `feat: 대시보드와 스크랩→할 일 연동`
 
 **Checkpoint**: P1 전부 + 핵심 연동 완료. 여기까지가 "쓸 수 있는 MVP"
 

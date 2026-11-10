@@ -8,10 +8,12 @@ interface TodoItemProps {
   today: string
   onToggle: () => void
   onSelect: () => void
+  /** 스크랩에서 만든 할 일이면 원래 링크 열기 (FR-043) */
+  onOpenLink?: () => void
 }
 
 /** 할 일 한 줄: 체크박스, 취소선, 중요도 색, 기한 지남 (FR-021, FR-025) */
-export default function TodoItem({ todo, today, onToggle, onSelect }: TodoItemProps) {
+export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }: TodoItemProps) {
   const done = todo.isCompleted === 1
   const overdue = isOverdue(todo, today)
   const p = PRIORITY_LABEL[todo.priority]
@@ -45,6 +47,17 @@ export default function TodoItem({ todo, today, onToggle, onSelect }: TodoItemPr
         )}
         {overdue && todo.dueDate && <span className="shrink-0 text-xs text-red-400">{formatDateLabel(todo.dueDate)}</span>}
       </button>
+      {onOpenLink && (
+        <button
+          type="button"
+          onClick={onOpenLink}
+          className="shrink-0 rounded-lg px-2 py-2 text-slate-400 hover:bg-slate-100 hover:text-brand-700"
+          aria-label={`${todo.title} 링크 열기`}
+          title="링크 열기"
+        >
+          🔗
+        </button>
+      )}
     </li>
   )
 }
