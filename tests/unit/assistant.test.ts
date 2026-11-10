@@ -264,34 +264,52 @@ describe('Gemini 오류 다루기', () => {
   const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
   const good = { candidates: [{ content: { parts: [{ text: '안녕' }] } }] }
 
-  it('모델을 못 찾으면(404) 고정 모델로 한 번 더', async () => {
-    const { callGemini, GEMINI_FALLBACK_MODEL } = await import('../../src/lib/ai/gemini')
-    const f = vi.fn().mockResolvedValueOnce(reply(404, { error: { message: 'not found' } })).mockResolvedValueOnce(reply(200, good))
-    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)).resolves.toBe('안녕')
-    expect(f.mock.calls[1][0]).toContain(GEMINI_FALLBACK_MODEL)
+  const models = {
+    models: [
+      { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash-image', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-pro', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/text-embedding-004', supportedGenerationMethods: ['embedContent'] },
+    ],
+  }
+  /** 주소마다 다른 답을 주는 가짜 구글 */
+  const google = (answer: (model: string) => Response) =>
+    vi.fn(async (url: string) => (url.includes('/models?') ? reply(200, models) : answer(url.match(/models\/([^:]+):/)![1])))
+
+  it('쓸 수 있는 Flash 모델을 좋은 순으로 고른다', async () => {
+    const { rankFlashModels } = await import('../../src/lib/ai/gemini')
+    expect(rankFlashModels(models.models.map((m) => m.name))).toEqual(['gemini-3.1-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'])
   })
 
-  it('붐비면(503) 다른 무료 모델로 차례로 다시', async () => {
+  it('모델이 막혔으면(404) 구글에 쓸 수 있는 모델을 물어보고 다시', async () => {
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google((m) => (m === 'gemini-3.1-flash' ? reply(200, good) : reply(404, { error: { message: 'no longer available' } })))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)).resolves.toBe('안녕')
+  })
+
+  it('붐비면(503) 다른 모델로 차례로 다시', async () => {
     vi.useFakeTimers()
-    const { callGemini, GEMINI_FALLBACK_MODELS } = await import('../../src/lib/ai/gemini')
-    const busy = () => reply(503, { error: { message: 'overloaded' } })
-    const f = vi.fn().mockResolvedValueOnce(busy()).mockResolvedValueOnce(busy()).mockResolvedValueOnce(reply(200, good))
-    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)
-    await vi.advanceTimersByTimeAsync(3000)
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google((m) => (m === 'gemini-3.1-flash-lite' ? reply(200, good) : reply(503, { error: { message: 'overloaded' } })))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)
+    await vi.advanceTimersByTimeAsync(5000)
     await expect(p).resolves.toBe('안녕')
-    expect(f.mock.calls.map((c) => c[0])).toEqual([expect.stringContaining('flash-latest'), expect.stringContaining(GEMINI_FALLBACK_MODELS[0] + ':'), expect.stringContaining(GEMINI_FALLBACK_MODELS[1])])
     vi.useRealTimers()
   })
 
   it('모두 붐비면 붐빈다고 알려 준다', async () => {
     vi.useFakeTimers()
-    const { callGemini } = await import('../../src/lib/ai/gemini')
-    const f = vi.fn().mockImplementation(async () => reply(503, { error: { message: 'overloaded' } }))
-    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google(() => reply(503, { error: { message: 'overloaded' } }))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)
     const check = expect(p).rejects.toThrow('붐벼요')
-    await vi.advanceTimersByTimeAsync(5000)
+    await vi.advanceTimersByTimeAsync(10000)
     await check
-    expect(f).toHaveBeenCalledTimes(3)
     vi.useRealTimers()
   })
 
