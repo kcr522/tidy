@@ -6,26 +6,31 @@ import Button from '../common/Button'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 
-const ORDER: EngineId[] = ['local', 'server', 'key']
+const ORDER: EngineId[] = ['gemini', 'local', 'server', 'key']
 
 /** 설정 > AI 연결: 한마디를 어디서 받아 올지 고른다 */
 export default function AiSettingsSection() {
   const [settings, save] = useAiSettings()
   const [engine, setEngine] = useState<EngineId>(settings.engine)
   const [apiKey, setApiKey] = useState(settings.apiKey ?? '')
+  const [geminiKey, setGeminiKey] = useState(settings.geminiKey ?? '')
   const [serverUrl, setServerUrl] = useState(settings.serverUrl ?? '')
   const [show, setShow] = useState(false)
   const toast = useToast()
 
-  const keyMissing = engine === 'key' && !apiKey.trim()
+  const keyMissing = (engine === 'key' && !apiKey.trim()) || (engine === 'gemini' && !geminiKey.trim())
   const changed =
-    engine !== settings.engine || apiKey.trim() !== (settings.apiKey ?? '') || serverUrl.trim() !== (settings.serverUrl ?? '')
+    engine !== settings.engine ||
+    apiKey.trim() !== (settings.apiKey ?? '') ||
+    geminiKey.trim() !== (settings.geminiKey ?? '') ||
+    serverUrl.trim() !== (settings.serverUrl ?? '')
 
   function submit() {
     if (keyMissing) return
     save({
       engine,
       ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+      ...(geminiKey.trim() ? { geminiKey: geminiKey.trim() } : {}),
       ...(serverUrl.trim() ? { serverUrl: serverUrl.trim() } : {}),
     })
     toast('AI 연결을 바꿨어요')
@@ -37,7 +42,7 @@ export default function AiSettingsSection() {
         <Sparkles className="size-[18px] text-brand-600" aria-hidden />
         AI 연결
       </h2>
-      <p className="px-5 pb-3 text-sm break-keep text-slate-500">대시보드의 'AI 소비 한마디'와 가계부의 '음식 사진으로 기록'에 쓸 AI를 골라요.</p>
+      <p className="px-5 pb-3 text-sm break-keep text-slate-500">'AI 소비 한마디', 'AI 비서' 대화창, '음식 사진으로 기록'에 쓸 AI를 골라요.</p>
 
       <div role="radiogroup" aria-label="AI 연결 방법" className="space-y-2 px-5">
         {ORDER.map((id) => {
@@ -60,13 +65,47 @@ export default function AiSettingsSection() {
                 {on && <Check className="size-3.5" strokeWidth={3} />}
               </span>
               <span className="min-w-0">
-                <span className="block font-semibold text-slate-800">{ENGINE_LABEL[id].title}</span>
+                <span className="block font-semibold text-slate-800">
+                  {ENGINE_LABEL[id].title}
+                  {id === 'gemini' && <span className="ml-1.5 rounded-full bg-brand-500 px-2 py-0.5 align-middle text-[11px] font-bold text-white">추천</span>}
+                </span>
                 <span className="block text-sm break-keep text-slate-500">{ENGINE_LABEL[id].desc}</span>
               </span>
             </button>
           )
         })}
       </div>
+
+      {engine === 'gemini' && (
+        <div className="px-5 pt-4">
+          <label htmlFor="ai-gemini" className="mb-1.5 block text-sm font-semibold text-slate-700">
+            Gemini API 키 (무료)
+          </label>
+          <div className="relative">
+            <input
+              id="ai-gemini"
+              type={show ? 'text' : 'password'}
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder="AIza..."
+              autoComplete="off"
+              spellCheck={false}
+              className={`${inputClass()} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              className="tap absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-2 text-slate-400"
+              aria-label={show ? '키 숨기기' : '키 보기'}
+            >
+              {show ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs break-keep text-slate-400">
+            aistudio.google.com 에 구글 계정으로 들어가 'Get API key'를 누르면 무료로 만들 수 있어요. 카드 등록은 필요 없어요. 하루 사용 횟수 제한이 있고, 무료 등급 대화는 구글이 서비스 개선에 쓸 수 있어요. 키는 이 기기에만 저장돼요.
+          </p>
+        </div>
+      )}
 
       {engine === 'key' && (
         <div className="px-5 pt-4">
@@ -119,7 +158,7 @@ export default function AiSettingsSection() {
 
       {engine !== 'local' && (
         <p className="mx-5 mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs break-keep text-slate-500">
-          한마디를 받을 때 오늘 지출 내역(가게 이름, 카테고리, 금액)과 이번 달 합계만 Claude에게 보내요. 다른 기록은 보내지 않아요.
+          한마디에는 오늘 지출 내역과 이번 달 합계만, AI 비서에는 보낸 사진·글과 자주 간 가게 요약(카테고리, 결제 수단)만 AI에게 보내요.
         </p>
       )}
 

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BookHeart, Check, ChevronLeft, ChevronRight, Plus, Wallet } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CalendarAddForm from '../components/calendar/CalendarAddForm'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
@@ -29,7 +29,7 @@ function loadMoney(): boolean {
   }
 }
 
-type Editor = { mode: 'add' } | { mode: 'event'; item: CalendarEvent } | { mode: 'todo'; item: Todo } | null
+type Editor = { mode: 'add'; draft?: EventInput } | { mode: 'event'; item: CalendarEvent } | { mode: 'todo'; item: Todo } | null
 
 /** 월간 캘린더: 일정(여러 날은 긴 막대)과 할 일을 한 화면에 */
 export default function CalendarPage() {
@@ -57,6 +57,29 @@ export default function CalendarPage() {
   const diaries = useMemo(() => new Map((diaryList ?? []).map((d) => [d.date, d])), [diaryList])
   const selDiary = diaries.get(selected)
   const navigate = useNavigate()
+  const location = useLocation()
+  // AI 대화창의 "내가 등록할게": 찾은 일정을 하나씩 채워서 추가 창을 연다
+  const [queue, setQueue] = useState<EventInput[]>(() => (location.state as { drafts?: EventInput[] } | null)?.drafts ?? [])
+  useEffect(() => {
+    if (!queue.length) return
+    navigate(location.pathname, { replace: true, state: null })
+    openDraft(queue[0])
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  function openDraft(d: EventInput) {
+    setSelected(d.startDate)
+    setMonth(d.startDate.slice(0, 7))
+    setEditor({ mode: 'add', draft: d })
+  }
+  /** 추가 창을 닫거나 저장하면 다음 일정으로 */
+  function nextDraft() {
+    const rest = queue.slice(1)
+    setQueue(rest)
+    if (rest.length) openDraft(rest[0])
+    else setEditor(null)
+  }
+  const closeEditor = () => (editor?.mode === 'add' && editor.draft ? nextDraft() : setEditor(null))
   const weeks = useMemo(() => layoutWeeks(grid, events ?? [], todos ?? [], MAX_LANES), [grid, events, todos])
 
   const selEvents = useMemo(
@@ -92,7 +115,7 @@ export default function CalendarPage() {
         await eventRepo.add(input)
         toast('일정을 저장했어요')
       }
-      setEditor(null)
+      closeEditor()
     } catch {
       toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
     }
@@ -326,17 +349,26 @@ export default function CalendarPage() {
 
       <Modal
         open={editor !== null}
-        title={editor?.mode === 'event' ? '일정 수정' : editor?.mode === 'todo' ? '할 일 수정' : `${dayTitle(selected)}에 추가`}
-        onClose={() => setEditor(null)}
+        title={
+          editor?.mode === 'event'
+            ? '일정 수정'
+            : editor?.mode === 'todo'
+              ? '할 일 수정'
+              : editor?.draft
+                ? `AI가 찾은 일정${queue.length > 1 ? ` (${queue.length}개 남음)` : ''}`
+                : `${dayTitle(selected)}에 추가`
+        }
+        onClose={closeEditor}
       >
         {editor?.mode === 'todo' ? (
           <TodoForm key={editor.item.id} initial={editor.item} onSubmit={saveTodo} onDelete={() => setDeleting(editor.item)} />
         ) : editor ? (
           <CalendarAddForm
-            key={editor.mode === 'event' ? `e${editor.item.id}` : `new-${selected}`}
+            key={editor.mode === 'event' ? `e${editor.item.id}` : editor.draft ? `draft-${queue.length}` : `new-${selected}`}
             date={selected}
             today={today}
             initial={editor.mode === 'event' ? editor.item : undefined}
+            draft={editor.mode === 'add' ? editor.draft : undefined}
             onSaveEvent={saveEvent}
             onSaveTodo={saveTodo}
             onDelete={editor.mode === 'event' ? () => setDeleting(editor.item) : undefined}

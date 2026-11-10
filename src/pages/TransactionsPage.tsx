@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, Camera, List, Menu, PiggyBank, Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
@@ -24,7 +25,7 @@ import { formatWon } from '../lib/format'
 import { accountTotals, categoriesUsed, filterByAccount, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Editor = { mode: 'add'; date?: string } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
+type Editor = { mode: 'add'; date?: string; draft?: TransactionInput } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
 type FilterBy = 'category' | 'account'
 type View = 'list' | 'calendar'
 const VIEW_KEY = 'tidy:money-view'
@@ -55,6 +56,31 @@ export default function TransactionsPage() {
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelected] = useState(today)
   const toast = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
+  // AI 대화창의 "내가 등록할게": 찾은 내역을 하나씩 채워서 추가 창을 연다
+  const [queue, setQueue] = useState<TransactionInput[]>(() => (location.state as { drafts?: TransactionInput[] } | null)?.drafts ?? [])
+  useEffect(() => {
+    if (!queue.length) return
+    navigate(location.pathname, { replace: true, state: null })
+    openDraft(queue[0])
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  function openDraft(d: TransactionInput) {
+    const [y, m] = d.date.split('-').map(Number)
+    setYm({ year: y, month: m })
+    setSelected(d.date)
+    setEditor({ mode: 'add', draft: d })
+  }
+  /** 추가 창을 닫거나 저장하면 다음 내역으로 */
+  function nextDraft() {
+    const rest = queue.slice(1)
+    setQueue(rest)
+    if (rest.length) openDraft(rest[0])
+    else setEditor(null)
+  }
+  const closeEditor = () => (editor?.mode === 'add' && editor.draft ? nextDraft() : setEditor(null))
 
   function setView(v: View) {
     setViewState(v)
@@ -116,7 +142,7 @@ export default function TransactionsPage() {
         await transactionRepo.add(input)
         toast('저장했어요')
       }
-      setEditor(null)
+      closeEditor()
       // 다른 달 날짜로 저장했으면 그 달로 이동해서 보여 준다
       const [y, m] = input.date.split('-').map(Number)
       if (y !== ym.year || m !== ym.month) setYm({ year: y, month: m })
@@ -315,8 +341,16 @@ export default function TransactionsPage() {
 
       <Modal
         open={editor !== null}
-        title={editor?.mode === 'view' ? '내역 자세히' : editor?.mode === 'edit' ? '내역 수정' : '내역 추가'}
-        onClose={() => setEditor(null)}
+        title={
+          editor?.mode === 'view'
+            ? '내역 자세히'
+            : editor?.mode === 'edit'
+              ? '내역 수정'
+              : editor?.draft
+                ? `AI가 찾은 내역${queue.length > 1 ? ` (${queue.length}개 남음)` : ''}`
+                : '내역 추가'
+        }
+        onClose={closeEditor}
       >
         {editor?.mode === 'view' && (
           <TransactionDetail
@@ -328,8 +362,9 @@ export default function TransactionsPage() {
         )}
         {editor && editor.mode !== 'view' && (
           <TransactionForm
-            key={editor.mode === 'edit' ? editor.item.id : 'new'}
+            key={editor.mode === 'edit' ? editor.item.id : editor.draft ? `draft-${queue.length}` : 'new'}
             initial={editor.mode === 'edit' ? editor.item : undefined}
+            draft={editor.mode === 'add' ? editor.draft : undefined}
             defaultDate={editor.mode === 'add' ? editor.date : undefined}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}

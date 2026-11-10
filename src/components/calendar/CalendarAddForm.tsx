@@ -20,19 +20,22 @@ interface Props {
   today: string
   /** 수정할 일정 (있으면 일정 수정 모드) */
   initial?: CalendarEvent
+  /** 새 일정에 채워 둘 값 (AI 대화창의 "내가 등록할게") */
+  draft?: EventInput
   onSaveEvent: (input: EventInput) => Promise<void>
   onSaveTodo: (input: TodoInput) => Promise<void>
   onDelete?: () => void
 }
 
 /** 캘린더에서 "추가": 일정(기간)과 할 일을 한 곳에서 쓴다 */
-export default function CalendarAddForm({ date, today, initial, onSaveEvent, onSaveTodo, onDelete }: Props) {
+export default function CalendarAddForm({ date, today, initial, draft, onSaveEvent, onSaveTodo, onDelete }: Props) {
   const [kind, setKind] = useState<Kind>('event')
-  const [title, setTitle] = useState(initial?.title ?? '')
-  const [start, setStart] = useState(initial?.startDate ?? date)
-  const [end, setEnd] = useState(initial?.endDate ?? date)
-  const [color, setColor] = useState<EventColor>(initial?.color ?? 'pink')
-  const [memo, setMemo] = useState(initial?.memo ?? '')
+  const base = initial ?? draft
+  const [title, setTitle] = useState(base?.title ?? '')
+  const [start, setStart] = useState(base?.startDate ?? date)
+  const [end, setEnd] = useState(base?.endDate ?? date)
+  const [color, setColor] = useState<EventColor>(base?.color ?? 'pink')
+  const [memo, setMemo] = useState(base?.memo ?? '')
   const [when, setWhen] = useState<When>(date > today ? 'day' : 'today')
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
@@ -63,7 +66,7 @@ export default function CalendarAddForm({ date, today, initial, onSaveEvent, onS
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      {!initial && (
+      {!initial && !draft && (
         <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="무엇을 추가할까요">
           {(
             [
