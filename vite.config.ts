@@ -24,6 +24,16 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'tidy-fonts', expiration: { maxEntries: 120 } },
           },
+          // 가게 로고: 한 번 받으면 기기에 저장해 두고 오프라인에서도 보여 준다
+          {
+            urlPattern: ({ url }) => (url.hostname === 'www.google.com' && url.pathname.startsWith('/s2/favicons')) || url.hostname.endsWith('.gstatic.com'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tidy-logos',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],

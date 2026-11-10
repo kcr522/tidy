@@ -1,7 +1,9 @@
 import type { Transaction } from '../../db/types'
 import { categoryEmoji } from '../../lib/categories'
 import { formatDateLabel, formatWon } from '../../lib/format'
+import { matchMerchant } from '../../lib/merchants'
 import { groupByDate } from '../../lib/summary'
+import MerchantAvatar from './MerchantAvatar'
 
 interface TransactionListProps {
   items: Transaction[]
@@ -23,19 +25,21 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
             </span>
           </header>
           <ul className="pb-2">
-            {g.items.map((t) => (
+            {g.items.map((t) => {
+              const m = matchMerchant(t.memo)
+              return (
               <li key={t.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(t)}
                   className="flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-grad-soft text-lg" aria-hidden>
-                    {categoryEmoji(t.category)}
-                  </span>
+                  <MerchantAvatar brand={m?.brand ?? null} category={t.category} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-slate-800">{t.memo || t.category}</span>
-                    <span className="block text-xs text-slate-400">{t.category}</span>
+                    <span className="block truncate text-[15px] font-semibold text-slate-800">{m ? m.display : t.memo || t.category}</span>
+                    <span className="block truncate text-xs text-slate-400">
+                      {categoryEmoji(t.category)} {t.category}
+                    </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>
                     {t.type === 'INCOME' ? '+' : '-'}
@@ -43,7 +47,8 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                   </span>
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ul>
         </section>
       ))}

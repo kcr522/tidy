@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
-import { categoriesFor } from '../../lib/categories'
+import { categoriesFor, categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
+import { matchMerchant } from '../../lib/merchants'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
 import type { TransactionInput } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
+import MerchantAvatar from './MerchantAvatar'
 
 interface TransactionFormProps {
   /** 수정할 때 기존 값 */
@@ -29,6 +31,14 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
   const [saving, setSaving] = useState(false)
 
   const categories = categoriesFor(type)
+  const merchant = matchMerchant(memo)
+
+  /** 아는 가게를 적으면, 카테고리를 아직 안 골랐을 때 대신 골라 준다 */
+  function changeMemo(text: string) {
+    setMemo(text)
+    const m = matchMerchant(text)
+    if (m && type === 'EXPENSE' && !category && categories.includes(m.brand.category)) setCategory(m.brand.category)
+  }
 
   function changeType(next: TransactionType) {
     setType(next)
@@ -113,7 +123,7 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
             </option>
             {categories.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {categoryEmoji(c)} {c}
               </option>
             ))}
           </select>
@@ -121,14 +131,22 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
       </div>
 
       {/* 메모 */}
-      <Field label={`메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
+      <Field label={`가게 · 메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
         <input
           value={memo}
           maxLength={MAX_MEMO_LENGTH}
-          placeholder="예: 점심"
-          onChange={(e) => setMemo(e.target.value)}
+          placeholder="예: 다이소 운남점, 점심"
+          onChange={(e) => changeMemo(e.target.value)}
           className={inputClass(!!errors.memo)}
         />
+        {merchant && (
+          <span className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+            <MerchantAvatar brand={merchant.brand} category={category} size={22} />
+            <span>
+              목록에는 <b className="font-semibold text-slate-700">{merchant.display}</b> 로 보여요
+            </span>
+          </span>
+        )}
       </Field>
 
       <div className="flex gap-2 pt-2">
