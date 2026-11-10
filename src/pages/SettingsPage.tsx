@@ -1,25 +1,92 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Download, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import Button from '../components/common/Button'
+import { inputClass } from '../components/common/formStyles'
+import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
+import { useToast } from '../components/common/Toast'
 import { db } from '../db/database'
+import { todayKey } from '../lib/date'
+import { pickTextFile, saveTextFile } from '../platform/saveFile'
+import { InvalidBackupError, backupFileName, backupRepo } from '../repositories/backupRepo'
 
-/** 설정 — 백업/가져오기/전체 삭제는 Day 7 (spec US7) */
+const DELETE_WORD = '삭제'
+
+/** 설정: 데이터 백업, 가져오기, 전체 삭제, 앱 정보 (spec US7, FR-060~063) */
 export default function SettingsPage() {
+  const toast = useToast()
+  const [importing, setImporting] = useState<{ name: string; text: string } | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const [word, setWord] = useState('')
+  const [busy, setBusy] = useState(false)
+
   const counts = useLiveQuery(async () => ({
     transactions: await db.transactions.count(),
     todos: await db.todos.count(),
     bookmarks: await db.bookmarks.count(),
   }))
 
+  async function exportData() {
+    setBusy(true)
+    try {
+      const backup = await backupRepo.exportAll()
+      await saveTextFile(backupFileName(todayKey()), JSON.stringify(backup, null, 2))
+      toast('백업 파일을 저장했어요')
+    } catch {
+      toast('내보내지 못했어요. 다시 시도해 주세요', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function chooseFile() {
+    const file = await pickTextFile()
+    if (file) setImporting(file)
+  }
+
+  async function confirmImport() {
+    if (!importing) return
+    setBusy(true)
+    try {
+      const r = await backupRepo.importAll(importing.text)
+      toast(`가져왔어요 · 가계부 ${r.transactions} · 할 일 ${r.todos} · 스크랩 ${r.bookmarks}`)
+      setImporting(null)
+    } catch (err) {
+      // 형식이 틀리면 아무것도 바뀌지 않는다 (US7 시나리오 3)
+      toast(err instanceof InvalidBackupError ? err.message : '가져오지 못했어요. 다시 시도해 주세요', 'error')
+      setImporting(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmClear() {
+    if (word.trim() !== DELETE_WORD) return
+    setBusy(true)
+    try {
+      await backupRepo.clearAll()
+      toast('모든 데이터를 지웠어요')
+      setClearing(false)
+      setWord('')
+    } catch {
+      toast('지우지 못했어요. 다시 시도해 주세요', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <PageHeader title="설정" />
       <div className="space-y-4">
-        <section className="rounded-3xl bg-brand-50 p-5 text-sm text-brand-700">
-          🔒 데이터는 이 기기에만 저장돼요. 기기를 바꾸기 전에 꼭 백업하세요.
+        <section className="flex items-start gap-3 rounded-3xl bg-brand-50 p-5 text-sm text-brand-700">
+          <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
+          <p className="break-keep">데이터는 이 기기에만 저장돼요. 기기를 바꾸기 전에 꼭 백업하세요.</p>
         </section>
 
         <section className="card p-5">
-          <h2 className="mb-3 font-semibold">저장된 데이터</h2>
+          <h2 className="mb-3 font-bold">저장된 데이터</h2>
           <dl className="grid grid-cols-3 gap-3 text-center">
             <Stat label="가계부" value={counts?.transactions} />
             <Stat label="할 일" value={counts?.todos} />
@@ -27,14 +94,91 @@ export default function SettingsPage() {
           </dl>
         </section>
 
-        <section className="card p-5">
-          <h2 className="mb-1 font-semibold">백업</h2>
-          <p className="text-sm text-slate-500">데이터 내보내기 / 가져오기 / 전체 삭제는 Day 7에 추가돼요.</p>
+        <section className="card divide-y divide-slate-100 overflow-hidden">
+          <h2 className="px-5 pt-5 pb-3 font-bold">백업</h2>
+          <Row
+            icon={<Download className="size-5" aria-hidden />}
+            title="데이터 내보내기"
+            desc="모든 기록을 파일 하나로 저장해요. 다른 기기에서 가져오면 그대로 이어서 쓸 수 있어요."
+            action={
+              <Button onClick={exportData} disabled={busy}>
+                내보내기
+              </Button>
+            }
+          />
+          <Row
+            icon={<Upload className="size-5" aria-hidden />}
+            title="데이터 가져오기"
+            desc="백업 파일을 골라서 지금 데이터를 덮어써요."
+            action={
+              <Button variant="secondary" onClick={chooseFile} disabled={busy}>
+                가져오기
+              </Button>
+            }
+          />
+          <Row
+            icon={<Trash2 className="size-5 text-expense" aria-hidden />}
+            title="전체 데이터 삭제"
+            desc="가계부, 할 일, 스크랩을 모두 지워요. 되돌릴 수 없어요."
+            action={
+              <Button variant="secondary" className="text-expense" onClick={() => setClearing(true)} disabled={busy}>
+                삭제
+              </Button>
+            }
+          />
         </section>
 
         <p className="text-center text-xs text-slate-400">Tidy v{__APP_VERSION__}</p>
       </div>
+
+      <Modal open={importing !== null} title="데이터 가져오기" onClose={() => setImporting(null)}>
+        <p className="mb-2 text-sm break-all text-slate-500">{importing?.name}</p>
+        <p className="mb-6 text-sm break-keep text-slate-700">
+          지금 있는 데이터가 모두 지워지고 이 백업 내용으로 바뀌어요. 덮어쓸까요?
+        </p>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setImporting(null)}>
+            취소
+          </Button>
+          <Button className="flex-1" onClick={confirmImport} disabled={busy}>
+            덮어쓰기
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={clearing}
+        title="전체 데이터 삭제"
+        onClose={() => {
+          setClearing(false)
+          setWord('')
+        }}
+      >
+        <p className="mb-4 text-sm break-keep text-slate-700">
+          정말 지우려면 아래 칸에 <b className="text-expense">{DELETE_WORD}</b>라고 입력해 주세요. 지운 데이터는 되돌릴 수 없어요.
+        </p>
+        <label className="mb-6 block">
+          <span className="sr-only">확인 문구</span>
+          <input id="delete-word" value={word} onChange={(e) => setWord(e.target.value)} placeholder={DELETE_WORD} className={inputClass()} autoFocus />
+        </label>
+        <Button variant="danger" className="w-full" onClick={confirmClear} disabled={busy || word.trim() !== DELETE_WORD}>
+          모두 지우기
+        </Button>
+      </Modal>
     </>
+  )
+}
+
+function Row({ icon, title, desc, action }: { icon: ReactNode; title: string; desc: string; action: ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-grad-soft text-brand-600">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-slate-800">{title}</p>
+        <p className="text-sm break-keep text-slate-500">{desc}</p>
+      </div>
+      <div className="shrink-0 [&>button]:min-h-10 [&>button]:px-4 [&>button]:text-sm">{action}</div>
+    </div>
   )
 }
 

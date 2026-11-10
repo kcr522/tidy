@@ -176,18 +176,18 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 ### 백업
 
-- [ ] T063 [US7] `src/repositories/backupRepo.ts`: export(), import()(형식 검사 + 한 트랜잭션), clearAll() + 테스트 (FR-060~062)
-- [ ] T064 [US7] `src/platform/saveFile.ts`: 웹은 다운로드, 앱은 Capacitor Filesystem + Share
-- [ ] T065 [US7] `src/pages/SettingsPage.tsx`: 내보내기, 가져오기(덮어쓰기 확인), 전체 삭제("삭제" 입력), 앱 버전, 백업 안내 (FR-063)
+- [x] T063 [US7] `src/repositories/backupRepo.ts`: export(), import()(형식 검사 + 한 트랜잭션), clearAll() + 테스트 (FR-060~062)
+- [x] T064 [US7] `src/platform/saveFile.ts`: 웹은 다운로드, 앱은 Capacitor Filesystem + Share
+- [x] T065 [US7] `src/pages/SettingsPage.tsx`: 내보내기, 가져오기(덮어쓰기 확인), 전체 삭제("삭제" 입력), 앱 버전, 백업 안내 (FR-063)
 
 ### 웹 (폰 웹 + 컴퓨터 웹)
 
-- [ ] T066 [US7] vite-plugin-pwa 설정: 앱 이름, 아이콘 192/512px, 오프라인 캐시, `navigator.storage.persist()` 요청
+- [x] T066 [US7] vite-plugin-pwa 설정: 앱 이름, 아이콘 192/512px, 오프라인 캐시, `navigator.storage.persist()` 요청
 - [ ] T067 [US7] GitHub Pages 또는 Vercel에 배포하고 폰/컴퓨터 브라우저에서 확인, 오프라인 확인 (FR-005)
 
 ### 폰 앱
 
-- [ ] T068 [US7] Capacitor 추가, `openUrl`에 `@capacitor/browser` 분기 (`quickstart.md` 4번)
+- [x] T068 [US7] Capacitor 추가, `openUrl`에 `@capacitor/browser` 분기 (`quickstart.md` 4번)
 - [ ] T069 [US7] Android 앱 빌드 후 실제 폰에 설치해 확인 (iOS는 Mac이 있으면 진행)
 
 ### 컴퓨터 앱
