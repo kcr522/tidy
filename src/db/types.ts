@@ -84,3 +84,33 @@ export interface Bookmark {
   createdAt: string
   updatedAt: string
 }
+
+/** 일정 색 (캘린더 막대 색) */
+export type EventColor = 'pink' | 'orange' | 'blue' | 'green' | 'purple' | 'red'
+
+/** 캘린더 일정: 하루짜리도, 여러 날에 걸친 기간도 된다 (2차) */
+export interface CalendarEvent {
+  id?: number
+  title: string
+  /** 시작 날짜 YYYY-MM-DD */
+  startDate: string
+  /** 끝 날짜 YYYY-MM-DD (하루짜리면 startDate와 같다) */
+  endDate: string
+  color: EventColor
+  memo: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 일기: 하루에 하나 (2차) */
+export interface Diary {
+  /** YYYY-MM-DD (하루 하나라서 날짜가 곧 키) */
+  date: string
+  text: string
+  /** 사진 (작게 줄인 JPEG data URL). 없으면 캘린더에 색으로만 표시 */
+  photo?: string
+  /** 사진이 없을 때 캘린더에 칠할 색 (쓸 때 아무거나 하나 고른다) */
+  color: string
+  createdAt: string
+  updatedAt: string
+}

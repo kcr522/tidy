@@ -43,7 +43,7 @@ describe('모르는 결제처 알려 주기', () => {
     const repo = createTransactionRepo(db)
     await repo.resolveMerchant(await repo.add({ ...base, memo: 'KCP*결제' }), '꽃집', true)
     const backup = await createBackupRepo(db, '0.1.0').exportAll()
-    expect(backup.schemaVersion).toBe(3)
+    expect(backup.schemaVersion).toBe(4)
     expect(backup.merchantAliases).toHaveLength(1)
     const db2 = new TidyDB('ask-3b')
     await createBackupRepo(db2).importAll(JSON.stringify(backup))
