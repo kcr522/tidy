@@ -4,22 +4,23 @@
 
 | 도구 | 용도 | 확인 명령어 |
 |---|---|---|
-| Node.js 20 LTS 이상 | 웹 개발 | `node -v` |
+| Node.js 22 LTS 이상 | 웹 개발 | `node -v` |
 | Git | 버전 기록 | `git --version` |
 | VS Code (추천) | 코드 편집 | |
 | Android Studio | 폰 앱 (Day 7) | |
 | Mac + Xcode | iOS 앱 (선택) | |
 
-## 2. 프로젝트 만들기 (Day 1)
+## 2. 내려받기 (처음 한 번)
+
+Day 1 세팅은 저장소에 이미 들어 있다.
 
 ```bash
-# 저장소를 내려받은 폴더 안에서
-npm create vite@latest . -- --template react-ts
+git clone https://github.com/kcr522/tidy.git
+cd tidy
 npm install
-npm install dexie dexie-react-hooks react-router-dom date-fns
-npm install -D tailwindcss@3 postcss autoprefixer vite-plugin-pwa vitest fake-indexeddb
-npx tailwindcss init -p
 ```
+
+이미 내려받았다면 `git pull` 후 `npm install`.
 
 ## 3. 실행
 

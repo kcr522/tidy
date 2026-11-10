@@ -36,11 +36,11 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 **Purpose**: 프로젝트 뼈대 만들기
 
-- [ ] T001 Vite + React + TypeScript 프로젝트 생성 (`quickstart.md` 2번)
-- [ ] T002 의존성 설치: dexie, dexie-react-hooks, react-router-dom, date-fns, tailwindcss, vite-plugin-pwa, vitest, fake-indexeddb
-- [ ] T003 [P] Tailwind 설정 `tailwind.config.js`, `src/index.css`
-- [ ] T004 [P] Vitest 설정 `vite.config.ts`의 `test` 항목, `npm run test` 스크립트 추가
-- [ ] T005 [P] `.gitignore`에 `node_modules`, `dist`, `android/app/build` 확인
+- [x] T001 Vite + React + TypeScript 프로젝트 생성 (`quickstart.md` 2번)
+- [x] T002 의존성 설치: dexie, dexie-react-hooks, react-router-dom, date-fns, tailwindcss, vite-plugin-pwa, vitest, fake-indexeddb
+- [x] T003 [P] Tailwind 설정 (`@tailwindcss/vite`, `src/index.css`)
+- [x] T004 [P] Vitest 설정 `vite.config.ts`의 `test` 항목, `npm run test` 스크립트 추가
+- [x] T005 [P] `.gitignore`에 `node_modules`, `dist`, `android/app/build` 확인
 
 ---
 
@@ -50,17 +50,17 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 **⚠️ CRITICAL**: 이 단계가 끝나야 US 작업을 시작할 수 있다
 
-- [ ] T006 타입 정의 `src/db/types.ts` (Transaction, Todo, Bookmark — data-model.md)
-- [ ] T007 Dexie 스키마 `src/db/database.ts` (data-model.md의 코드)
-- [ ] T008 [P] 금액/날짜 표시 함수 `src/lib/format.ts` (`15000` → `15,000원`, `2026-11-10` → `11월 10일 (화)`)
-- [ ] T009 [P] 입력 검사 함수 `src/lib/validate.ts` (금액 범위, 글자 수, URL 정규화와 검사)
-- [ ] T010 [P] 기본 카테고리 `src/lib/categories.ts` (FR-013)
-- [ ] T011 [P] `format`, `validate` 단위 테스트 `tests/unit/format.test.ts`, `tests/unit/validate.test.ts`
-- [ ] T012 공통 레이아웃 `src/components/layout/AppLayout.tsx`: 폭 768px 미만 BottomTabBar, 이상 SideNav (FR-002)
-- [ ] T013 라우터 `src/App.tsx`: `/`, `/money`, `/todos`, `/scraps`, `/settings` 빈 페이지 연결
-- [ ] T014 [P] 공통 컴포넌트 `src/components/common/`: Button, Modal(폰에서는 아래 시트), ConfirmDialog, EmptyState, Toast
-- [ ] T015 앱 이름 "Tidy", 로고 문구 "TIDY:", 기본 색상 정하기
-- [ ] T016 💾 커밋 & 푸시: `chore: 프로젝트 세팅과 레이아웃`
+- [x] T006 타입 정의 `src/db/types.ts` (Transaction, Todo, Bookmark — data-model.md)
+- [x] T007 Dexie 스키마 `src/db/database.ts` (data-model.md의 코드)
+- [x] T008 [P] 금액/날짜 표시 함수 `src/lib/format.ts` (`15000` → `15,000원`, `2026-11-10` → `11월 10일 (화)`)
+- [x] T009 [P] 입력 검사 함수 `src/lib/validate.ts` (금액 범위, 글자 수, URL 정규화와 검사)
+- [x] T010 [P] 기본 카테고리 `src/lib/categories.ts` (FR-013)
+- [x] T011 [P] `format`, `validate` 단위 테스트 `tests/unit/format.test.ts`, `tests/unit/validate.test.ts`
+- [x] T012 공통 레이아웃 `src/components/layout/AppLayout.tsx`: 폭 768px 미만 BottomTabBar, 이상 SideNav (FR-002)
+- [x] T013 라우터 `src/App.tsx`: `/`, `/money`, `/todos`, `/scraps`, `/settings` 빈 페이지 연결
+- [x] T014 [P] 공통 컴포넌트 `src/components/common/`: Button, Modal(폰에서는 아래 시트), ConfirmDialog, EmptyState, Toast
+- [x] T015 앱 이름 "Tidy", 로고 문구 "TIDY:", 기본 색상 정하기
+- [x] T016 💾 커밋 & 푸시: `chore: 프로젝트 세팅과 레이아웃`
 
 **Checkpoint**: 폰 폭/컴퓨터 폭에서 메뉴로 빈 화면 5개를 오갈 수 있다
 

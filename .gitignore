@@ -4,6 +4,7 @@ node_modules/
 # 빌드 결과물
 dist/
 dist-ssr/
+dev-dist/
 *.local
 
 # 환경 변수 (비밀 정보)

@@ -72,7 +72,7 @@
 
 | 구분 | 사용 기술 |
 |---|---|
-| 화면 | React 18 · TypeScript · Vite · Tailwind CSS |
+| 화면 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 |
 | 저장 | IndexedDB (Dexie.js) — 서버 없음 |
 | 웹 | PWA (오프라인, 홈 화면 설치) |
 | 폰 앱 | Capacitor |
@@ -100,7 +100,7 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 ## 진행 상황 (7일 스프린트)
 
 - [x] 기획: 상세 요구사항, 구현 계획, 작업 목록
-- [ ] Day 1 — 프로젝트 세팅, 레이아웃, DB
+- [x] Day 1 — 프로젝트 세팅, 레이아웃, DB
 - [ ] Day 2 — 가계부
 - [ ] Day 3 — 할 일
 - [ ] Day 4 — 스크랩
@@ -110,13 +110,12 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 
 ## 시작하기
 
-> 코드가 생기면(Day 1 이후) 아래 명령어로 실행할 수 있습니다.
-
 ```bash
 git clone https://github.com/kcr522/tidy.git
 cd tidy
 npm install
-npm run dev      # http://localhost:5173
+npm run dev      # http://localhost:5173 에서 열기
+npm test         # 단위 테스트
 ```
 
 자세한 내용은 [quickstart.md](specs/001-tidy-mvp/quickstart.md)를 보세요.

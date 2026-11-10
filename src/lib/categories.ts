@@ -1,0 +1,23 @@
+import type { TransactionType } from '../db/types'
+
+/** 기본 카테고리 (spec FR-013) */
+export const EXPENSE_CATEGORIES = [
+  '식비',
+  '교통',
+  '쇼핑',
+  '문화/여가',
+  '주거/통신',
+  '의료/건강',
+  '교육',
+  '기타',
+] as const
+
+export const INCOME_CATEGORIES = ['월급', '용돈', '부수입', '기타'] as const
+
+export function categoriesFor(type: TransactionType): readonly string[] {
+  return type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+}
+
+export function isValidCategory(type: TransactionType, category: string): boolean {
+  return categoriesFor(type).includes(category)
+}
