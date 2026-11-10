@@ -1,26 +1,31 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, List } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import HabitDetail from '../components/habits/HabitDetail'
+import HabitForm from '../components/habits/HabitForm'
+import HabitsPanel from '../components/habits/HabitsPanel'
 import CalendarView from '../components/todos/CalendarView'
 import TodoForm from '../components/todos/TodoForm'
 import TodoItem from '../components/todos/TodoItem'
-import type { Todo } from '../db/types'
+import type { Habit, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { laterTodos, sortTodos, todayProgress, todayTodos } from '../lib/summary'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
+import { groupChecks, habitRepo, type HabitInput } from '../repositories/habitRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
-type Tab = 'today' | 'later' | 'all'
+type Tab = 'today' | 'later' | 'all' | 'habits'
 type View = 'list' | 'calendar'
 type Editor = { mode: 'add'; dueDate?: string } | { mode: 'edit'; item: Todo } | null
+type HabitSheet = { mode: 'add' } | { mode: 'edit'; habit: Habit } | { mode: 'detail'; id: number } | null
 
 const VIEW_KEY = 'tidy:todo-view'
 
@@ -36,8 +41,14 @@ function loadView(): View {
 export default function TodosPage() {
   const today = useToday()
   const location = useLocation()
-  // 스크랩의 "할 일 보기"로 들어오면 전체 탭을 연다
-  const [tab, setTab] = useState<Tab>(() => ((location.state as { tab?: Tab } | null)?.tab === 'all' ? 'all' : 'today'))
+  const [params] = useSearchParams()
+  // 스크랩의 "할 일 보기"로 들어오면 전체 탭, 대시보드 습관 카드로 들어오면 습관 탭을 연다
+  const [tab, setTab] = useState<Tab>(() => {
+    const want = params.get('tab') ?? (location.state as { tab?: Tab } | null)?.tab
+    return want === 'all' || want === 'habits' ? want : 'today'
+  })
+  const [habitSheet, setHabitSheet] = useState<HabitSheet>(null)
+  const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null)
   const [view, setViewState] = useState<View>(loadView)
   const [month, setMonth] = useState(() => today.slice(0, 7))
   const [selected, setSelected] = useState(today)
@@ -47,7 +58,14 @@ export default function TodosPage() {
 
   const all = useLiveQuery(() => todoRepo.listAll(), [])
   const bookmarkUrls = useLiveQuery(async () => new Map((await bookmarkRepo.list('all')).map((b) => [b.id, b.url])), [])
-  const visible = useMemo(() => (all ? (tab === 'today' ? todayTodos(all, today) : tab === 'later' ? laterTodos(all, today) : sortTodos(all)) : undefined), [all, tab, today])
+  const habits = useLiveQuery(() => habitRepo.list(), [])
+  const checkRows = useLiveQuery(() => habitRepo.allChecks(), [])
+  const checks = useMemo(() => groupChecks(checkRows ?? []), [checkRows])
+  const habitsDone = (habits ?? []).filter((h) => checks.get(h.id!)?.has(today)).length
+  const visible = useMemo(
+    () => (all ? (tab === 'today' ? todayTodos(all, today) : tab === 'later' ? laterTodos(all, today) : tab === 'all' ? sortTodos(all) : []) : undefined),
+    [all, tab, today],
+  )
   const progress = useMemo(() => todayProgress(all ?? [], today), [all, today])
   const laterOpen = useMemo(() => laterTodos(all ?? [], today).filter((t) => t.isCompleted === 0).length, [all, today])
 
@@ -103,22 +121,72 @@ export default function TodosPage() {
     setEditor(null)
   }
 
+  async function toggleHabit(habit: Habit, date: string) {
+    if (habit.id == null) return
+    try {
+      const done = await habitRepo.toggle(habit.id, date)
+      if (done && date === today) toast(`${habit.emoji} ${habit.title} 했어요`)
+    } catch {
+      toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
+    }
+  }
+
+  async function saveHabit(input: HabitInput) {
+    try {
+      if (habitSheet?.mode === 'edit' && habitSheet.habit.id != null) {
+        await habitRepo.update(habitSheet.habit.id, input)
+        toast('수정했어요')
+      } else {
+        await habitRepo.add(input)
+        toast('습관을 만들었어요')
+      }
+      setHabitSheet(null)
+    } catch {
+      toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
+    }
+  }
+
+  async function confirmDeleteHabit() {
+    if (deletingHabit?.id == null) return
+    try {
+      await habitRepo.remove(deletingHabit.id)
+      toast('삭제했어요')
+    } catch {
+      toast('삭제하지 못했어요. 다시 시도해 주세요', 'error')
+    }
+    setDeletingHabit(null)
+    setHabitSheet(null)
+  }
+
+  const detailHabit = habitSheet?.mode === 'detail' ? habits?.find((h) => h.id === habitSheet.id) : undefined
+  const isHabits = view === 'list' && tab === 'habits'
+
   const openLinkFor = (t: Todo) => (t.bookmarkId != null && bookmarkUrls?.has(t.bookmarkId) ? () => openLink(t) : undefined)
 
   const firstDone = visible?.findIndex((t) => t.isCompleted === 1) ?? -1
 
   return (
     <>
-      <PageHeader title="할 일" action={<Button onClick={() => setEditor({ mode: 'add', dueDate: view === 'calendar' ? selected : undefined })}>+ 할 일 추가</Button>} />
+      <PageHeader
+        title="할 일"
+        action={
+          isHabits ? (
+            <Button onClick={() => setHabitSheet({ mode: 'add' })}>+ 습관 추가</Button>
+          ) : (
+            <Button onClick={() => setEditor({ mode: 'add', dueDate: view === 'calendar' ? selected : undefined })}>+ 할 일 추가</Button>
+          )
+        }
+      />
 
       <div className="mb-4 flex items-center gap-2">
         {view === 'list' && (
-        <div className="grid flex-1 grid-cols-3 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-sm" role="tablist">
+        <div className="grid flex-1 grid-cols-4 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-md" role="tablist">
           {(
             [
               ['today', `오늘 ${progress.done}/${progress.total}`],
               ['later', `나중 ${laterOpen}`],
               ['all', `전체 ${all?.length ?? 0}`],
+              ['habits', `습관 ${habitsDone}/${habits?.length ?? 0}`],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -127,7 +195,7 @@ export default function TodosPage() {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`min-h-11 rounded-xl text-sm font-semibold ${tab === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+              className={`min-h-11 rounded-xl px-1 text-[13px] font-semibold whitespace-nowrap sm:text-sm ${tab === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
             >
               {label}
             </button>
@@ -135,6 +203,7 @@ export default function TodosPage() {
         </div>
         )}
         {view === 'calendar' && <p className="flex-1 text-sm text-slate-500">날짜를 눌러 그날 할 일을 봐요</p>}
+        {!isHabits && (
         <div className="ml-auto flex shrink-0 gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
           {(
             [
@@ -157,6 +226,7 @@ export default function TodosPage() {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {view === 'calendar' ? (
@@ -175,6 +245,17 @@ export default function TodosPage() {
             onToggle={toggle}
             onEdit={(t) => setEditor({ mode: 'edit', item: t })}
             openLinkFor={openLinkFor}
+          />
+        )
+      ) : isHabits ? (
+        habits && (
+          <HabitsPanel
+            habits={habits}
+            checks={checks}
+            today={today}
+            onAdd={() => setHabitSheet({ mode: 'add' })}
+            onToggle={toggleHabit}
+            onOpen={(h) => h.id != null && setHabitSheet({ mode: 'detail', id: h.id })}
           />
         )
       ) : (
@@ -212,6 +293,34 @@ export default function TodosPage() {
           />
         )}
       </Modal>
+
+      <Modal
+        open={habitSheet !== null}
+        title={habitSheet?.mode === 'add' ? '습관 추가' : habitSheet?.mode === 'edit' ? '습관 수정' : detailHabit ? `${detailHabit.emoji} ${detailHabit.title}` : ''}
+        onClose={() => setHabitSheet(null)}
+      >
+        {habitSheet?.mode === 'add' && <HabitForm onSubmit={saveHabit} />}
+        {habitSheet?.mode === 'edit' && <HabitForm initial={habitSheet.habit} onSubmit={saveHabit} onDelete={() => setDeletingHabit(habitSheet.habit)} />}
+        {detailHabit && (
+          <HabitDetail
+            habit={detailHabit}
+            done={checks.get(detailHabit.id!) ?? new Set()}
+            today={today}
+            onToggle={(d) => toggleHabit(detailHabit, d)}
+            onEdit={() => setHabitSheet({ mode: 'edit', habit: detailHabit })}
+          />
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={deletingHabit !== null}
+        title="습관 삭제"
+        message="이 습관과 지금까지의 체크 기록을 모두 삭제할까요? 되돌릴 수 없어요."
+        confirmLabel="삭제"
+        danger
+        onConfirm={confirmDeleteHabit}
+        onCancel={() => setDeletingHabit(null)}
+      />
 
       <ConfirmDialog
         open={deleting !== null}

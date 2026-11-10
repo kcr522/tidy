@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Bookmark, CalendarEvent, Diary, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from './types'
+import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -16,6 +16,8 @@ export class TidyDB extends Dexie {
   scrapMedia!: Table<ScrapMedia, number>
   events!: Table<CalendarEvent, number>
   diaries!: Table<Diary, string>
+  habits!: Table<Habit, number>
+  habitChecks!: Table<HabitCheck, [number, string]>
 
   constructor(name = 'tidy') {
     super(name)
@@ -48,6 +50,11 @@ export class TidyDB extends Dexie {
       })
       .upgrade((tx) => seedCategories(tx.table('scrapCategories')))
     this.on('populate', (tx) => seedCategories(tx.table('scrapCategories')))
+    // 2차: 습관 트래커 (습관 + 날짜별 체크 기록)
+    this.version(6).stores({
+      habits: '++id, order',
+      habitChecks: '[habitId+date], habitId, date',
+    })
   }
 }
 
