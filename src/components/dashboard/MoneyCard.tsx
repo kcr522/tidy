@@ -23,7 +23,7 @@ export default function MoneyCard({ month, items, today, onAdd }: MoneyCardProps
         <CardEmpty vivid>이번 달 기록이 없어요. + 를 눌러 첫 내역을 남겨 보세요.</CardEmpty>
       ) : (
         <>
-          <p className="text-sm text-white/90">이번 달 쓴 돈</p>
+          <p className="text-sm opacity-85">이번 달 쓴 돈</p>
           <p className="mt-0.5 text-[28px] leading-tight font-extrabold tracking-tight">{formatWon(summary.expense)}</p>
           <dl className="mt-4 grid grid-cols-2 gap-2">
             <Stat label="수입" value={formatWon(summary.income)} />
@@ -31,20 +31,20 @@ export default function MoneyCard({ month, items, today, onAdd }: MoneyCardProps
           </dl>
           <div className="mt-4">
             <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="text-white/90">수입 대비 사용률</span>
+              <span className="opacity-85">수입 대비 사용률</span>
               <span className="font-bold">{rate === null ? '-' : `${rate}%`}</span>
             </div>
             <div
-              className="h-2 overflow-hidden rounded-full bg-white/30"
+              className="h-2 overflow-hidden rounded-full bg-on-soft"
               role="progressbar"
               aria-label="사용률"
               aria-valuenow={rate ?? undefined}
               aria-valuemin={0}
               aria-valuemax={100}
             >
-              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.min(rate ?? 0, 100)}%` }} />
+              <div className="h-full rounded-full bg-current transition-all" style={{ width: `${Math.min(rate ?? 0, 100)}%` }} />
             </div>
-            {rate === null && <p className="mt-1.5 text-xs text-white/90">수입을 기록하면 사용률이 보여요</p>}
+            {rate === null && <p className="mt-1.5 text-xs opacity-85">수입을 기록하면 사용률이 보여요</p>}
             {rate !== null && rate >= 100 && <p className="mt-1.5 text-xs font-semibold">이번 달 수입보다 많이 썼어요</p>}
           </div>
         </>
@@ -55,8 +55,8 @@ export default function MoneyCard({ month, items, today, onAdd }: MoneyCardProps
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-white/20 px-3 py-2.5">
-      <dt className="text-xs text-white/90">{label}</dt>
+    <div className="min-w-0 rounded-2xl bg-on-soft px-3 py-2.5">
+      <dt className="text-xs opacity-85">{label}</dt>
       <dd className="mt-0.5 font-bold break-all">{value}</dd>
     </div>
   )

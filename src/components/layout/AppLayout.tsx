@@ -27,7 +27,7 @@ export default function AppLayout() {
 }
 
 function Logo() {
-  return <span className="text-grad text-[22px] font-black tracking-tight">TIDY:</span>
+  return <span className="text-logo text-[22px] font-black tracking-tight">TIDY:</span>
 }
 
 function SideNav() {
@@ -50,7 +50,7 @@ function SideNav() {
           >
             {({ isActive }) => (
               <>
-                <span className={`flex size-8 items-center justify-center rounded-xl ${isActive ? 'bg-grad text-white' : ''}`}>
+                <span className={`flex size-8 items-center justify-center rounded-xl ${isActive ? 'bg-grad on-grad' : ''}`}>
                   <item.icon className="size-[18px]" strokeWidth={isActive ? 2.4 : 2} aria-hidden />
                 </span>
                 {item.label}
@@ -79,7 +79,7 @@ function BottomTabBar() {
         >
           {({ isActive }) => (
             <>
-              <span className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-grad text-white' : ''}`}>
+              <span className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-grad on-grad' : ''}`}>
                 <item.icon className="size-[22px]" strokeWidth={isActive ? 2.3 : 1.8} aria-hidden />
               </span>
               {item.label}

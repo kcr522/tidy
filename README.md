@@ -69,11 +69,11 @@
 
 <img src="docs/screenshots/design-desktop.png" width="720">
 
-**디자인**: 토스처럼 둥글고 깔끔한 카드, 글씨체는 Pretendard. 색은 **하늘색 + 민트 + 라벤더 + 핑크** 그라데이션이에요. 가계부, 할 일, 스크랩마다 다른 조합을 쓰고, **앱을 켤 때마다 색 순서와 방향이 바뀌어요.**
+**디자인**: 토스처럼 둥글고 깔끔한 카드, 글씨체는 Pretendard. 색은 **앱을 켤 때마다 랜덤**이에요. 대시보드, 가계부, 할 일, 스크랩이 각자 세 가지 색 그라데이션을 하나씩 받아요. 견본 18개(파스텔, 쨍한 색, 무채색) 중에서 고르거나 어울리는 세 색을 새로 만들고, 밝은 색이면 글자를 검정으로 바꿔요.
 
-| 켤 때마다 바뀌는 색 ① | ② | ③ |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/design-launch-1.png" width="200"> | <img src="docs/screenshots/design-launch-2.png" width="200"> | <img src="docs/screenshots/design-launch-3.png" width="200"> |
+**켤 때마다 바뀌는 색** (같은 데이터로 새로고침 여섯 번)
+
+<img src="docs/screenshots/design-launch-grid.png" width="720">
 
 <details>
 <summary>날짜별 화면 전체 보기</summary>
@@ -106,6 +106,8 @@
 
 <img src="docs/screenshots/design-dashboard.png" width="240"> <img src="docs/screenshots/design-filter.png" width="240"> <img src="docs/screenshots/design-convert.png" width="240"> <img src="docs/screenshots/design-desktop.png" width="420">
 
+<img src="docs/screenshots/design-launch-grid.png" width="720">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
@@ -128,7 +130,7 @@
 | 구분 | 사용 기술 |
 |---|---|
 | 화면 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 |
-| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 하늘색 계열 그라데이션 (켤 때마다 바뀜) |
+| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 켤 때마다 바뀌는 세 가지 색 그라데이션 |
 | 저장 | IndexedDB (Dexie.js) — 서버 없음 |
 | 웹 | PWA (오프라인, 홈 화면 설치) |
 | 폰 앱 | Capacitor |

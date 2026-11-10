@@ -23,18 +23,18 @@ export default function DashboardCard({ to, icon: Icon, title, addLabel, onAdd, 
   const header = (
     <div className="on-grad flex items-center gap-2.5">
       <Link to={to} className="group flex min-w-0 flex-1 items-center gap-2.5 font-bold">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white/25">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-on-soft">
           <Icon className="size-[18px]" strokeWidth={2.3} aria-hidden />
         </span>
         <span className="truncate text-[17px]">{title}</span>
-        <ChevronRight className="size-4 shrink-0 text-white/80 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        <ChevronRight className="size-4 shrink-0 opacity-75 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
       <button
         type="button"
         onClick={onAdd}
         aria-label={addLabel}
         title={addLabel}
-        className="tap flex size-9 shrink-0 items-center justify-center rounded-full bg-white/25 text-white transition hover:bg-white/35 active:scale-95"
+        className="tap flex size-9 shrink-0 items-center justify-center rounded-full bg-on-soft transition hover:opacity-90 active:scale-95"
       >
         <Plus className="size-5" strokeWidth={2.6} aria-hidden />
       </button>
@@ -62,7 +62,7 @@ export function CardEmpty({ children, vivid = false }: { children: ReactNode; vi
   return (
     <p
       className={`flex flex-1 items-center justify-center rounded-2xl px-4 py-6 text-center text-sm break-keep ${
-        vivid ? 'bg-white/20 text-white' : 'bg-grad-soft text-slate-600'
+        vivid ? 'bg-on-soft' : 'bg-grad-soft text-slate-600'
       }`}
     >
       {children}
