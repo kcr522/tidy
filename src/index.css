@@ -237,3 +237,16 @@ button {
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
+
+/* 비밀번호가 틀렸을 때 점이 좌우로 흔들린다 */
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-10px); }
+  40%, 80% { transform: translateX(10px); }
+}
+@utility animate-pin-shake {
+  animation: pin-shake 0.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pin-shake { animation: none; }
+}
