@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import type { Bookmark, ScrapMedia } from '../../db/types'
 import { useBlobUrl } from '../../hooks/useBlobUrl'
 import { CAPTURE_ACCEPT, saveCaptureFiles } from '../../lib/scrap/captures'
-import { detectSource, instagramEmbedUrl, youtubeEmbedUrl } from '../../lib/scrap/link'
+import { detectSource, instagramEmbedUrl, xEmbedUrl, youtubeEmbedUrl } from '../../lib/scrap/link'
 import { domainOf } from '../../lib/validate'
 import { scrapMediaRepo } from '../../repositories/scrapMediaRepo'
 import Button from '../common/Button'
@@ -47,11 +47,11 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
 
   const source = bookmark.source ?? detectSource(bookmark.url)
   const isYoutube = source === 'youtube'
-  // 안드로이드 앱: 인스타 퍼가기 화면은 동영상·릴스를 막을 때가 많아서, 앱 안 화면으로 게시물을 직접 연다
-  // (한 번 로그인하면 앱 안에 남는다)
-  const nativeView = site.available && source === 'instagram'
-  const embed = nativeView ? null : (instagramEmbedUrl(bookmark.url) ?? youtubeEmbedUrl(bookmark.url))
-  const [showEmbed, setShowEmbed] = useState(bookmark.isVideo === 1)
+  // 안드로이드 앱: 인스타·X 퍼가기 화면은 동영상·릴스를 막을 때가 많아서, 앱 안 화면으로 게시물을 직접 연다
+  // (한 번 로그인하면 앱 안에 남는다). 웹에서는 공식 퍼가기(embed)로 보여 준다
+  const nativeView = site.available && (source === 'instagram' || source === 'x')
+  const embed = nativeView ? null : (instagramEmbedUrl(bookmark.url) ?? xEmbedUrl(bookmark.url) ?? youtubeEmbedUrl(bookmark.url))
+  const [showEmbed, setShowEmbed] = useState(bookmark.isVideo === 1 || source === 'x')
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return
@@ -85,7 +85,7 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
       )}
       {nativeView && (
         <button type="button" onClick={() => site.start(bookmark.url, 'view')} disabled={site.busy} className="tap -mt-2 text-sm font-bold text-brand-700">
-          {bookmark.isVideo === 1 ? '▶ 앱 안에서 동영상·릴스 보기' : '▶ 앱 안에서 게시물 보기'}
+          {bookmark.isVideo === 1 ? (source === 'x' ? '▶ 앱 안에서 동영상 보기' : '▶ 앱 안에서 동영상·릴스 보기') : '▶ 앱 안에서 게시물 보기'}
         </button>
       )}
 
