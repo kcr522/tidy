@@ -107,8 +107,8 @@ export default function DashboardPage() {
       <PageHeader title="대시보드" action={<span className="text-sm text-slate-500">{formatDateLabel(today)}</span>} />
 
       {!loading && (
-        // 폰: 세로 3단, 컴퓨터: 가로 3칸 (FR-050)
-        <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+        // 폰: 세로로 쌓기, 컴퓨터: 2~3칸이고 모든 칸 높이를 같게 (FR-050)
+        <div className="grid items-start gap-4 md:auto-rows-fr md:grid-cols-2 md:items-stretch lg:grid-cols-3">
           <MoneyCard month={month} items={transactions} today={today} onAdd={() => setSheet({ kind: 'money' })} />
           <AiFeedbackCard items={transactions} today={today} />
           <PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />

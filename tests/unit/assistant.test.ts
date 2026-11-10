@@ -259,3 +259,72 @@ describe('Gemini (무료)', () => {
     expect((await askAssistant({ engine: 'gemini' }, { today: TODAY, text: '내일 치과' })).engine).toBe('local')
   })
 })
+
+describe('Gemini 오류 다루기', () => {
+  const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
+  const good = { candidates: [{ content: { parts: [{ text: '안녕' }] } }] }
+
+  const models = {
+    models: [
+      { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash-image', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-pro', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/text-embedding-004', supportedGenerationMethods: ['embedContent'] },
+    ],
+  }
+  /** 주소마다 다른 답을 주는 가짜 구글 */
+  const google = (answer: (model: string) => Response) =>
+    vi.fn(async (url: string) => (url.includes('/models?') ? reply(200, models) : answer(url.match(/models\/([^:]+):/)![1])))
+
+  it('쓸 수 있는 Flash 모델을 좋은 순으로 고른다', async () => {
+    const { rankFlashModels } = await import('../../src/lib/ai/gemini')
+    expect(rankFlashModels(models.models.map((m) => m.name))).toEqual(['gemini-3.1-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'])
+  })
+
+  it('모델이 막혔으면(404) 구글에 쓸 수 있는 모델을 물어보고 다시', async () => {
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google((m) => (m === 'gemini-3.1-flash' ? reply(200, good) : reply(404, { error: { message: 'no longer available' } })))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)).resolves.toBe('안녕')
+  })
+
+  it('붐비면(503) 다른 모델로 차례로 다시', async () => {
+    vi.useFakeTimers()
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google((m) => (m === 'gemini-3.1-flash-lite' ? reply(200, good) : reply(503, { error: { message: 'overloaded' } })))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)
+    await vi.advanceTimersByTimeAsync(5000)
+    await expect(p).resolves.toBe('안녕')
+    vi.useRealTimers()
+  })
+
+  it('모두 붐비면 붐빈다고 알려 준다', async () => {
+    vi.useFakeTimers()
+    const { callGemini, clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const f = google(() => reply(503, { error: { message: 'overloaded' } }))
+    const p = callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f as unknown as typeof fetch)
+    const check = expect(p).rejects.toThrow('붐벼요')
+    await vi.advanceTimersByTimeAsync(10000)
+    await check
+    vi.useRealTimers()
+  })
+
+  it('그 밖의 오류는 구글이 준 이유를 보여 준다', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValue(reply(400, { error: { message: 'Invalid JSON payload' } }))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, f)).rejects.toThrow('Gemini에서 오류가 났어요 (400: Invalid JSON payload)')
+    const k = vi.fn().mockResolvedValue(reply(400, { error: { message: 'API key not valid. Please pass a valid API key.' } }))
+    await expect(callGemini('K', { system: 'S', parts: [{ text: 'x' }] }, k)).rejects.toThrow('Gemini 키가 맞지 않아요')
+  })
+
+  it('답 토큰은 최소 2048 (생각하는 데 쓰는 토큰 때문에)', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi.fn().mockResolvedValue(reply(200, good))
+    await callGemini('K', { system: 'S', parts: [{ text: 'x' }], maxTokens: 512 }, f)
+    expect(JSON.parse(f.mock.calls[0][1].body).generationConfig.maxOutputTokens).toBe(2048)
+  })
+})
