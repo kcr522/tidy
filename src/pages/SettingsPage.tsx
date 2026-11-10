@@ -7,6 +7,7 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import AiSettingsSection from '../components/settings/AiSettingsSection'
+import ScrapSettingsSection from '../components/settings/ScrapSettingsSection'
 import { db } from '../db/database'
 import { todayKey } from '../lib/date'
 import { pickTextFile, saveTextFile } from '../platform/saveFile'
@@ -132,6 +133,8 @@ export default function SettingsPage() {
         </section>
 
         <AiSettingsSection />
+
+        <ScrapSettingsSection />
 
         {aliases && aliases.length > 0 && (
           <section className="card overflow-hidden">

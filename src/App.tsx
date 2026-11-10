@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import BookmarksPage from './pages/BookmarksPage'
+import SharePage from './pages/SharePage'
 import DashboardPage from './pages/DashboardPage'
 import NotFoundPage from './pages/NotFoundPage'
 import SettingsPage from './pages/SettingsPage'
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="money" element={<TransactionsPage />} />
         <Route path="todos" element={<TodosPage />} />
         <Route path="scraps" element={<BookmarksPage />} />
+        <Route path="share" element={<SharePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

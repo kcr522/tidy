@@ -83,4 +83,41 @@ export interface Bookmark {
   isRead: Flag
   createdAt: string
   updatedAt: string
+  /** 스크랩 카테고리 (없으면 '미분류'). 스키마 5부터 */
+  categoryId?: number
+  /** 어디 링크인지: instagram | naver | x | youtube | web */
+  source?: string
+  /** 링크 미리보기: 설명, 사이트 이름, 동영상 게시물인지 */
+  description?: string
+  siteName?: string
+  isVideo?: Flag
+  /** AI(또는 기본) 요약과 만든 때 */
+  summary?: string
+  summaryAt?: string
+}
+
+/** 스크랩 카테고리 (스키마 5부터) */
+export interface ScrapCategory {
+  id?: number
+  name: string
+  /** 보여 줄 순서 */
+  order: number
+  createdAt: string
+}
+
+/**
+ * 스크랩에 붙은 사진·영상 (스키마 5부터)
+ * - thumb: 링크 미리보기 썸네일 (인스타 이미지 주소는 금방 만료돼서 받아서 저장한다)
+ * - capture: 사용자가 같이 저장한 캡처(사진) 또는 화면 녹화(영상)
+ */
+export interface ScrapMedia {
+  id?: number
+  bookmarkId: number
+  kind: 'thumb' | 'capture'
+  /** 지금 보여 줄 파일 (편집했으면 편집본) */
+  blob: Blob
+  /** 편집하기 전 원본. 편집한 적 없으면 없다 */
+  original?: Blob
+  createdAt: string
+  updatedAt: string
 }

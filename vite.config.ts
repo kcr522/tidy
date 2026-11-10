@@ -1,9 +1,29 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
+import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
+
+/** 개발 중(npm run dev)에도 링크 미리보기가 되도록: 배포 때 api/preview.ts 가 하는 일을 똑같이 한다 */
+function devPreviewApi(): Plugin {
+  return {
+    name: 'tidy-dev-preview-api',
+    configureServer(server) {
+      server.middlewares.use('/api/preview', async (req, res) => {
+        const url = new URL(req.url ?? '', 'http://localhost').searchParams.get('url') ?? ''
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        try {
+          res.end(JSON.stringify(await buildPreview(url, fetch, AbortSignal.timeout(9000))))
+        } catch (err) {
+          res.statusCode = err instanceof PreviewError ? err.status : 502
+          res.end(JSON.stringify({ error: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' }))
+        }
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,12 +31,15 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    devPreviewApi(),
     react(),
     tailwindcss(),
     // PWA: 오프라인 동작 + 폰 홈 화면/컴퓨터 "앱 설치" 지원
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
+        navigateFallbackDenylist: [/^\/api\//],
         // 글씨체(Pretendard) 조각 파일은 처음 쓸 때 받아 두고, 그 뒤로는 오프라인에서도 쓴다
         runtimeCaching: [
           {
@@ -46,6 +69,12 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#f2f4f6',
         theme_color: '#f2f4f6',
+        // 다른 앱(인스타그램, 네이버, X …)에서 "공유" → Tidy 를 고르면 /share 로 열린다 (안드로이드 크롬에 설치한 앱)
+        share_target: {
+          action: '/share',
+          method: 'GET',
+          params: { title: 'title', text: 'text', url: 'url' },
+        },
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

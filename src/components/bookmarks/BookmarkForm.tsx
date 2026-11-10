@@ -1,31 +1,81 @@
-import { useState, type FormEvent } from 'react'
-import type { Bookmark } from '../../db/types'
+import { ImageOff, Loader2, Play, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import type { Bookmark, ScrapCategory } from '../../db/types'
+import { useBlobUrl } from '../../hooks/useBlobUrl'
+import { fetchLinkPreview, type LinkPreview } from '../../lib/scrap/fetchPreview'
+import { detectSource } from '../../lib/scrap/link'
 import { MAX_MEMO_LENGTH, MAX_TITLE_LENGTH, domainOf, normalizeUrl, validateMemo } from '../../lib/validate'
 import type { BookmarkInput } from '../../repositories/bookmarkRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
+import CategoryPicker from './CategoryPicker'
+import SourceBadge from './SourceBadge'
+
+export interface BookmarkFormValue {
+  input: BookmarkInput
+  /** 새로 받아 온 썸네일 (없으면 그대로) */
+  thumb?: Blob
+}
 
 interface BookmarkFormProps {
   initial?: Bookmark
+  /** 공유받기로 들어온 값 */
+  prefill?: { url: string; title?: string }
+  categories: ScrapCategory[]
+  defaultCategoryId: number | null
   /** 같은 URL이 이미 있으면 true */
   isDuplicate: (url: string) => Promise<boolean>
-  onSubmit: (input: BookmarkInput) => Promise<void>
+  onSubmit: (value: BookmarkFormValue) => Promise<void>
   onDelete?: () => void
 }
 
 type Errors = Partial<Record<'url' | 'title' | 'memo', string>>
+type PreviewState = { status: 'idle' } | { status: 'loading' } | { status: 'done'; data: LinkPreview } | { status: 'error'; message: string }
 
-/** 스크랩 입력 폼 (FR-030~033) */
-export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete }: BookmarkFormProps) {
-  const [url, setUrl] = useState(initial?.url ?? '')
-  const [title, setTitle] = useState(initial?.title ?? '')
+/** 스크랩 입력 폼 (FR-030~033) + 카테고리, 링크 미리보기 */
+export default function BookmarkForm({ initial, prefill, categories, defaultCategoryId, isDuplicate, onSubmit, onDelete }: BookmarkFormProps) {
+  const [url, setUrl] = useState(initial?.url ?? prefill?.url ?? '')
+  const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? '')
+  /** 사용자가 제목을 직접 고쳤으면 미리보기 제목으로 덮어쓰지 않는다 */
+  // 공유받은 글의 제목은 임시: 미리보기 제목이 오면 그걸로 바꾼다
+  const titleTouched = useRef(!!initial)
   const [memo, setMemo] = useState(initial?.memo ?? '')
+  const [categoryId, setCategoryId] = useState<number | null>(initial ? (initial.categoryId ?? null) : defaultCategoryId)
   const [errors, setErrors] = useState<Errors>({})
   /** 중복 안내를 본 뒤 한 번 더 누르면 저장 */
   const [dupConfirmedFor, setDupConfirmedFor] = useState<string | null>(null)
   const [dupWarning, setDupWarning] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [preview, setPreview] = useState<PreviewState>({ status: 'idle' })
+  const [retry, setRetry] = useState(0)
+
+  const normalized = normalizeUrl(url)
+  const target = normalized.ok ? normalized.value : null
+
+  // 주소를 쓰고 잠깐 멈추면 미리보기를 가져온다 (수정 화면에서 주소를 안 바꿨으면 다시 안 가져온다)
+  useEffect(() => {
+    if (!target || (initial && target === initial.url && retry === 0)) {
+      setPreview({ status: 'idle' })
+      return
+    }
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => {
+      setPreview({ status: 'loading' })
+      fetchLinkPreview(target, ctrl.signal)
+        .then((data) => {
+          setPreview({ status: 'done', data })
+          if (!titleTouched.current && data.title) setTitle(data.title.slice(0, MAX_TITLE_LENGTH))
+        })
+        .catch((err: unknown) => {
+          if (!ctrl.signal.aborted) setPreview({ status: 'error', message: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' })
+        })
+    }, 500)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
+  }, [target, initial, retry])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -46,10 +96,21 @@ export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete 
       return
     }
 
+    const p = preview.status === 'done' ? preview.data : undefined
     setSaving(true)
     try {
-      // 제목이 비면 도메인 (FR-032)
-      await onSubmit({ url: u.value, title: t || domainOf(u.value), memo: m.value })
+      await onSubmit({
+        input: {
+          url: u.value,
+          // 제목이 비면 미리보기 제목, 그것도 없으면 도메인 (FR-032)
+          title: (t || p?.title?.slice(0, MAX_TITLE_LENGTH) || domainOf(u.value)).trim(),
+          memo: m.value,
+          categoryId,
+          source: detectSource(u.value),
+          ...(p ? { description: p.description, siteName: p.siteName, isVideo: !!p.isVideo } : {}),
+        },
+        thumb: p?.thumb,
+      })
     } finally {
       setSaving(false)
     }
@@ -63,7 +124,7 @@ export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete 
           inputMode="url"
           autoCapitalize="off"
           autoCorrect="off"
-          placeholder="예: react.dev/learn"
+          placeholder="인스타그램, 네이버, X 링크를 붙여 넣어 보세요"
           value={url}
           onChange={(e) => {
             setUrl(e.target.value)
@@ -71,12 +132,28 @@ export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete 
           }}
           className={inputClass(!!errors.url)}
           aria-invalid={!!errors.url}
-          autoFocus={!initial}
+          autoFocus={!initial && !prefill}
         />
       </Field>
 
-      <Field label={`제목 (선택, 비우면 사이트 주소로 · ${title.length}/${MAX_TITLE_LENGTH})`} error={errors.title}>
-        <input value={title} maxLength={MAX_TITLE_LENGTH} placeholder="예: React 성능 최적화 팁" onChange={(e) => setTitle(e.target.value)} className={inputClass(!!errors.title)} />
+      <PreviewBox state={preview} url={target} onRetry={() => setRetry((n) => n + 1)} />
+
+      <div>
+        <span className="mb-1.5 block text-sm font-medium text-slate-600">카테고리</span>
+        <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
+      </div>
+
+      <Field label={`제목 (선택, 비우면 미리보기 제목으로 · ${title.length}/${MAX_TITLE_LENGTH})`} error={errors.title}>
+        <input
+          value={title}
+          maxLength={MAX_TITLE_LENGTH}
+          placeholder="예: 성수 브런치 맛집"
+          onChange={(e) => {
+            titleTouched.current = true
+            setTitle(e.target.value)
+          }}
+          className={inputClass(!!errors.title)}
+        />
       </Field>
 
       <Field label={`메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
@@ -107,5 +184,55 @@ export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete 
         </Button>
       </div>
     </form>
+  )
+}
+
+function PreviewBox({ state, url, onRetry }: { state: PreviewState; url: string | null; onRetry: () => void }) {
+  const thumbUrl = useBlobUrl(state.status === 'done' ? state.data.thumb : undefined)
+  if (state.status === 'idle' || !url) return null
+  if (state.status === 'loading') {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3" aria-busy="true">
+        <div className="size-16 shrink-0 animate-pulse rounded-xl bg-slate-200" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3.5 w-3/4 animate-pulse rounded bg-slate-200" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-slate-200" />
+        </div>
+        <Loader2 className="size-4 animate-spin text-slate-400" aria-label="미리보기 가져오는 중" />
+      </div>
+    )
+  }
+  if (state.status === 'error') {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+        <ImageOff className="size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">{state.message}. 링크는 그대로 저장돼요.</span>
+        <button type="button" onClick={onRetry} className="tap flex shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+          <RefreshCw className="size-3" aria-hidden />
+          다시
+        </button>
+      </div>
+    )
+  }
+  const d = state.data
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-grad-soft p-3" aria-label="링크 미리보기">
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white">
+        {thumbUrl ? <img src={thumbUrl} alt="" className="size-full object-cover" /> : <ImageOff className="m-auto mt-5 size-6 text-slate-300" aria-hidden />}
+        {d.isVideo && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/20">
+            <Play className="size-5 fill-white text-white" aria-label="동영상" />
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 flex items-center gap-1.5">
+          <SourceBadge source={d.source} />
+          <span className="truncate text-xs text-slate-500">{d.siteName ?? domainOf(url)}</span>
+        </div>
+        <p className="line-clamp-2 text-sm font-bold text-slate-800">{d.title ?? '제목 없음'}</p>
+        {d.description && <p className="line-clamp-1 text-xs text-slate-500">{d.description}</p>}
+      </div>
+    </div>
   )
 }

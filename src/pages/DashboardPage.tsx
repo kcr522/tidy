@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import BookmarkForm from '../components/bookmarks/BookmarkForm'
+import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
@@ -18,7 +18,9 @@ import type { Bookmark, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
 import { openUrl } from '../platform/openUrl'
-import { bookmarkRepo, type BookmarkInput } from '../repositories/bookmarkRepo'
+import { bookmarkRepo } from '../repositories/bookmarkRepo'
+import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
+import { scrapMediaRepo } from '../repositories/scrapMediaRepo'
 import { recurringRepo } from '../repositories/recurringRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
@@ -54,7 +56,12 @@ export default function DashboardPage() {
   }
 
   const saveMoney = (input: TransactionInput) => run(() => transactionRepo.add(input), '저장했어요')
-  const saveScrap = (input: BookmarkInput) => run(() => bookmarkRepo.add(input), '저장했어요')
+  const scrapCategories = useLiveQuery(() => scrapCategoryRepo.list(), []) ?? []
+  const saveScrap = ({ input, thumb }: BookmarkFormValue) =>
+    run(async () => {
+      const id = await bookmarkRepo.add(input)
+      if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
+    }, '저장했어요')
   const saveTodo = (input: TodoInput) =>
     sheet?.kind === 'todo' && sheet.item?.id != null
       ? run(() => todoRepo.update(sheet.item!.id!, input), '수정했어요')
@@ -115,7 +122,7 @@ export default function DashboardPage() {
         {sheet?.kind === 'payday' && (
           <RecurringManager today={today} preset={sheet.fresh ? { type: 'INCOME', category: '월급', memo: '월급' } : undefined} />
         )}
-        {sheet?.kind === 'scrap' && <BookmarkForm isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
+        {sheet?.kind === 'scrap' && <BookmarkForm categories={scrapCategories} defaultCategoryId={null} isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
       </Modal>
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />

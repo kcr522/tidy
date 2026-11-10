@@ -1,5 +1,5 @@
-import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Bookmark, MerchantAlias, Recurring, Todo, Transaction } from '../db/types'
+import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
+import type { Bookmark, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -15,6 +15,20 @@ export interface Backup {
   recurring?: Recurring[]
   /** 알려 준 가게 이름 (스키마 3부터) */
   merchantAliases?: MerchantAlias[]
+  /** 스크랩 카테고리 (스키마 5부터) */
+  scrapCategories?: ScrapCategory[]
+  /** 스크랩 썸네일·캡처. 파일은 data URL 글자로 바꿔 넣는다 (스키마 5부터) */
+  scrapMedia?: BackupMedia[]
+}
+
+export interface BackupMedia {
+  id?: number
+  bookmarkId: number
+  kind: 'thumb' | 'capture'
+  blob: string
+  original?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export class InvalidBackupError extends Error {
@@ -53,6 +67,35 @@ function isBookmark(v: unknown): v is Bookmark {
   )
 }
 
+function isCategory(v: unknown): v is ScrapCategory {
+  return isObj(v) && isId(v.id) && isStr(v.name) && isNum(v.order) && isStr(v.createdAt)
+}
+
+const isDataUrl = (v: unknown) => typeof v === 'string' && /^data:[\w/+.-]*;base64,/.test(v)
+
+function isMedia(v: unknown): v is BackupMedia {
+  return (
+    isObj(v) && isId(v.id) && isNum(v.bookmarkId) && (v.kind === 'thumb' || v.kind === 'capture') && isDataUrl(v.blob) &&
+    (v.original === undefined || isDataUrl(v.original)) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return `data:${blob.type || 'application/octet-stream'};base64,${btoa(s)}`
+}
+
+function dataUrlToBlob(url: string): Blob {
+  const [head, b64] = url.split(',', 2)
+  const type = head.slice(5).replace(/;base64$/, '')
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new Blob([bytes], { type })
+}
+
 function isRecurring(v: unknown): v is Recurring {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
@@ -81,8 +124,13 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   if (!Array.isArray(transactions) || !Array.isArray(todos) || !Array.isArray(bookmarks)) throw new InvalidBackupError()
   const recurring = data.recurring ?? []
   const aliases = data.merchantAliases ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases)) throw new InvalidBackupError()
-  if (!transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias)) {
+  const categories = data.scrapCategories ?? []
+  const media = data.scrapMedia ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media)) throw new InvalidBackupError()
+  if (
+    !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
+    !categories.every(isCategory) || !media.every(isMedia)
+  ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
   return data as unknown as Backup
@@ -93,10 +141,12 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.scrapCategories, d.scrapMedia]
+
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
     async exportAll(): Promise<Backup> {
-      return database.transaction('r', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => ({
+      return database.transaction('r', tables(database), async () => ({
         app: 'tidy' as const,
         appVersion,
         schemaVersion: database.verno,
@@ -106,14 +156,30 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         bookmarks: await database.bookmarks.toArray(),
         recurring: await database.recurring.toArray(),
         merchantAliases: await database.merchantAliases.toArray(),
+        scrapCategories: await database.scrapCategories.toArray(),
+        rawMedia: await database.scrapMedia.toArray(),
+      })).then(async ({ rawMedia, ...rest }) => ({
+        ...rest,
+        // 파일을 글자로 바꾸는 건 트랜잭션 밖에서 (IndexedDB 트랜잭션은 다른 비동기 작업을 기다려 주지 않는다)
+        scrapMedia: await Promise.all(
+          rawMedia.map(async (m: ScrapMedia) => {
+            const { blob, original, ...meta } = m
+            return { ...meta, blob: await blobToDataUrl(blob), ...(original ? { original: await blobToDataUrl(original) } : {}) }
+          }),
+        ),
       }))
     },
 
     /** 기존 데이터를 백업 내용으로 덮어쓴다. 한 트랜잭션이라 중간에 실패하면 아무것도 안 바뀐다 */
     async importAll(text: string): Promise<{ transactions: number; todos: number; bookmarks: number }> {
       const backup = parseBackup(text, database.verno)
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear()])
+      const media: ScrapMedia[] = (backup.scrapMedia ?? []).map((m) => ({ ...m, blob: dataUrlToBlob(m.blob), original: m.original ? dataUrlToBlob(m.original) : undefined }))
+      await database.transaction('rw', tables(database), async () => {
+        await Promise.all(tables(database).map((t) => t.clear()))
+        // 카테고리가 없던 예전 백업이면 기본 카테고리를 넣어 둔다
+        if (backup.scrapCategories) await database.scrapCategories.bulkAdd(backup.scrapCategories)
+        else await seedCategories(database.scrapCategories)
+        await database.scrapMedia.bulkAdd(media)
         await database.recurring.bulkAdd(backup.recurring ?? [])
         await database.merchantAliases.bulkAdd(backup.merchantAliases ?? [])
         await database.transactions.bulkAdd(backup.transactions)
@@ -125,8 +191,9 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
 
     /** 전체 삭제 (FR-062). 확인 문구는 화면에서 검사한다 */
     async clearAll(): Promise<void> {
-      await database.transaction('rw', [database.transactions, database.todos, database.bookmarks, database.recurring, database.merchantAliases], async () => {
-        await Promise.all([database.transactions.clear(), database.todos.clear(), database.bookmarks.clear(), database.recurring.clear(), database.merchantAliases.clear()])
+      await database.transaction('rw', tables(database), async () => {
+        await Promise.all(tables(database).map((t) => t.clear()))
+        await seedCategories(database.scrapCategories)
       })
     },
   }
