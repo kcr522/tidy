@@ -7,6 +7,7 @@ import { ENGINE_LABEL } from '../../lib/ai/engines'
 import { useAiSettings } from '../../lib/ai/settings'
 import { buildContext, refineEvents, refinePayments } from '../../lib/assistant/learn'
 import { dayTitle } from '../../lib/calendar'
+import { diaryPhotos, nowTime } from '../../lib/diaryPhotos'
 import { categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatWon } from '../../lib/format'
@@ -142,7 +143,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
         })
       } else {
         const old = await diaryRepo.get(p.date)
-        await diaryRepo.save(p.date, { text: [old?.text, p.text].filter(Boolean).join('\n\n'), photo: old?.photo ?? p.photo })
+        await diaryRepo.save(p.date, { text: [old?.text, p.text].filter(Boolean).join('\n\n'), photos: [...diaryPhotos(old), ...(p.photo ? [{ src: p.photo, time: nowTime() }] : [])] })
         add({ id: id(), from: 'ai', text: `${dayTitle(p.date)} 일기에 남겼어요 📔${old ? ' 전에 쓴 일기 뒤에 붙였어요.' : ''}` })
       }
     } catch {

@@ -127,8 +127,13 @@ function isEvent(v: unknown): v is CalendarEvent {
   )
 }
 
+const isDiaryPhoto = (v: unknown) => isObj(v) && isStr(v.src) && isOptStr(v.time) && isOptStr(v.note)
+
 function isDiary(v: unknown): v is Diary {
-  return isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
+  return (
+    isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && (v.photos === undefined || (Array.isArray(v.photos) && v.photos.every(isDiaryPhoto))) &&
+    isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
 }
 
 const isSchedule = (v: unknown) =>

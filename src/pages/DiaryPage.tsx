@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, ImagePlus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, ImagePlus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -11,7 +11,9 @@ import { useToday } from '../hooks/useToday'
 import { dayTitle } from '../lib/calendar'
 import { parseDateKey, toDateKey } from '../lib/date'
 import { shrinkImage } from '../lib/image'
-import type { Diary } from '../db/types'
+import { readPhotoInfo } from '../lib/meal/photo'
+import { MAX_DIARY_PHOTOS, MAX_PHOTO_NOTE, cleanPhotos, diaryPhotos, nowTime, sortByTime } from '../lib/diaryPhotos'
+import type { Diary, DiaryPhoto } from '../db/types'
 import { diaryRepo } from '../repositories/diaryRepo'
 
 const MAX_TEXT = 2000
@@ -72,7 +74,10 @@ export default function DiaryPage() {
                       <span className="size-12 shrink-0 rounded-xl" style={{ background: d.color }} aria-hidden />
                     )}
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-bold">{dayTitle(d.date)}</span>
+                      <span className="block text-sm font-bold">
+                        {dayTitle(d.date)}
+                        {(d.photos?.length ?? 0) > 1 && <span className="ml-1.5 text-xs font-semibold text-slate-400">사진 {d.photos!.length}장</span>}
+                      </span>
                       <span className="line-clamp-2 text-sm text-slate-500">{d.text || '사진만 있어요'}</span>
                     </span>
                   </button>
@@ -87,6 +92,10 @@ export default function DiaryPage() {
   )
 }
 
+type Item = DiaryPhoto & { key: string }
+let nextKey = 0
+const withKey = (p: DiaryPhoto): Item => ({ ...p, key: `p${nextKey++}` })
+
 interface EditorProps {
   date: string
   today: string
@@ -99,29 +108,54 @@ interface EditorProps {
 /** 그날 일기 쓰기 칸 (날짜나 저장된 내용이 바뀌면 key로 새로 그린다) */
 function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps) {
   const [text, setText] = useState(() => [entry?.text, draft?.text].filter(Boolean).join('\n\n'))
-  const [photo, setPhoto] = useState<string | undefined>(entry?.photo ?? draft?.photo)
+  const [photos, setPhotos] = useState<Item[]>(() =>
+    [...diaryPhotos(entry), ...(draft?.photo ? [{ src: draft.photo, time: nowTime() }] : [])].map(withKey),
+  )
+  const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
-  const dirty = (text !== (entry?.text ?? '') || photo !== entry?.photo)
-  const empty = text.trim() === '' && !photo
+  const cleaned = cleanPhotos(photos)
+  const dirty = text !== (entry?.text ?? '') || JSON.stringify(cleaned) !== JSON.stringify(cleanPhotos(diaryPhotos(entry)))
+  const empty = text.trim() === '' && photos.length === 0
+  const room = MAX_DIARY_PHOTOS - photos.length
+  const timeline = sortByTime(photos)
 
-  async function pickPhoto(file: File | undefined) {
-    if (!file) return
-    try {
-      setPhoto(await shrinkImage(file))
-    } catch {
-      toast('사진을 넣지 못했어요. 다른 사진으로 해 주세요', 'error')
+  /** 사진 여러 장을 넣는다. 찍은 시간은 사진 정보에서 읽고, 없으면 파일 시간 */
+  async function pickPhotos(list: FileList | null) {
+    const files = Array.from(list ?? [])
+    if (files.length === 0) return
+    if (room <= 0) {
+      toast(`사진은 하루에 ${MAX_DIARY_PHOTOS}장까지 넣을 수 있어요`, 'error')
+      return
     }
+    setAdding(true)
+    let failed = 0
+    const added: Item[] = []
+    for (const file of files.slice(0, room)) {
+      try {
+        const [src, info] = await Promise.all([shrinkImage(file), readPhotoInfo(file)])
+        added.push(withKey({ src, time: info.time }))
+      } catch {
+        failed++
+      }
+    }
+    setPhotos((old) => [...old, ...added].slice(0, MAX_DIARY_PHOTOS))
+    setAdding(false)
+    if (files.length > room) toast(`사진은 하루에 ${MAX_DIARY_PHOTOS}장까지라서 ${files.length - room}장은 빼고 넣었어요`, 'error')
+    else if (failed) toast(`${failed}장은 넣지 못했어요. 다른 사진으로 해 주세요`, 'error')
   }
+
+  const change = (key: string, patch: Partial<DiaryPhoto>) => setPhotos((old) => old.map((p) => (p.key === key ? { ...p, ...patch } : p)))
+  const drop = (key: string) => setPhotos((old) => old.filter((p) => p.key !== key))
 
   async function save() {
     if (empty) return
     setSaving(true)
     try {
-      await diaryRepo.save(date, { text: text.trim(), photo })
+      await diaryRepo.save(date, { text: text.trim(), photos: cleaned })
       toast('일기를 저장했어요')
     } catch {
       toast('저장하지 못했어요. 사진이 너무 크면 다른 사진으로 해 주세요', 'error')
@@ -153,24 +187,68 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
           </button>
         </div>
 
-        {photo ? (
-          <div className="relative mb-3 overflow-hidden rounded-2xl">
-            <img src={photo} alt="일기 사진" className="max-h-72 w-full object-cover" />
-            <button type="button" onClick={() => setPhoto(undefined)} className="absolute top-2 right-2 rounded-full bg-slate-900/60 p-1.5 text-white" aria-label="사진 빼기">
-              <X className="size-4" strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
-        ) : (
+        {timeline.length > 0 && (
+          <ol className="mb-3" aria-label="사진 타임라인">
+            {timeline.map((p, i) => (
+              <li key={p.key} className="relative flex gap-3 pb-4 last:pb-1">
+                {/* 시간 줄 */}
+                <div className="flex w-16 shrink-0 flex-col items-center">
+                  {/* 보이는 건 24시간 글자, 누르면 위에 투명하게 덮은 시간 고르기가 열린다 */}
+                  <label className="relative flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 text-xs font-bold whitespace-nowrap text-brand-700">
+                    <Clock className="size-3 shrink-0" aria-hidden />
+                    {p.time ?? '시간'}
+                    <input
+                      type="time"
+                      value={p.time ?? ''}
+                      onChange={(e) => change(p.key, { time: e.target.value || undefined })}
+                      className="absolute inset-0 size-full cursor-pointer opacity-0"
+                      aria-label={`${i + 1}번째 사진 시간`}
+                    />
+                  </label>
+                  {i < timeline.length - 1 && <span className="mt-1 w-0.5 flex-1 rounded-full bg-slate-200" aria-hidden />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="relative overflow-hidden rounded-2xl bg-slate-100">
+                    <img src={p.src} alt={p.note || `${i + 1}번째 사진`} className="max-h-80 w-full object-contain" />
+                    <button type="button" onClick={() => drop(p.key)} className="absolute top-2 right-2 rounded-full bg-slate-900/60 p-1.5 text-white" aria-label={`${i + 1}번째 사진 빼기`}>
+                      <X className="size-4" strokeWidth={2.5} aria-hidden />
+                    </button>
+                  </div>
+                  <input
+                    value={p.note ?? ''}
+                    maxLength={MAX_PHOTO_NOTE}
+                    onChange={(e) => change(p.key, { note: e.target.value })}
+                    placeholder="한 줄 메모 (선택)"
+                    className="mt-1.5 w-full rounded-xl bg-slate-100 px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
+                    aria-label={`${i + 1}번째 사진 메모`}
+                  />
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+        {room > 0 && (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="mb-3 flex min-h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+            disabled={adding}
+            className={`mb-3 flex w-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-60 ${photos.length ? 'min-h-14' : 'min-h-24'}`}
           >
             <ImagePlus className="size-6" aria-hidden />
-            사진 넣기 (선택)
+            {adding ? '사진 넣는 중…' : photos.length ? `사진 더 넣기 (${photos.length}/${MAX_DIARY_PHOTOS})` : `사진 넣기 (선택, ${MAX_DIARY_PHOTOS}장까지)`}
           </button>
         )}
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pickPhoto(e.target.files?.[0])} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            void pickPhotos(e.target.files)
+            e.target.value = ''
+          }}
+        />
 
         <textarea
           value={text}
@@ -197,7 +275,7 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
             {saving ? '저장 중…' : entry && !dirty ? '저장됨' : '저장'}
           </Button>
         </div>
-        <p className="mt-2 text-center text-xs text-slate-400">사진을 넣으면 캘린더 날짜 뒤에 흐리게 보여요. 글만 쓰면 색으로 표시돼요.</p>
+        <p className="mt-2 text-center text-xs text-slate-400">사진은 찍은 시간 순서로 줄 세워져요. 시간을 눌러 바꿀 수 있어요. 첫 사진이 캘린더 날짜 뒤에 흐리게 보여요.</p>
       </section>
 
       <ConfirmDialog
