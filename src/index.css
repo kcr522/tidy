@@ -1,15 +1,119 @@
 @import "tailwindcss";
 
-/* Tidy 기본 색상 — 청록(teal) 계열 */
+/*
+ * Tidy 디자인 토큰
+ * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)
+ * - 포인트: 하늘색(#36b3f4) + 민트(#34d3b0) + 라벤더(#9686ff) + 핑크(#ff8db8) 네 가지 색의 그라데이션
+ *   대시보드·설정: 네 색 전부 / 가계부, 할 일, 스크랩: 그중 세 색씩 (하늘색은 항상 들어간다)
+ */
 @theme {
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-income: #2563eb;
-  --color-expense: #dc2626;
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --color-slate-50: #f9fafb;
+  --color-slate-100: #f2f4f6;
+  --color-slate-200: #e5e8eb;
+  --color-slate-300: #d1d6db;
+  --color-slate-400: #b0b8c1;
+  --color-slate-500: #8b95a1;
+  --color-slate-600: #6b7684;
+  --color-slate-700: #4e5968;
+  --color-slate-800: #333d4b;
+  --color-slate-900: #191f28;
+
+  /* 기본 포인트 색: 하늘색 (구역마다 아래 .theme-* 에서 바뀐다) */
+  --color-brand-50: #eef8ff;
+  --color-brand-100: #d9efff;
+  --color-brand-500: #38a9f5;
+  --color-brand-600: #1d8fe1;
+  --color-brand-700: #1572bd;
+
+  --color-income: #3182f6;
+  --color-expense: #f04452;
+
+  --shadow-card: 0 2px 16px rgb(25 31 40 / 0.05);
+  --shadow-float: 0 6px 20px color-mix(in srgb, var(--color-brand-500) 30%, transparent);
+
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+
+/*
+ * 구역별 색. 안에 있는 버튼, 체크, 막대, 글자색이 모두 이 색을 따른다.
+ * 앱을 켤 때마다 src/lib/palette.ts 가 --{구역}-c1~c3, --{구역}-50~700, --{구역}-on 을 새로 넣는다.
+ * 아래 값은 스크립트가 돌기 전의 기본값 (견본 "하늘 바다", "민트 크림", "솜사탕").
+ */
+:root {
+  --grad-angle: 120deg;
+  --logo-c1: #1aa3d9; --logo-c2: #3b82f6; --logo-c3: #7c3aed;
+  --main-c1: #4fd1ff; --main-c2: #3b82f6; --main-c3: #7c3aed;
+  --money-c1: #4fd1ff; --money-c2: #3b82f6; --money-c3: #7c3aed;
+  --todo-c1: #a1f0d1; --todo-c2: #9fd8ff; --todo-c3: #c8b6ff;
+  --scrap-c1: #8ec5fc; --scrap-c2: #c9a7ff; --scrap-c3: #fbc2eb;
+  --main-50: #eef4ff; --main-100: #dce8ff; --main-500: #3b82f6; --main-600: #2563eb; --main-700: #1d4ed8;
+  --money-50: #eef4ff; --money-100: #dce8ff; --money-500: #3b82f6; --money-600: #2563eb; --money-700: #1d4ed8;
+  --todo-50: #ecfbf4; --todo-100: #d3f5e6; --todo-500: #2fbf8a; --todo-600: #24a374; --todo-700: #1b845d;
+  --scrap-50: #f5f0ff; --scrap-100: #ebe1ff; --scrap-500: #9866f0; --scrap-600: #8450e6; --scrap-700: #6c3cc9;
+  --main-on: #fff; --money-on: #fff; --todo-on: #191f28; --scrap-on: #191f28;
+  --main-on-shadow: 0 1px 2px rgb(25 31 40 / 0.18); --money-on-shadow: 0 1px 2px rgb(25 31 40 / 0.18);
+  --todo-on-shadow: none; --scrap-on-shadow: none;
+  --main-on-soft: rgb(255 255 255 / 0.22); --money-on-soft: rgb(255 255 255 / 0.22);
+  --todo-on-soft: rgb(25 31 40 / 0.08); --scrap-on-soft: rgb(25 31 40 / 0.08);
+}
+
+:root,
+.theme-main {
+  --grad: linear-gradient(var(--grad-angle), var(--main-c1), var(--main-c2) 52%, var(--main-c3));
+  --on: var(--main-on); --on-shadow: var(--main-on-shadow); --on-soft: var(--main-on-soft);
+  --color-brand-50: var(--main-50); --color-brand-100: var(--main-100); --color-brand-500: var(--main-500);
+  --color-brand-600: var(--main-600); --color-brand-700: var(--main-700);
+}
+
+.theme-money {
+  --grad: linear-gradient(var(--grad-angle), var(--money-c1), var(--money-c2) 52%, var(--money-c3));
+  --on: var(--money-on); --on-shadow: var(--money-on-shadow); --on-soft: var(--money-on-soft);
+  --color-brand-50: var(--money-50); --color-brand-100: var(--money-100); --color-brand-500: var(--money-500);
+  --color-brand-600: var(--money-600); --color-brand-700: var(--money-700);
+}
+
+.theme-todo {
+  --grad: linear-gradient(var(--grad-angle), var(--todo-c1), var(--todo-c2) 52%, var(--todo-c3));
+  --on: var(--todo-on); --on-shadow: var(--todo-on-shadow); --on-soft: var(--todo-on-soft);
+  --color-brand-50: var(--todo-50); --color-brand-100: var(--todo-100); --color-brand-500: var(--todo-500);
+  --color-brand-600: var(--todo-600); --color-brand-700: var(--todo-700);
+}
+
+.theme-scrap {
+  --grad: linear-gradient(var(--grad-angle), var(--scrap-c1), var(--scrap-c2) 52%, var(--scrap-c3));
+  --on: var(--scrap-on); --on-shadow: var(--scrap-on-shadow); --on-soft: var(--scrap-on-soft);
+  --color-brand-50: var(--scrap-50); --color-brand-100: var(--scrap-100); --color-brand-500: var(--scrap-500);
+  --color-brand-600: var(--scrap-600); --color-brand-700: var(--scrap-700);
+}
+
+/* 그라데이션 위에 얹는 반투명 바탕 (밝은 그라데이션이면 살짝 어둡게) */
+@utility bg-on-soft {
+  background-color: var(--on-soft);
+}
+
+/* 아주 연한 그라데이션 바탕 (아이콘 동그라미 등) */
+@utility bg-grad-soft {
+  background-image: linear-gradient(135deg, var(--color-brand-50), color-mix(in srgb, var(--color-brand-100) 45%, white));
+}
+
+/* 그라데이션 배경 */
+@utility bg-grad {
+  background-image: var(--grad);
+}
+
+/* 그라데이션 글자 */
+@utility text-grad {
+  background-image: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 흰 카드 */
+@utility card {
+  border-radius: 1.5rem;
+  background-color: #fff;
+  box-shadow: var(--shadow-card);
 }
 
 /* 작은 버튼도 폰에서 누르기 쉽게: 보이는 크기는 그대로, 누르는 영역만 최소 44px */
@@ -33,5 +137,25 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-100 text-slate-900 antialiased;
+  letter-spacing: -0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* 로고 글자 그라데이션 (항상 흰 바탕에서 읽히는 진하기) */
+@utility text-logo {
+  background-image: linear-gradient(90deg, var(--logo-c1), var(--logo-c2), var(--logo-c3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 그라데이션 위 글자를 또렷하게 (밝은 그라데이션이면 검정, 진하면 흰색) */
+@utility on-grad {
+  color: var(--on, #fff);
+  text-shadow: var(--on-shadow, none);
 }

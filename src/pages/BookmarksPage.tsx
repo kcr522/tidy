@@ -71,7 +71,7 @@ export default function BookmarksPage() {
     <>
       <PageHeader title="스크랩" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>} />
 
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-200/60 p-1 md:max-w-xs" role="tablist">
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
         {(
           [
             ['all', `전체 (${counts?.all ?? 0})`],
@@ -84,7 +84,7 @@ export default function BookmarksPage() {
             role="tab"
             aria-selected={filter === key}
             onClick={() => setFilter(key)}
-            className={`min-h-11 rounded-lg text-sm font-semibold ${filter === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+            className={`min-h-11 rounded-xl text-sm font-semibold ${filter === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
           >
             {label}
           </button>

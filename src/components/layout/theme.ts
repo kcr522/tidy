@@ -1,0 +1,7 @@
+/** 주소에 따라 구역 색을 고른다 (index.css의 .theme-*) */
+export function themeFor(path: string): string {
+  if (path.startsWith('/money')) return 'theme-money'
+  if (path.startsWith('/todos')) return 'theme-todo'
+  if (path.startsWith('/scraps')) return 'theme-scrap'
+  return 'theme-main'
+}

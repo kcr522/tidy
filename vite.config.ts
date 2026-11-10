@@ -16,6 +16,16 @@ export default defineConfig({
     // PWA: 오프라인 동작 + 폰 홈 화면/컴퓨터 "앱 설치" 지원
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // 글씨체(Pretendard) 조각 파일은 처음 쓸 때 받아 두고, 그 뒤로는 오프라인에서도 쓴다
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === 'font',
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-fonts', expiration: { maxEntries: 120 } },
+          },
+        ],
+      },
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Tidy',
@@ -24,8 +34,8 @@ export default defineConfig({
         lang: 'ko',
         start_url: '/',
         display: 'standalone',
-        background_color: '#f8fafc',
-        theme_color: '#0f766e',
+        background_color: '#f2f4f6',
+        theme_color: '#4cc3fa',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

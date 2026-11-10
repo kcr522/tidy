@@ -1,3 +1,4 @@
+import { ListChecks } from 'lucide-react'
 import type { Todo } from '../../db/types'
 import { todayProgress, todayTodos } from '../../lib/summary'
 import TodoItem from '../todos/TodoItem'
@@ -20,14 +21,14 @@ export default function TodayTodoCard({ todos, today, onAdd, onToggle, onSelect 
   const rest = items.length - MAX_ITEMS
 
   return (
-    <DashboardCard to="/todos" icon="✅" title={`오늘 할 일 (${done}/${total})`} addLabel="할 일 추가" onAdd={onAdd}>
+    <DashboardCard to="/todos" icon={ListChecks} title={`오늘 할 일 (${done}/${total})`} addLabel="할 일 추가" onAdd={onAdd}>
       {items.length === 0 ? (
         <CardEmpty>오늘 할 일이 없어요. + 를 눌러 추가해 보세요.</CardEmpty>
       ) : (
         <>
           {total > 0 && (
-            <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
-              <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${(done / total) * 100}%` }} />
+            <div className="mb-2 h-2 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+              <div className="h-full rounded-full bg-grad transition-all" style={{ width: `${(done / total) * 100}%` }} />
             </div>
           )}
           <ul className="-mx-3 divide-y divide-slate-100">

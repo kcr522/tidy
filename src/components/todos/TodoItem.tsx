@@ -1,3 +1,4 @@
+import { Check, Link2 } from 'lucide-react'
 import type { Todo } from '../../db/types'
 import { formatDateLabel } from '../../lib/format'
 import { isOverdue } from '../../lib/summary'
@@ -29,19 +30,19 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
         className="flex min-h-12 shrink-0 items-center px-3"
       >
         <span
-          className={`flex size-5 items-center justify-center rounded-md border-2 text-xs text-white transition-colors ${
-            done ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white'
+          className={`flex size-6 items-center justify-center rounded-full transition-all ${
+            done ? 'bg-grad on-grad scale-100' : 'border-2 border-slate-300 bg-white'
           }`}
         >
-          {done && '✓'}
+          {done && <Check className="size-3.5" strokeWidth={3.5} aria-hidden />}
         </span>
       </button>
       <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
         <span className={`size-2 shrink-0 rounded-full ${p.dot}`} title={`중요도 ${p.label}`} aria-label={`중요도 ${p.label}`} />
-        <span className={`min-w-0 flex-1 truncate ${done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{todo.title}</span>
-        {overdue && <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">기한 지남</span>}
+        <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-slate-400 line-through' : 'font-medium text-slate-800'}`}>{todo.title}</span>
+        {overdue && <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-expense">기한 지남</span>}
         {todo.dueDate && !overdue && (
-          <span className={`shrink-0 text-xs ${todo.dueDate === today ? 'font-semibold text-brand-700' : 'text-slate-400'}`}>
+          <span className={`shrink-0 text-xs ${todo.dueDate === today ? 'font-bold text-brand-600' : 'text-slate-400'}`}>
             {todo.dueDate === today ? '오늘' : formatDateLabel(todo.dueDate)}
           </span>
         )}
@@ -51,11 +52,11 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
         <button
           type="button"
           onClick={onOpenLink}
-          className="shrink-0 rounded-lg px-2 py-2 text-slate-400 hover:bg-slate-100 hover:text-brand-700"
+          className="tap shrink-0 rounded-full p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600"
           aria-label={`${todo.title} 링크 열기`}
           title="링크 열기"
         >
-          🔗
+          <Link2 className="size-[18px]" aria-hidden />
         </button>
       )}
     </li>

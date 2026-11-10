@@ -28,8 +28,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`rounded-full px-4 py-2 text-sm font-medium text-white shadow-lg ${
-              t.kind === 'error' ? 'bg-expense' : 'bg-slate-800'
+            className={`rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur ${
+              t.kind === 'error' ? 'bg-expense' : 'bg-slate-900/90'
             }`}
           >
             {t.message}

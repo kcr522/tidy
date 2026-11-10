@@ -95,7 +95,7 @@ export default function TransactionsPage() {
               aria-pressed={category === c}
               onClick={() => setCategory(c)}
               className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
-                category === c ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                category === c ? 'bg-grad on-grad shadow-float' : 'bg-white text-slate-600 shadow-card hover:bg-slate-50'
               }`}
             >
               {c ?? '전체'}
