@@ -101,3 +101,17 @@ describe('일정과 일기 저장', () => {
     expect(await createDiaryRepo(b).get('2026-11-10')).toMatchObject({ text: '고친 일기' })
   })
 })
+
+describe('가계부 달력', () => {
+  it('날짜별 수입·지출 합계와 짧은 금액', async () => {
+    const { dailyTotals, shortWon } = await import('../../src/lib/calendar')
+    const tx = (type: 'INCOME' | 'EXPENSE', amount: number, date: string) => ({ type, amount, date, category: '', memo: '', createdAt: '', updatedAt: '' })
+    const m = dailyTotals([tx('EXPENSE', 9000, '2026-11-10'), tx('EXPENSE', 1000, '2026-11-10'), tx('INCOME', 2500000, '2026-11-10'), tx('EXPENSE', 5000, '2026-11-11')])
+    expect(m.get('2026-11-10')).toEqual({ income: 2500000, expense: 10000 })
+    expect(m.get('2026-11-11')).toEqual({ income: 0, expense: 5000 })
+    expect(shortWon(45000)).toBe('45,000')
+    expect(shortWon(2500000)).toBe('250만')
+    expect(shortWon(1449053)).toBe('144.9만')
+    expect(shortWon(403223)).toBe('40.3만')
+  })
+})

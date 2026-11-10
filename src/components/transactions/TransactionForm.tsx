@@ -20,15 +20,17 @@ interface TransactionFormProps {
   initial?: Transaction
   onSubmit: (input: TransactionInput) => Promise<void>
   onDelete?: () => void
+  /** 새로 추가할 때 날짜 기본값 (가계부 달력에서 고른 날) */
+  defaultDate?: string
 }
 
 type Errors = Partial<Record<'amount' | 'date' | 'category' | 'memo', string>>
 
 /** 수입/지출 입력 폼 (FR-010~013) */
-export default function TransactionForm({ initial, onSubmit, onDelete }: TransactionFormProps) {
+export default function TransactionForm({ initial, onSubmit, onDelete, defaultDate }: TransactionFormProps) {
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'EXPENSE')
   const [amountText, setAmountText] = useState(initial ? formatNumber(initial.amount) : '')
-  const [date, setDate] = useState(initial?.date ?? todayKey())
+  const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey())
   const [category, setCategory] = useState(initial?.category ?? '')
   const [memo, setMemo] = useState(initial?.memo ?? '')
   // 새 내역은 지금 시각으로 채운다
