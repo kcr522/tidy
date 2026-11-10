@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Settings } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import ColorModeButton from '../common/ColorModeButton'
@@ -31,7 +32,12 @@ export default function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
           <Logo />
-          <ColorModeButton />
+          <div className="flex items-center gap-1">
+            <ColorModeButton />
+            <Link to="/settings" className="tap rounded-full p-1.5 text-slate-500" aria-label="설정">
+              <Settings className="size-[22px]" aria-hidden />
+            </Link>
+          </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 md:px-10 md:pt-10 md:pb-10">
           <Outlet />
@@ -82,8 +88,8 @@ function SideNav() {
 
 function BottomTabBar() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex rounded-t-3xl bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgb(0_0_0/0.06)] backdrop-blur-md md:hidden">
-      {NAV_ITEMS.map((item) => (
+    <nav className="fixed inset-x-0 bottom-0 z-10 flex rounded-t-3xl bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgb(25_31_40/0.06)] backdrop-blur-md md:hidden">
+      {NAV_ITEMS.filter((item) => item.to !== '/settings').map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -96,7 +102,7 @@ function BottomTabBar() {
         >
           {({ isActive }) => (
             <>
-              <span className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-grad on-grad' : ''}`}>
+              <span className={`flex h-8 w-11 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-grad on-grad' : ''}`}>
                 <item.icon className="size-[22px]" strokeWidth={isActive ? 2.3 : 1.8} aria-hidden />
               </span>
               {item.label}

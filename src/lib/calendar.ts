@@ -63,6 +63,29 @@ export function expenseOn(transactions: Transaction[], dateKey: string): number 
   return transactions.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === dateKey ? sum + t.amount : sum), 0)
 }
 
+export interface DayMoney {
+  income: number
+  expense: number
+}
+
+/** 날짜별 수입·지출 합계 (가계부 달력) */
+export function dailyTotals(transactions: Transaction[]): Map<string, DayMoney> {
+  const map = new Map<string, DayMoney>()
+  for (const t of transactions) {
+    const d = map.get(t.date) ?? { income: 0, expense: 0 }
+    if (t.type === 'INCOME') d.income += t.amount
+    else d.expense += t.amount
+    map.set(t.date, d)
+  }
+  return map
+}
+
+/** 달력 칸에 넣을 짧은 금액: 403,223 → "40.3만", 45,000 → "45,000" (폰 칸이 좁아서 10만 이상은 만 단위) */
+export function shortWon(amount: number): string {
+  if (amount >= 100_000) return `${Math.round(amount / 1000) / 10}만`
+  return amount.toLocaleString('ko-KR')
+}
+
 /** "11월 15일 (토)" */
 export function dayTitle(dateKey: string): string {
   const d = parseDateKey(dateKey)

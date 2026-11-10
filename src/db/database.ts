@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Bookmark, MerchantAlias, Recurring, Todo, Transaction } from './types'
+import type { Bookmark, CalendarEvent, Diary, MerchantAlias, Recurring, Todo, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -12,6 +12,8 @@ export class TidyDB extends Dexie {
   bookmarks!: Table<Bookmark, number>
   recurring!: Table<Recurring, number>
   merchantAliases!: Table<MerchantAlias, string>
+  events!: Table<CalendarEvent, number>
+  diaries!: Table<Diary, string>
 
   constructor(name = 'tidy') {
     super(name)
@@ -28,6 +30,11 @@ export class TidyDB extends Dexie {
     // 2차: 사용자가 알려 준 가게 이름
     this.version(3).stores({
       merchantAliases: '&raw',
+    })
+    // 2차: 캘린더 일정 (여러 날에 걸친 기간 포함) + 하루 일기
+    this.version(4).stores({
+      events: '++id, startDate, endDate',
+      diaries: '&date',
     })
   }
 }
