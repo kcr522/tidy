@@ -142,12 +142,23 @@ export interface CalendarEvent {
 }
 
 /** 일기: 하루에 하나 (2차) */
+/** 일기 사진 한 장: 언제 찍었는지와 한 줄 메모 */
+export interface DiaryPhoto {
+  /** 작게 줄인 JPEG data URL */
+  src: string
+  /** HH:mm (찍은 시간). 모르면 없음 */
+  time?: string
+  note?: string
+}
+
 export interface Diary {
   /** YYYY-MM-DD (하루 하나라서 날짜가 곧 키) */
   date: string
   text: string
-  /** 사진 (작게 줄인 JPEG data URL). 없으면 캘린더에 색으로만 표시 */
+  /** 대표 사진 (작게 줄인 JPEG data URL, photos 의 첫 장). 없으면 캘린더에 색으로만 표시 */
   photo?: string
+  /** 사진 여러 장 (최대 10장, 시간 순서). 예전 일기에는 없다 */
+  photos?: DiaryPhoto[]
   /** 사진이 없을 때 캘린더에 칠할 색 (쓸 때 아무거나 하나 고른다) */
   color: string
   createdAt: string
