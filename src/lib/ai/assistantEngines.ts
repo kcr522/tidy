@@ -18,7 +18,7 @@ export interface AssistantResult extends AssistantReply {
 
 /**
  * 설정 > AI 연결에서 고른 방법으로 묻는다 (AI 소비 한마디와 같은 설정)
- * - 기본(AI 없이): 글에서 날짜·금액을 규칙으로 찾는다 (사진은 못 읽는다)
+ * - 기본(AI 없이): 글에서 날짜·금액을 규칙으로 찾는다. 사진은 기기 안에서 글자를 읽어(OCR) 같은 규칙으로 찾는다
  * - Gemini (무료): 내 Gemini 키로 사진과 글을 읽는다
  * - 서버 / 내 키: Claude가 사진과 글을 읽는다
  */
@@ -53,6 +53,26 @@ export async function askAssistant(settings: AiSettings, req: AssistantRequest, 
     const { default: Anthropic } = await import('@anthropic-ai/sdk')
     const client = new Anthropic({ apiKey: settings.apiKey.trim(), dangerouslyAllowBrowser: true, maxRetries: 1 })
     return { ...(await askClaudeAssistant(client, req, signal)), engine: 'key' }
+  }
+  // 기본(AI 없이): 사진이 있으면 기기 안에서 글자를 읽고, 은행·카드 캡처면 내역을 규칙으로 찾는다
+  if (req.image) {
+    const { recognizeText } = await import('../ocr/recognize')
+    const { parseBankText } = await import('../ocr/bankText')
+    const read = await recognizeText(`data:image/jpeg;base64,${req.image}`).catch(() => '')
+    const bank = parseBankText(read, req.today)
+    if (bank.payments.length > 0) {
+      const n = bank.payments.length
+      return {
+        kind: 'payment',
+        reply: `캡처에서 결제 내역 ${n}건을 찾았어요. 맞는지 확인해 주세요.`,
+        events: [],
+        payments: bank.payments,
+        diary: null,
+        engine: 'local',
+      }
+    }
+    const text = [req.text, read].filter((t) => t?.trim()).join('\n')
+    return { ...localAssistant({ ...req, image: undefined, text }), engine: 'local' }
   }
   return { ...localAssistant(req), engine: 'local' }
 }
