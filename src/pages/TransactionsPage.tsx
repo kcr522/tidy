@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, Menu } from 'lucide-react'
+import { CalendarDays, Camera, List, Menu, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -8,6 +8,7 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import MealCapture from '../components/transactions/MealCapture'
+import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
@@ -17,12 +18,23 @@ import type { Transaction } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
 import { accountEmoji } from '../lib/accounts'
+import { dayTitle } from '../lib/calendar'
 import { formatWon } from '../lib/format'
 import { accountTotals, categoriesUsed, filterByAccount, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Editor = { mode: 'add' } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
+type Editor = { mode: 'add'; date?: string } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
 type FilterBy = 'category' | 'account'
+type View = 'list' | 'calendar'
+const VIEW_KEY = 'tidy:money-view'
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list'
+  } catch {
+    return 'list'
+  }
+}
 
 /** 가계부 화면 (spec US1) */
 export default function TransactionsPage() {
@@ -38,7 +50,18 @@ export default function TransactionsPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [showMeal, setShowMeal] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
+  const [view, setViewState] = useState<View>(loadView)
+  const [selected, setSelected] = useState(today)
   const toast = useToast()
+
+  function setView(v: View) {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* 저장 못 해도 화면은 바뀐다 */
+    }
+  }
 
   const items = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
   const used = useMemo(() => categoriesUsed(items ?? []), [items])
@@ -58,11 +81,16 @@ export default function TransactionsPage() {
   const summary = useMemo(() => monthSummary(filtered ?? []), [filtered])
   const chips = category !== null && !used.includes(category) ? [...used, category] : used
 
-  const moveMonth = (delta: number) =>
-    setYm(({ year, month }) => {
-      const d = new Date(year, month - 1 + delta, 1)
-      return { year: d.getFullYear(), month: d.getMonth() + 1 }
-    })
+  const moveMonth = (delta: number) => {
+    const d = new Date(ym.year, ym.month - 1 + delta, 1)
+    const next = { year: d.getFullYear(), month: d.getMonth() + 1 }
+    setYm(next)
+    // 달력에서 고른 날도 그 달로 (이번 달이면 오늘, 아니면 1일)
+    const key = `${next.year}-${String(next.month).padStart(2, '0')}`
+    setSelected(today.startsWith(key) ? today : `${key}-01`)
+  }
+  const monthKey = `${ym.year}-${String(ym.month).padStart(2, '0')}`
+  const dayItems = useMemo(() => (filtered ?? []).filter((t) => t.date === selected), [filtered, selected])
   const isThisMonth = ym.year === thisMonth.year && ym.month === thisMonth.month
 
   async function saveMeal(input: TransactionInput) {
@@ -142,8 +170,38 @@ export default function TransactionsPage() {
         summary={summary}
         onPrev={() => moveMonth(-1)}
         onNext={() => moveMonth(1)}
-        onToday={isThisMonth ? undefined : () => setYm(thisMonth)}
+        onToday={
+          isThisMonth
+            ? undefined
+            : () => {
+                setYm(thisMonth)
+                setSelected(today)
+              }
+        }
       />
+
+      <div className="mb-4 flex justify-end">
+        <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
+          {(
+            [
+              ['list', '목록', List],
+              ['calendar', '달력', CalendarDays],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              onClick={() => setView(key)}
+              className={`flex min-h-10 items-center gap-1 rounded-xl px-3 text-sm font-semibold ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+            >
+              <Icon className="size-[18px]" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {items !== undefined && items.length > 0 && (
         <div className="mb-4 space-y-2.5">
@@ -193,7 +251,40 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {items === undefined || filtered === undefined ? null : items.length === 0 ? (
+      {view === 'calendar' && items !== undefined && (
+        <>
+          <MoneyCalendar
+            month={monthKey}
+            today={today}
+            selected={selected}
+            items={filtered ?? []}
+            onSelect={setSelected}
+            onAdd={(d) => {
+              setSelected(d)
+              setEditor({ mode: 'add', date: d })
+            }}
+          />
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-[17px] font-bold">{dayTitle(selected)}</h2>
+            <button
+              type="button"
+              onClick={() => setEditor({ mode: 'add', date: selected })}
+              className="flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-bold text-brand-700"
+            >
+              <Plus className="size-4" strokeWidth={3} aria-hidden /> 이날 추가
+            </button>
+          </div>
+          {dayItems.length === 0 ? (
+            <p className="card mb-4 px-4 py-6 text-center text-sm text-slate-500">이날은 기록이 없어요</p>
+          ) : (
+            <div className="mb-4">
+              <TransactionList items={dayItems} onSelect={(item) => setEditor({ mode: 'view', item })} />
+            </div>
+          )}
+        </>
+      )}
+
+      {view === 'calendar' || items === undefined || filtered === undefined ? null : items.length === 0 ? (
         <EmptyState
           icon="💳"
           title="첫 내역을 기록해 보세요"
@@ -233,6 +324,7 @@ export default function TransactionsPage() {
           <TransactionForm
             key={editor.mode === 'edit' ? editor.item.id : 'new'}
             initial={editor.mode === 'edit' ? editor.item : undefined}
+            defaultDate={editor.mode === 'add' ? editor.date : undefined}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />

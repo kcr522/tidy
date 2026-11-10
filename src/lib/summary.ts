@@ -146,6 +146,11 @@ export function todayTodos(list: Todo[], today: string): Todo[] {
   return sortTodos(list.filter((t) => t.dueDate === today || isOverdue(t, today)))
 }
 
+/** 나중 할 일: 마감일이 내일 이후이거나 날짜가 없는 할 일 */
+export function laterTodos(list: Todo[], today: string): Todo[] {
+  return sortTodos(list.filter((t) => t.dueDate === null || t.dueDate > today))
+}
+
 /** 오늘 할 일 진행률: (완료 수, 전체 수) */
 export function todayProgress(list: Todo[], today: string): { done: number; total: number } {
   const items = todayTodos(list, today)

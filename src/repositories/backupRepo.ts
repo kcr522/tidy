@@ -1,5 +1,5 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Bookmark, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, MerchantAlias, Recurring, ScrapCategory, ScrapMedia, Todo, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -19,6 +19,10 @@ export interface Backup {
   scrapCategories?: ScrapCategory[]
   /** 스크랩 썸네일·캡처. 파일은 data URL 글자로 바꿔 넣는다 (스키마 5부터) */
   scrapMedia?: BackupMedia[]
+  /** 캘린더 일정 (스키마 4부터) */
+  events?: CalendarEvent[]
+  /** 일기 (스키마 4부터) */
+  diaries?: Diary[]
 }
 
 export interface BackupMedia {
@@ -108,6 +112,18 @@ function isAlias(v: unknown): v is MerchantAlias {
   return isObj(v) && isStr(v.raw) && isStr(v.original) && isStr(v.name) && isStr(v.createdAt)
 }
 
+const COLORS = ['pink', 'orange', 'blue', 'green', 'purple', 'red']
+function isEvent(v: unknown): v is CalendarEvent {
+  return (
+    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && COLORS.includes(v.color as string) &&
+    isStr(v.memo) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
+}
+
+function isDiary(v: unknown): v is Diary {
+  return isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
+}
+
 /** JSON 문자열을 검사해서 백업으로 바꾼다. 하나라도 틀리면 InvalidBackupError (FR-061) */
 export function parseBackup(text: string, currentSchema: number): Backup {
   let data: unknown
@@ -124,12 +140,14 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   if (!Array.isArray(transactions) || !Array.isArray(todos) || !Array.isArray(bookmarks)) throw new InvalidBackupError()
   const recurring = data.recurring ?? []
   const aliases = data.merchantAliases ?? []
+  const events = data.events ?? []
+  const diaries = data.diaries ?? []
   const categories = data.scrapCategories ?? []
   const media = data.scrapMedia ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media)) throw new InvalidBackupError()
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
-    !categories.every(isCategory) || !media.every(isMedia)
+    !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -141,7 +159,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.scrapCategories, d.scrapMedia]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.scrapCategories, d.scrapMedia]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -156,6 +174,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         bookmarks: await database.bookmarks.toArray(),
         recurring: await database.recurring.toArray(),
         merchantAliases: await database.merchantAliases.toArray(),
+        events: await database.events.toArray(),
+        diaries: await database.diaries.toArray(),
         scrapCategories: await database.scrapCategories.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
@@ -182,6 +202,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.scrapMedia.bulkAdd(media)
         await database.recurring.bulkAdd(backup.recurring ?? [])
         await database.merchantAliases.bulkAdd(backup.merchantAliases ?? [])
+        await database.events.bulkAdd(backup.events ?? [])
+        await database.diaries.bulkAdd(backup.diaries ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)

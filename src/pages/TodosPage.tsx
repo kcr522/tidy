@@ -13,12 +13,12 @@ import TodoForm from '../components/todos/TodoForm'
 import TodoItem from '../components/todos/TodoItem'
 import type { Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
-import { sortTodos, todayProgress, todayTodos } from '../lib/summary'
+import { laterTodos, sortTodos, todayProgress, todayTodos } from '../lib/summary'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 
-type Tab = 'today' | 'all'
+type Tab = 'today' | 'later' | 'all'
 type View = 'list' | 'calendar'
 type Editor = { mode: 'add'; dueDate?: string } | { mode: 'edit'; item: Todo } | null
 
@@ -47,8 +47,9 @@ export default function TodosPage() {
 
   const all = useLiveQuery(() => todoRepo.listAll(), [])
   const bookmarkUrls = useLiveQuery(async () => new Map((await bookmarkRepo.list('all')).map((b) => [b.id, b.url])), [])
-  const visible = useMemo(() => (all ? (tab === 'today' ? todayTodos(all, today) : sortTodos(all)) : undefined), [all, tab, today])
+  const visible = useMemo(() => (all ? (tab === 'today' ? todayTodos(all, today) : tab === 'later' ? laterTodos(all, today) : sortTodos(all)) : undefined), [all, tab, today])
   const progress = useMemo(() => todayProgress(all ?? [], today), [all, today])
+  const laterOpen = useMemo(() => laterTodos(all ?? [], today).filter((t) => t.isCompleted === 0).length, [all, today])
 
   function setView(v: View) {
     setViewState(v)
@@ -112,11 +113,12 @@ export default function TodosPage() {
 
       <div className="mb-4 flex items-center gap-2">
         {view === 'list' && (
-        <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
+        <div className="grid flex-1 grid-cols-3 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-sm" role="tablist">
           {(
             [
-              ['today', `오늘 (${progress.done}/${progress.total})`],
-              ['all', `전체 (${all?.length ?? 0})`],
+              ['today', `오늘 ${progress.done}/${progress.total}`],
+              ['later', `나중 ${laterOpen}`],
+              ['all', `전체 ${all?.length ?? 0}`],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -181,8 +183,8 @@ export default function TodosPage() {
       {visible === undefined ? null : visible.length === 0 ? (
         <EmptyState
           icon="✅"
-          title={tab === 'today' ? '오늘 할 일이 없어요' : '할 일을 추가해 보세요'}
-          description={tab === 'today' ? '마감일을 오늘로 정한 할 일이 여기에 보여요.' : undefined}
+          title={tab === 'today' ? '오늘 할 일이 없어요' : tab === 'later' ? '나중에 할 일이 없어요' : '할 일을 추가해 보세요'}
+          description={tab === 'today' ? '마감일을 오늘로 정한 할 일이 여기에 보여요.' : tab === 'later' ? '내일 이후로 정했거나 날짜 없이 둔 할 일이 여기에 보여요.' : undefined}
           action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 할 일 추가</Button>}
         />
       ) : (
