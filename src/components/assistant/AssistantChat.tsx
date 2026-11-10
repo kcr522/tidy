@@ -78,6 +78,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
       const [transactions, aliases] = await Promise.all([transactionRepo.listAll(), merchantAliasRepo.list()])
       const res = await askAssistant(settings, { today, ...(said ? { text: said } : {}), ...(image ? { image } : {}), context: buildContext(transactions, aliases) }, ctrl.signal)
       if (ctrl.signal.aborted) return
+      if (res.note) add({ id: id(), from: 'ai', text: res.note })
       if (res.fallback) add({ id: id(), from: 'ai', text: `${res.fallback.split(/\.\s/)[0].replace(/\.$/, "")}. 그래서 이번엔 기본 모드(AI 없이)로 답할게요.` })
       if (res.kind === 'event') {
         const first = res.events.map((e) => e.startDate).sort()[0]

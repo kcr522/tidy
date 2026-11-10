@@ -1,5 +1,6 @@
 import { askClaudeAssistant, assistantPrompt, AssistantError, ASSISTANT_SYSTEM, JSON_SHAPE, parseAssistantJson, type AssistantReply, type AssistantRequest } from './assistant'
-import { askAdvisor } from './advisor'
+import { ADVISOR_SYSTEM, advisorPrompt, askAdvisor } from './advisor'
+import { callGroq } from './groq'
 import { callGemini, type GeminiSource } from './gemini'
 import { localAssistant } from './assistantLocal'
 import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
@@ -17,6 +18,8 @@ export interface AssistantResult extends AssistantReply {
   engine: EngineId
   /** AI를 못 써서 기본(AI 없이)으로 대신 답했을 때, 왜 그랬는지 */
   fallback?: string
+  /** 고른 AI 대신 예비 AI가 답했을 때 알려 줄 한 줄 */
+  note?: string
   /** 질문에 답할 때 검색으로 찾은 출처 */
   sources?: GeminiSource[]
 }
@@ -34,11 +37,33 @@ export async function askAssistant(settings: AiSettings, req: AssistantRequest, 
     if (ai) return ai
   } catch (err) {
     if (signal?.aborted) throw err
-    // AI를 못 쓰면(무료 사용량을 다 썼거나, 서버가 붐비거나, 인터넷이 끊기면) 멈추지 않고 기본(AI 없이)으로 답한다
     const why = err instanceof Error ? err.message : 'AI에 연결하지 못했어요'
+    // 예비 AI(Groq)가 있으면 그걸로 (사진은 Groq가 못 읽어서 기본으로)
+    const groq = settings.groqKey?.trim()
+    if (groq && !req.image) {
+      try {
+        return { ...(await askGroq(groq, req, signal)), note: `${why.split(/\.\s/)[0].replace(/\.$/, '')}. 그래서 예비 AI(Groq)가 대신 답할게요.` }
+      } catch (err2) {
+        if (signal?.aborted) throw err2
+      }
+    }
+    // 그래도 안 되면(무료 사용량을 다 썼거나, 서버가 붐비거나, 인터넷이 끊기면) 멈추지 않고 기본(AI 없이)으로 답한다
     return { ...(await askLocal(req)), fallback: why }
   }
   return askLocal(req)
+}
+
+/** 예비 Groq: 일정·결제·일기를 JSON으로, 질문이면 한 번 더 물어 답한다 (검색은 못 한다) */
+async function askGroq(apiKey: string, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  const user = `${assistantPrompt(req).replace(/report로 알려 줘\.$/, '알려 줘.')}\n\n${JSON_SHAPE}`
+  const { text } = await callGroq(apiKey, { system: ASSISTANT_SYSTEM, user, json: true, maxTokens: 2048, signal })
+  const out = parseAssistantJson(text)
+  if (!out) throw new AssistantError('Groq 답을 알아보지 못했어요')
+  if (out.kind === 'question') {
+    const a = await callGroq(apiKey, { system: ADVISOR_SYSTEM, user: advisorPrompt(req.text ?? '', req.today, req.context), maxTokens: 1500, signal })
+    return { ...out, reply: `${a.text.slice(0, 1400)}\n\n(예비 AI라 최신 금리는 검색하지 못했어요. 은행 앱에서 꼭 확인해 주세요.)`, engine: 'groq' }
+  }
+  return { ...out, engine: 'groq' }
 }
 
 /** 돈·생활 질문: Gemini가 검색까지 해서 답한다 */

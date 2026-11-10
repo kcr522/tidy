@@ -1,4 +1,5 @@
 import { callGemini } from './gemini'
+import { callGroq } from './groq'
 import { localFeedback } from './localEngine'
 import { askClaude, FeedbackError, systemPrompt, userPrompt, type FeedbackMode, type SpendingSnapshot } from './prompts'
 
@@ -11,7 +12,7 @@ export interface FeedbackEngine {
   generate(mode: FeedbackMode, snapshot: SpendingSnapshot, signal?: AbortSignal): Promise<string>
 }
 
-export type EngineId = 'local' | 'gemini' | 'server' | 'key'
+export type EngineId = 'local' | 'gemini' | 'groq' | 'server' | 'key'
 
 export interface AiSettings {
   engine: EngineId
@@ -19,6 +20,8 @@ export interface AiSettings {
   apiKey?: string
   /** engine = 'gemini' 일 때: 무료 Gemini API 키 (이 기기에만 저장) */
   geminiKey?: string
+  /** 예비 AI: Groq 무료 키. 고른 AI가 막히면(한도 초과 등) 이걸로 다시 묻는다 (이 기기에만 저장) */
+  groqKey?: string
   /** engine = 'server' 일 때: 한마디를 받아 올 주소 */
   serverUrl?: string
 }
@@ -27,6 +30,7 @@ export const DEFAULT_SERVER_URL = '/api/feedback'
 
 export const ENGINE_LABEL: Record<EngineId, { title: string; desc: string }> = {
   local: { title: '기본 (AI 없이)', desc: '인터넷 없이 앱이 정해진 문장으로 말해 줘요. 무료예요.' },
+  groq: { title: 'Groq (무료, 예비)', desc: 'Gemini 한도를 다 쓰면 대신 답해요.' },
   gemini: { title: 'Gemini (무료)', desc: '구글 Gemini 무료 키로 이 기기에서 바로 물어봐요. 하루 사용 횟수 제한이 있어요.' },
   server: { title: 'Claude (Tidy 서버)', desc: '배포한 서버가 Claude에게 물어봐요. 키는 서버에만 있어요.' },
   key: { title: 'Claude (내 API 키)', desc: '이 기기에서 바로 Claude에게 물어봐요. 키는 이 기기에만 저장돼요.' },
@@ -83,9 +87,45 @@ export function geminiEngine(apiKey: string): FeedbackEngine {
   }
 }
 
-export function engineFor(settings: AiSettings): FeedbackEngine {
+/** 예비 Groq 키로 묻는다 */
+export function groqEngine(apiKey: string): FeedbackEngine {
+  return {
+    id: 'groq',
+    async generate(mode, snapshot, signal) {
+      try {
+        return (await callGroq(apiKey, { system: systemPrompt(mode), user: userPrompt(snapshot), maxTokens: 512, signal })).text
+      } catch (err) {
+        throw new FeedbackError(err instanceof Error ? err.message : 'Groq에서 답을 받지 못했어요')
+      }
+    },
+  }
+}
+
+/** 고른 AI가 막히면 예비 AI로 한 번 더 */
+function withBackup(primary: FeedbackEngine, backup: FeedbackEngine): FeedbackEngine {
+  return {
+    id: primary.id,
+    async generate(mode, snapshot, signal) {
+      try {
+        return await primary.generate(mode, snapshot, signal)
+      } catch (err) {
+        if (signal?.aborted) throw err
+        return backup.generate(mode, snapshot, signal)
+      }
+    },
+  }
+}
+
+function primaryFor(settings: AiSettings): FeedbackEngine | null {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) return geminiEngine(settings.geminiKey.trim())
   if (settings.engine === 'server') return serverEngine(settings.serverUrl?.trim() || DEFAULT_SERVER_URL)
   if (settings.engine === 'key' && settings.apiKey?.trim()) return keyEngine(settings.apiKey.trim())
-  return localEngine
+  return null
+}
+
+export function engineFor(settings: AiSettings): FeedbackEngine {
+  const primary = primaryFor(settings)
+  const groq = settings.groqKey?.trim()
+  if (primary && groq) return withBackup(primary, groqEngine(groq))
+  return primary ?? localEngine
 }
