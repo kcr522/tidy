@@ -1,18 +1,21 @@
-import { Check, Eye, ImagePlus, Plus, RotateCcw, Shuffle, X } from 'lucide-react'
+import { Check, Eye, ImagePlus, Palette, Plus, RotateCcw, Shuffle, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../lib/customPhotos'
 import {
   DEFAULT_BACKGROUND,
   DEFAULT_CHECK,
+  DEFAULT_SPLASH,
   defaultSection,
   loadCustomization,
   MAX_PHOTOS,
   photoRefs,
   saveCustomization,
   shrinkPhoto,
+  SPLASH_SECONDS,
   type Customization,
 } from '../../lib/customize'
 import type { Section, Trio } from '../../lib/palette'
+import { paletteFromBlob, type PhotoPalette } from '../../lib/photoPalette'
 import { randomTheme } from '../../lib/sessionTheme'
 import Button from '../common/Button'
 import { useToast } from '../common/Toast'
@@ -20,7 +23,7 @@ import { useDraftStyles } from '../../hooks/useDraftStyles'
 import CustomizePreview from './CustomizePreview'
 import { themeFor } from '../layout/theme'
 
-type Target = 'background' | Section | 'check'
+type Target = 'background' | Section | 'check' | 'splash'
 
 const TARGETS: { key: Target; label: string; path: string }[] = [
   { key: 'background', label: '앱 배경', path: '/' },
@@ -29,6 +32,7 @@ const TARGETS: { key: Target; label: string; path: string }[] = [
   { key: 'todo', label: '할 일', path: '/todos' },
   { key: 'scrap', label: '스크랩', path: '/scraps' },
   { key: 'check', label: '체크 표시', path: '/todos' },
+  { key: 'splash', label: '시작 화면', path: '/' },
 ]
 
 /**
@@ -68,8 +72,9 @@ export default function CustomizeCard() {
   }
 
   const bg = custom.background
-  const sec = target === 'background' || target === 'check' ? null : custom.sections[target]
-  const photos = target === 'background' ? bg.photos : (sec?.photos ?? [])
+  const sec = target === 'background' || target === 'check' || target === 'splash' ? null : custom.sections[target]
+  const splash = custom.splash
+  const photos = target === 'background' ? bg.photos : target === 'splash' ? splash.photos : (sec?.photos ?? [])
   const fit = target === 'background' ? bg.fit : (sec?.fit ?? 'cover')
   const pos = target === 'background' ? bg.pos : (sec?.pos ?? 'center')
   const check = custom.check
@@ -78,7 +83,17 @@ export default function CustomizeCard() {
   const setSec = (s: Section, patch: Partial<Customization['sections'][Section]>) =>
     setCustom((c) => ({ ...c, sections: { ...c.sections, [s]: { ...c.sections[s], ...patch } } }))
   const setCheck = (patch: Partial<Customization['check']>) => setCustom((c) => ({ ...c, check: { ...c.check, ...patch } }))
-  const setPhotos = (list: string[]) => (target === 'background' ? setBg({ photos: list }) : sec && setSec(target as Section, { photos: list }))
+  const setSplash = (patch: Partial<Customization['splash']>) => setCustom((c) => ({ ...c, splash: { ...c.splash, ...patch } }))
+  const setPhotos = (list: string[], pals: Record<string, PhotoPalette> = {}) => {
+    if (target === 'background') setBg({ photos: list })
+    else if (target === 'splash') {
+      // 지운 사진의 색은 빼고, 새로 넣은 사진의 색을 더한다
+      setCustom((c) => {
+        const palettes = Object.fromEntries(Object.entries({ ...c.splash.palettes, ...pals }).filter(([ref]) => list.includes(ref)))
+        return { ...c, splash: { ...c.splash, photos: list, palettes } }
+      })
+    } else if (sec) setSec(target as Section, { photos: list })
+  }
 
   const setFit = (patch: Partial<Pick<Customization['background'], 'fit' | 'pos'>>) =>
     target === 'background' ? setBg(patch) : sec && setSec(target as Section, patch)
@@ -93,22 +108,28 @@ export default function CustomizeCard() {
     }
     setAdding(true)
     const added: string[] = []
+    const pals: Record<string, PhotoPalette> = {}
     let failed = 0
     for (const file of files.slice(0, room)) {
       try {
-        added.push(await storePhoto(await shrinkPhoto(file)))
+        const blob = await shrinkPhoto(file)
+        const ref = await storePhoto(blob)
+        added.push(ref)
+        // 시작 화면 사진이면 앱 색 맞추기에 쓸 색을 뽑아 둔다
+        if (target === 'splash') pals[ref] = await paletteFromBlob(blob).catch(() => ({ bg: '#f2f4f6', colors: randomTheme.sections.main.colors }))
       } catch {
         failed++
       }
     }
     setAdding(false)
-    if (added.length) setPhotos([...photos, ...added])
+    if (added.length) setPhotos([...photos, ...added], pals)
     if (files.length > room) toast(`사진은 ${MAX_PHOTOS}장까지라서 ${files.length - room}장은 빼고 넣었어요`, 'error')
     else if (failed) toast(`사진 ${failed}장을 열지 못했어요`, 'error')
   }
 
   function reset() {
     if (target === 'background') setBg({ ...DEFAULT_BACKGROUND })
+    else if (target === 'splash') setSplash({ ...DEFAULT_SPLASH, palettes: {} })
     else if (target === 'check') setCheck({ ...DEFAULT_CHECK })
     else setSec(target, defaultSection(randomTheme.sections[target].colors))
   }
@@ -126,7 +147,7 @@ export default function CustomizeCard() {
             role="tab"
             aria-selected={target === t.key}
             onClick={() => setTarget(t.key)}
-            className={`${t.key === 'background' || t.key === 'check' ? 'theme-main' : themeFor(t.path)} min-h-10 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap ${
+            className={`${t.key === 'background' || t.key === 'check' || t.key === 'splash' ? 'theme-main' : themeFor(t.path)} min-h-10 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap ${
               target === t.key ? 'bg-grad on-grad shadow-float' : 'bg-slate-100 text-slate-600'
             }`}
           >
@@ -135,7 +156,39 @@ export default function CustomizeCard() {
         ))}
       </div>
 
-      {target === 'check' ? (
+      {target === 'splash' ? (
+        <>
+          <p className="mb-1 text-sm text-slate-600">앱을 켜면 고른 사진을 잘리지 않게 보여 주고, 시간이 지나면 저절로 넘어가요. 누르면 바로 넘어가요.</p>
+          <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
+          <PhotoGrid photos={photos} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} palettes={splash.palettes} />
+          {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
+          {photos.length > 0 && (
+            <>
+              <Label>보여 주는 시간</Label>
+              <Segmented
+                value={String(splash.seconds)}
+                options={SPLASH_SECONDS.map((n) => [String(n), `${n}초`] as [string, string])}
+                onChange={(v) => setSplash({ seconds: Number(v) })}
+              />
+              <Label>사진 색으로 앱 맞추기</Label>
+              <Segmented
+                value={splash.matchColors ? 'on' : 'off'}
+                options={[
+                  ['on', '켜기'],
+                  ['off', '끄기'],
+                ]}
+                onChange={(v) => setSplash({ matchColors: v === 'on' })}
+              />
+              <p className="mt-2 flex items-start gap-1 text-xs text-slate-500">
+                <Palette className="mt-px size-3.5 shrink-0" aria-hidden />
+                {splash.matchColors
+                  ? '그날 나온 사진에서 뽑은 색으로 앱 바탕과 모든 구역 색을 맞춰요 (사진 밑 동그라미 색). 어두운 화면에서는 바탕은 그대로예요'
+                  : '앱 색은 다른 항목에서 고른 대로예요'}
+              </p>
+            </>
+          )}
+        </>
+      ) : target === 'check' ? (
         <>
           <div
             className="theme-todo mb-2 flex items-center gap-4 rounded-2xl bg-slate-50 p-4"
@@ -234,48 +287,7 @@ export default function CustomizeCard() {
 
         {/* 사진: 여러 장 넣으면 앱을 켤 때마다 한 장씩 골라 보여 준다 */}
         <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
-        <div className="flex flex-wrap gap-2">
-          {photos.map((ref, i) => (
-            <div key={ref} className="relative">
-              {photoSrc(ref) ? (
-                <img src={photoSrc(ref)} alt={`고른 사진 ${i + 1}`} className="size-16 rounded-2xl object-cover" />
-              ) : (
-                <span className="block size-16 rounded-2xl bg-slate-100" />
-              )}
-              <button
-                type="button"
-                onClick={() => setPhotos(photos.filter((p) => p !== ref))}
-                className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full bg-slate-800 text-white shadow"
-                aria-label={`사진 ${i + 1} 지우기`}
-              >
-                <X className="size-3.5" strokeWidth={3} aria-hidden />
-              </button>
-            </div>
-          ))}
-          {photos.length < MAX_PHOTOS && (
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={adding}
-              className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 border-dashed border-slate-300 text-xs font-semibold text-slate-500 disabled:opacity-60"
-              aria-label="사진 추가"
-            >
-              {photos.length === 0 ? <ImagePlus className="size-5" aria-hidden /> : <Plus className="size-5" aria-hidden />}
-              {adding ? '넣는 중' : '추가'}
-            </button>
-          )}
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              void pickPhotos([...(e.target.files ?? [])])
-              e.target.value = ''
-            }}
-          />
-        </div>
+        <PhotoGrid photos={photos} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} />
         {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
 
         {/* 사진 맞춤: 세로로 긴 사진도 안 잘리게 */}
@@ -349,6 +361,18 @@ export default function CustomizeCard() {
         </p>
       )}
 
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          void pickPhotos([...(e.target.files ?? [])])
+          e.target.value = ''
+        }}
+      />
+
       <CustomizePreview open={previewing} custom={custom} dirty={dirty} onClose={() => setPreviewing(false)} onApply={apply} />
     </section>
   )
@@ -368,6 +392,50 @@ function Preview({ target }: { target: Target }) {
   return (
     <div className={`${themeFor(path)} bg-grad on-grad mb-2 flex h-20 items-end rounded-2xl p-4 text-lg font-bold`}>
       {TARGETS.find((t) => t.key === target)!.label}
+    </div>
+  )
+}
+
+/** 고른 사진 작은 그림들 + 추가 버튼. 시작 화면 사진이면 밑에 뽑은 색을 보여 준다 */
+function PhotoGrid({ photos, adding, onRemove, onAdd, palettes }: { photos: string[]; adding: boolean; onRemove: (ref: string) => void; onAdd: () => void; palettes?: Record<string, PhotoPalette> }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {photos.map((ref, i) => (
+        <div key={ref} className="relative">
+          {photoSrc(ref) ? (
+            <img src={photoSrc(ref)} alt={`고른 사진 ${i + 1}`} className="size-16 rounded-2xl object-cover" />
+          ) : (
+            <span className="block size-16 rounded-2xl bg-slate-100" />
+          )}
+          {palettes?.[ref] && (
+            <span className="mt-1 flex justify-center gap-0.5" aria-label="이 사진에서 뽑은 색">
+              {[palettes[ref].bg, ...palettes[ref].colors].map((c, j) => (
+                <span key={j} className="size-3 rounded-full ring-1 ring-slate-200" style={{ background: c }} />
+              ))}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => onRemove(ref)}
+            className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full bg-slate-800 text-white shadow"
+            aria-label={`사진 ${i + 1} 지우기`}
+          >
+            <X className="size-3.5" strokeWidth={3} aria-hidden />
+          </button>
+        </div>
+      ))}
+      {photos.length < MAX_PHOTOS && (
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={adding}
+          className="flex size-16 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 border-dashed border-slate-300 text-xs font-semibold text-slate-500 disabled:opacity-60"
+          aria-label="사진 추가"
+        >
+          {photos.length === 0 ? <ImagePlus className="size-5" aria-hidden /> : <Plus className="size-5" aria-hidden />}
+          {adding ? '넣는 중' : '추가'}
+        </button>
+      )}
     </div>
   )
 }
