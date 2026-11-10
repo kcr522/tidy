@@ -67,3 +67,11 @@ describe('꾸미기 사진 보관함 (IndexedDB)', () => {
     expect(photoSrc('data:image/png;base64,AA')).toBe('data:image/png;base64,AA')
   })
 })
+
+describe('사진 맞춤', () => {
+  it('기본은 꽉 채우기·가운데, 이상한 값은 기본으로', () => {
+    const c = parseCustomization({ background: { fit: 'contain', pos: 'top' }, sections: { money: { fit: 'zoom', pos: 'left' } } })
+    expect(c.background).toMatchObject({ fit: 'contain', pos: 'top' })
+    expect(c.sections.money).toMatchObject({ fit: 'cover', pos: 'center' })
+  })
+})

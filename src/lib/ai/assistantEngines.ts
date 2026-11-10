@@ -1,5 +1,6 @@
 import { askClaudeAssistant, assistantPrompt, AssistantError, ASSISTANT_SYSTEM, JSON_SHAPE, parseAssistantJson, type AssistantReply, type AssistantRequest } from './assistant'
-import { callGemini } from './gemini'
+import { askAdvisor } from './advisor'
+import { callGemini, type GeminiSource } from './gemini'
 import { localAssistant } from './assistantLocal'
 import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
 
@@ -16,6 +17,8 @@ export interface AssistantResult extends AssistantReply {
   engine: EngineId
   /** AI를 못 써서 기본(AI 없이)으로 대신 답했을 때, 왜 그랬는지 */
   fallback?: string
+  /** 질문에 답할 때 검색으로 찾은 출처 */
+  sources?: GeminiSource[]
 }
 
 /**
@@ -27,6 +30,7 @@ export interface AssistantResult extends AssistantReply {
 export async function askAssistant(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
   try {
     const ai = await askAi(settings, req, signal)
+    if (ai?.kind === 'question') return await answerQuestion(settings, req, ai, signal)
     if (ai) return ai
   } catch (err) {
     if (signal?.aborted) throw err
@@ -35,6 +39,16 @@ export async function askAssistant(settings: AiSettings, req: AssistantRequest, 
     return { ...(await askLocal(req)), fallback: why }
   }
   return askLocal(req)
+}
+
+/** 돈·생활 질문: Gemini가 검색까지 해서 답한다 */
+async function answerQuestion(settings: AiSettings, req: AssistantRequest, ai: AssistantResult, signal?: AbortSignal): Promise<AssistantResult> {
+  const question = req.text?.trim() || '사진 속 내용에 대해 알려 줘'
+  if (settings.engine !== 'gemini' || !settings.geminiKey?.trim()) {
+    return { ...ai, kind: 'none', reply: ai.reply || '질문에 답하는 건 설정 > AI 연결에서 Gemini (무료)를 고르면 할 수 있어요.' }
+  }
+  const a = await askAdvisor(settings.geminiKey.trim(), question, req.today, req.context, signal)
+  return { ...ai, kind: 'question', reply: a.text.slice(0, 1500), sources: a.sources }
 }
 
 /** 고른 AI로 묻기. AI를 고르지 않았으면 null */

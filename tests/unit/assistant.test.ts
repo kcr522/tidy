@@ -344,3 +344,36 @@ describe('AI를 못 쓸 때 기본 모드로 넘어가기', () => {
     }
   })
 })
+
+describe('물어보기 (돈·생활 질문)', () => {
+  const gem = (body: object) => new Response(JSON.stringify(body), { status: 200 })
+  it('질문이면 Gemini가 검색해서 답하고 출처를 붙인다', async () => {
+    const { askAssistant } = await import('../../src/lib/ai/assistantEngines')
+    const { clearGeminiModelCache } = await import('../../src/lib/ai/gemini')
+    clearGeminiModelCache()
+    const bodies: string[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = (async (_u: string, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ''))
+      if (bodies.length === 1)
+        return gem({ candidates: [{ content: { parts: [{ text: JSON.stringify({ kind: 'question', reply: '', events: [], payments: [], diary: null }) }] } }] })
+      return gem({
+        candidates: [
+          {
+            content: { parts: [{ text: '청년도약계좌는 5년 동안 모으는 상품이에요.' }] },
+            groundingMetadata: { groundingChunks: [{ web: { uri: 'https://example.go.kr/a', title: '정부24' } }, { web: { uri: 'javascript:x', title: 'bad' } }] },
+          },
+        ],
+      })
+    }) as typeof fetch
+    try {
+      const res = await askAssistant({ engine: 'gemini', geminiKey: 'K' } as never, { today: '2026-11-10', text: '청년도약계좌 뭐야' })
+      expect(res.kind).toBe('question')
+      expect(res.reply).toContain('청년도약계좌')
+      expect(res.sources).toEqual([{ title: '정부24', url: 'https://example.go.kr/a' }])
+      expect(bodies[1]).toContain('google_search')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})

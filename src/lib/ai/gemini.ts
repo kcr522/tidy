@@ -57,7 +57,12 @@ async function listFlashModels(apiKey: string, fetcher: typeof fetch, signal?: A
 export const clearGeminiModelCache = () => modelCache.clear()
 
 type GeminiData = {
-  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[]
+  candidates?: {
+    content?: { parts?: { text?: string; thought?: boolean }[] }
+    finishReason?: string
+    /** 구글 검색으로 찾은 출처 (search: true 일 때) */
+    groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] }
+  }[]
   promptFeedback?: { blockReason?: string }
   error?: { message?: string; status?: string }
 }
@@ -69,8 +74,19 @@ export class GeminiLimitError extends Error {}
 /** 키가 틀렸을 때 */
 export class GeminiKeyError extends Error {}
 
+/** 검색으로 찾은 출처 한 개 */
+export interface GeminiSource {
+  title: string
+  url: string
+}
+
 /** Gemini 에게 묻고 글 답을 돌려준다 */
 export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<string> {
+  return (await callGeminiWithSources(apiKey, req, fetcher)).text
+}
+
+/** Gemini 에게 묻고 글 답과, 검색했다면 출처까지 돌려준다 */
+export async function callGeminiWithSources(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<{ text: string; sources: GeminiSource[] }> {
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: req.system }] },
     contents: [{ role: 'user', parts: req.parts }],
@@ -124,5 +140,13 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
     .join('')
     .trim()
   if (!text) throw new Error(data.candidates?.[0]?.finishReason === 'MAX_TOKENS' ? 'Gemini 답이 너무 길어서 끊겼어요. 다시 해 주세요' : 'Gemini가 빈 답을 줬어요')
-  return text
+  const seen = new Set<string>()
+  const sources: GeminiSource[] = []
+  for (const c of data.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) {
+    const url = c.web?.uri ?? ''
+    if (!/^https?:\/\//.test(url) || seen.has(url)) continue
+    seen.add(url)
+    sources.push({ title: (c.web?.title ?? '').slice(0, 80) || new URL(url).hostname, url })
+  }
+  return { text, sources: sources.slice(0, 5) }
 }

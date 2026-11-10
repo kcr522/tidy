@@ -1,4 +1,4 @@
-import { ArrowUp, BookHeart, CalendarRange, ImagePlus, Loader2, Sparkles, Wallet, X } from 'lucide-react'
+import { ArrowUp, BookHeart, CalendarRange, ExternalLink, ImagePlus, Loader2, Sparkles, Wallet, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AssistantError } from '../../lib/ai/assistant'
@@ -10,6 +10,7 @@ import { dayTitle } from '../../lib/calendar'
 import { categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatWon } from '../../lib/format'
+import { isWebUrl } from '../../lib/validate'
 import { shrinkImage } from '../../lib/image'
 import { shrinkPhoto } from '../../lib/meal/photo'
 import { diaryRepo } from '../../repositories/diaryRepo'
@@ -90,7 +91,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
         const entry = await diaryRepo.get(date)
         add({ id: id(), from: 'ai', text: res.reply, proposal: { kind: 'diary', date, text: res.diary.text, photo: entry?.photo ? undefined : photo, hasEntry: !!entry } })
       } else {
-        add({ id: id(), from: 'ai', text: res.reply })
+        add({ id: id(), from: 'ai', text: res.reply, ...(res.sources?.length ? { sources: res.sources } : {}) })
       }
     } catch (err) {
       if (ctrl.signal.aborted) return
@@ -181,6 +182,22 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
               <div key={m.id} className="flex max-w-[88%] flex-col items-start gap-2">
                 <p className="rounded-2xl rounded-bl-md bg-white px-3.5 py-2.5 text-[15px] whitespace-pre-wrap text-slate-800 shadow-card">{m.text}</p>
                 {'proposal' in m && <ProposalCard msg={m} onChoose={(c) => choose(m, c)} />}
+                {'sources' in m && m.sources && (
+                  <div className="flex flex-wrap gap-1.5 pl-1">
+                    {m.sources.filter((src) => isWebUrl(src.url)).map((src) => (
+                      <a
+                        key={src.url}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex max-w-[14rem] items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 shadow-card"
+                      >
+                        <ExternalLink className="size-3 shrink-0" aria-hidden />
+                        <span className="truncate">{src.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ),
           )}

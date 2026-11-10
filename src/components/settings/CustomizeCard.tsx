@@ -70,6 +70,8 @@ export default function CustomizeCard() {
   const bg = custom.background
   const sec = target === 'background' || target === 'check' ? null : custom.sections[target]
   const photos = target === 'background' ? bg.photos : (sec?.photos ?? [])
+  const fit = target === 'background' ? bg.fit : (sec?.fit ?? 'cover')
+  const pos = target === 'background' ? bg.pos : (sec?.pos ?? 'center')
   const check = custom.check
 
   const setBg = (patch: Partial<Customization['background']>) => setCustom((c) => ({ ...c, background: { ...c.background, ...patch } }))
@@ -77,6 +79,9 @@ export default function CustomizeCard() {
     setCustom((c) => ({ ...c, sections: { ...c.sections, [s]: { ...c.sections[s], ...patch } } }))
   const setCheck = (patch: Partial<Customization['check']>) => setCustom((c) => ({ ...c, check: { ...c.check, ...patch } }))
   const setPhotos = (list: string[]) => (target === 'background' ? setBg({ photos: list }) : sec && setSec(target as Section, { photos: list }))
+
+  const setFit = (patch: Partial<Pick<Customization['background'], 'fit' | 'pos'>>) =>
+    target === 'background' ? setBg(patch) : sec && setSec(target as Section, patch)
 
   /** 고른 사진 여러 장을 줄여서 보관함에 넣는다 */
   async function pickPhotos(files: File[]) {
@@ -272,6 +277,38 @@ export default function CustomizeCard() {
           />
         </div>
         {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
+
+        {/* 사진 맞춤: 세로로 긴 사진도 안 잘리게 */}
+        {photos.length > 0 && (
+          <>
+            <Label>사진 맞춤</Label>
+            <Segmented
+              value={fit}
+              options={[
+                ['contain', '전체 보이기'],
+                ['cover', '꽉 채우기'],
+              ]}
+              onChange={(v) => setFit({ fit: v })}
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              {fit === 'contain' ? '사진이 잘리지 않아요. 남는 곳은 색으로 채워요' : '칸을 꽉 채워요. 칸보다 긴 쪽은 잘려요'}
+            </p>
+            {fit === 'cover' && (
+              <>
+                <Label>보여 줄 곳</Label>
+                <Segmented
+                  value={pos}
+                  options={[
+                    ['top', '위쪽'],
+                    ['center', '가운데'],
+                    ['bottom', '아래쪽'],
+                  ]}
+                  onChange={(v) => setFit({ pos: v })}
+                />
+              </>
+            )}
+          </>
+        )}
 
         {/* 투명도 */}
         {target === 'background' ? (

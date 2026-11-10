@@ -12,12 +12,18 @@ import { isPhotoRef, photoSrc } from './customPhotos'
 import { SECTIONS, textOn } from './palette'
 
 export type ColorChoice = 'default' | 'random' | 'fixed'
+/** 사진 맞춤: cover = 칸을 꽉 채움(넘치는 곳은 잘림) / contain = 사진 전체가 보이게(안 잘림, 남는 곳은 색으로) */
+export type PhotoFit = 'cover' | 'contain'
+/** 꽉 채울 때 사진의 어느 쪽을 보여 줄지 */
+export type PhotoPos = 'top' | 'center' | 'bottom'
 
 export interface SectionStyle {
   color: 'random' | 'fixed'
   colors: Trio
   /** 사진 이름들 ('idb:…' 또는 예전 data:image). 여러 장이면 켤 때마다 한 장을 고른다 */
   photos: string[]
+  fit: PhotoFit
+  pos: PhotoPos
   /** 사진 투명도 % (높을수록 사진이 옅어지고 그라데이션 색이 보인다) */
   clear: number
 }
@@ -27,6 +33,8 @@ export interface BackgroundStyle {
   /** 고정 색 (하나) */
   fixed: string
   photos: string[]
+  fit: PhotoFit
+  pos: PhotoPos
   /** 색이나 사진의 투명도 % */
   clear: number
   /** 카드 투명도 % (배경이 카드 뒤로 비치는 정도) */
@@ -53,11 +61,13 @@ export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 /** 구역마다 넣을 수 있는 사진 수 */
 export const MAX_PHOTOS = 10
 
-export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], clear: 70, cardClear: 0 }
+export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', clear: 70, cardClear: 0 }
 export const defaultSection = (colors: Trio = ['#4fd1ff', '#3b82f6', '#7c3aed']): SectionStyle => ({
   color: 'random',
   colors,
   photos: [],
+  fit: 'cover',
+  pos: 'center',
   clear: 35,
 })
 
@@ -72,6 +82,9 @@ export function defaultCustomization(): Customization {
 const clamp = (n: unknown, min: number, max: number, fallback: number) =>
   typeof n === 'number' && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback
 const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
+const readFit = (v: unknown): PhotoFit => (v === 'contain' ? 'contain' : 'cover')
+const readPos = (v: unknown): PhotoPos => (v === 'top' || v === 'bottom' ? v : 'center')
+
 /** 사진 목록 읽기 (예전 한 장짜리 photo 도 받아 준다) */
 const readPhotos = (v: Record<string, unknown>): string[] => {
   const list = Array.isArray(v.photos) ? v.photos : v.photo ? [v.photo] : []
@@ -88,6 +101,8 @@ export function parseCustomization(raw: unknown): Customization {
     color: b.color === 'random' || b.color === 'fixed' ? b.color : 'default',
     fixed: isHex(b.fixed) ? b.fixed : DEFAULT_BACKGROUND.fixed,
     photos: readPhotos(b),
+    fit: readFit(b.fit),
+    pos: readPos(b.pos),
     clear: clamp(b.clear, 0, 100, DEFAULT_BACKGROUND.clear),
     cardClear: clamp(b.cardClear, 0, 70, 0),
   }
@@ -102,6 +117,8 @@ export function parseCustomization(raw: unknown): Customization {
       color: v.color === 'fixed' ? 'fixed' : 'random',
       colors,
       photos: readPhotos(v),
+      fit: readFit(v.fit),
+      pos: readPos(v.pos),
       clear: clamp(v.clear, 0, 100, 35),
     }
   }
@@ -163,10 +180,14 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
       // 사진이 또렷할수록 그라데이션은 옅게
       root.style.setProperty(`--${s}-veil`, `${st.clear}%`)
       root.style.setProperty(`--${s}-photo-shadow`, '0 1px 3px rgb(0 0 0 / 0.35)')
+      root.style.setProperty(`--${s}-photo-size`, st.fit)
+      root.style.setProperty(`--${s}-photo-pos`, st.pos)
     } else {
       root.style.removeProperty(`--${s}-photo`)
       root.style.removeProperty(`--${s}-veil`)
       root.style.removeProperty(`--${s}-photo-shadow`)
+      root.style.removeProperty(`--${s}-photo-size`)
+      root.style.removeProperty(`--${s}-photo-pos`)
     }
   }
 
@@ -185,6 +206,13 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   } else if (bg.color === 'fixed') {
     const col = `color-mix(in srgb, ${bg.fixed} ${alpha}%, ${page})`
     layers.push(`linear-gradient(${col}, ${col})`)
+  }
+  if (bgSrc) {
+    root.style.setProperty('--page-photo-size', bg.fit)
+    root.style.setProperty('--page-photo-pos', bg.pos)
+  } else {
+    root.style.removeProperty('--page-photo-size')
+    root.style.removeProperty('--page-photo-pos')
   }
   if (layers.length) root.style.setProperty('--page-image', layers.join(', '))
   else root.style.removeProperty('--page-image')
