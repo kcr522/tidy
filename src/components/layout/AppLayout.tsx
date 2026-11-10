@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { recurringRepo } from '../../repositories/recurringRepo'
+import ColorModeButton from '../common/ColorModeButton'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
 import { themeFor } from './theme'
@@ -28,8 +29,9 @@ export default function AppLayout() {
     <div className={`flex h-full ${theme}`}>
       <SideNav />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
           <Logo />
+          <ColorModeButton />
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 md:px-10 md:pt-10 md:pb-10">
           <Outlet />
@@ -47,8 +49,9 @@ function Logo() {
 function SideNav() {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-white px-4 py-8 md:flex">
-      <div className="mb-10 px-3">
+      <div className="mb-10 flex items-center justify-between pl-3">
         <Logo />
+        <ColorModeButton className="bg-slate-100 hover:bg-slate-200" />
       </div>
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
@@ -79,7 +82,7 @@ function SideNav() {
 
 function BottomTabBar() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex rounded-t-3xl bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgb(25_31_40/0.06)] backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-10 flex rounded-t-3xl bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgb(0_0_0/0.06)] backdrop-blur-md md:hidden">
       {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}

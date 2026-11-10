@@ -8,6 +8,16 @@
     <meta name="theme-color" content="#f2f4f6" />
     <meta name="description" content="가계부 · 할 일 · 스크랩을 하나로 정리하는 앱" />
     <title>Tidy</title>
+    <script>
+      // 첫 화면이 하얗게 번쩍이지 않도록, 저장된 화면 밝기를 그리기 전에 적용 (src/lib/colorMode.ts 와 같은 규칙)
+      try {
+        var m = localStorage.getItem('tidy-color-mode') || 'auto'
+        if (m === 'dark' || (m === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+          document.documentElement.style.colorScheme = 'dark'
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

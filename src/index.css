@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 다크 모드: <html class="dark"> 일 때 (src/lib/colorMode.ts 가 붙인다) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Tidy 디자인 토큰
  * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)
@@ -86,6 +89,42 @@
   --color-brand-600: var(--scrap-600); --color-brand-700: var(--scrap-700);
 }
 
+/*
+ * 다크 모드 색.
+ * 회색 단계를 뒤집고(slate-900 = 가장 밝은 글자, slate-100 = 가장 어두운 바탕),
+ * "흰색"(bg-white, 카드)은 어두운 카드 색이 된다. 그래서 화면마다 dark: 를 따로 붙이지 않아도 된다.
+ * 그라데이션과 포인트 색(brand)은 palette.ts 가 어두운 바탕에 맞춰 다시 계산해 넣는다.
+ */
+:root.dark {
+  --color-white: #1c1f26;
+  --color-slate-50: #23272f;
+  --color-slate-100: #111318;
+  --color-slate-200: #2c313a;
+  --color-slate-300: #3b414c;
+  --color-slate-400: #66707d;
+  --color-slate-500: #8d97a3;
+  --color-slate-600: #aab3be;
+  --color-slate-700: #c5ccd5;
+  --color-slate-800: #dde2e8;
+  --color-slate-900: #f2f4f6;
+
+  --color-income: #5b9dff;
+  --color-expense: #ff626e;
+  --color-red-50: #3a1d22;
+  --color-red-400: #ff7c86;
+  --color-red-500: #f04452;
+  --color-red-600: #ff8f97;
+  --color-amber-50: #2c2517;
+  --color-amber-200: #5c4822;
+  --color-amber-600: #f3b54a;
+  --color-amber-700: #f5c46e;
+  --color-amber-800: #f8d590;
+  --color-amber-900: #fde8bd;
+
+  --shadow-card: 0 2px 16px rgb(0 0 0 / 0.28);
+  --shadow-float: 0 6px 20px color-mix(in srgb, var(--color-brand-500) 24%, transparent);
+}
+
 /* 그라데이션 위에 얹는 반투명 바탕 (밝은 그라데이션이면 살짝 어둡게) */
 @utility bg-on-soft {
   background-color: var(--on-soft);
@@ -93,7 +132,7 @@
 
 /* 아주 연한 그라데이션 바탕 (아이콘 동그라미 등) */
 @utility bg-grad-soft {
-  background-image: linear-gradient(135deg, var(--color-brand-50), color-mix(in srgb, var(--color-brand-100) 45%, white));
+  background-image: linear-gradient(135deg, var(--color-brand-50), color-mix(in srgb, var(--color-brand-100) 45%, var(--color-white)));
 }
 
 /* 그라데이션 배경 */
@@ -109,10 +148,10 @@
   color: transparent;
 }
 
-/* 흰 카드 */
+/* 흰 카드 (다크에서는 어두운 카드) */
 @utility card {
   border-radius: 1.5rem;
-  background-color: #fff;
+  background-color: var(--color-white);
   box-shadow: var(--shadow-card);
 }
 
