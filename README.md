@@ -69,7 +69,11 @@
 
 <img src="docs/screenshots/design-desktop.png" width="720">
 
-**디자인**: 토스처럼 둥글고 깔끔한 카드 + 인스타그램 느낌의 보라 → 핑크 → 주황 그라데이션, 글씨체는 Pretendard.
+**디자인**: 토스처럼 둥글고 깔끔한 카드, 글씨체는 Pretendard. 색은 **하늘색 + 민트 + 라벤더 + 핑크** 그라데이션이에요. 가계부, 할 일, 스크랩마다 다른 조합을 쓰고, **앱을 켤 때마다 색 순서와 방향이 바뀌어요.**
+
+| 켤 때마다 바뀌는 색 ① | ② | ③ |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/design-launch-1.png" width="200"> | <img src="docs/screenshots/design-launch-2.png" width="200"> | <img src="docs/screenshots/design-launch-3.png" width="200"> |
 
 <details>
 <summary>날짜별 화면 전체 보기</summary>
@@ -124,7 +128,7 @@
 | 구분 | 사용 기술 |
 |---|---|
 | 화면 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 |
-| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 인스타 그라데이션 |
+| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 하늘색 계열 그라데이션 (켤 때마다 바뀜) |
 | 저장 | IndexedDB (Dexie.js) — 서버 없음 |
 | 웹 | PWA (오프라인, 홈 화면 설치) |
 | 폰 앱 | Capacitor |

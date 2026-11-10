@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { NAV_ITEMS } from './navItems'
+import { themeFor } from './theme'
 
 /**
  * 공통 레이아웃 (spec FR-002)
@@ -7,8 +8,10 @@ import { NAV_ITEMS } from './navItems'
  * - 폭 768px 이상(컴퓨터): 왼쪽 메뉴
  */
 export default function AppLayout() {
+  // 지금 보고 있는 구역의 색 (가계부: 하늘, 할 일: 민트, 스크랩: 라벤더)
+  const theme = themeFor(useLocation().pathname)
   return (
-    <div className="flex h-full">
+    <div className={`flex h-full ${theme}`}>
       <SideNav />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
@@ -24,7 +27,7 @@ export default function AppLayout() {
 }
 
 function Logo() {
-  return <span className="text-insta text-[22px] font-black tracking-tight">TIDY:</span>
+  return <span className="text-grad text-[22px] font-black tracking-tight">TIDY:</span>
 }
 
 function SideNav() {
@@ -40,14 +43,16 @@ function SideNav() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-semibold transition-colors ${
+              `${themeFor(item.to)} flex items-center gap-3 rounded-2xl px-2.5 py-2 text-[15px] font-semibold transition-colors ${
                 isActive ? 'bg-brand-50 text-brand-600' : 'text-slate-600 hover:bg-slate-100'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className="size-5" strokeWidth={isActive ? 2.4 : 2} aria-hidden />
+                <span className={`flex size-8 items-center justify-center rounded-xl ${isActive ? 'bg-grad text-white' : ''}`}>
+                  <item.icon className="size-[18px]" strokeWidth={isActive ? 2.4 : 2} aria-hidden />
+                </span>
                 {item.label}
               </>
             )}
@@ -67,14 +72,16 @@ function BottomTabBar() {
           to={item.to}
           end={item.to === '/'}
           className={({ isActive }) =>
-            `flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors ${
+            `${themeFor(item.to)} flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors ${
               isActive ? 'text-brand-600' : 'text-slate-400'
             }`
           }
         >
           {({ isActive }) => (
             <>
-              <item.icon className="size-6" strokeWidth={isActive ? 2.4 : 1.8} aria-hidden />
+              <span className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-grad text-white' : ''}`}>
+                <item.icon className="size-[22px]" strokeWidth={isActive ? 2.3 : 1.8} aria-hidden />
+              </span>
               {item.label}
             </>
           )}

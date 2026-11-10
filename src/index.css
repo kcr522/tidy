@@ -3,7 +3,8 @@
 /*
  * Tidy 디자인 토큰
  * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)
- * - 포인트: 인스타그램 느낌의 보라 → 핑크 → 주황 그라데이션
+ * - 포인트: 하늘색(#36b3f4) + 민트(#34d3b0) + 라벤더(#9686ff) + 핑크(#ff8db8) 네 가지 색의 그라데이션
+ *   대시보드·설정: 네 색 전부 / 가계부, 할 일, 스크랩: 그중 세 색씩 (하늘색은 항상 들어간다)
  */
 @theme {
   --color-slate-50: #f9fafb;
@@ -17,29 +18,79 @@
   --color-slate-800: #333d4b;
   --color-slate-900: #191f28;
 
-  --color-brand-50: #fff0f6;
-  --color-brand-100: #ffdeeb;
-  --color-brand-500: #e1306c;
-  --color-brand-600: #c13584;
-  --color-brand-700: #a01f73;
+  /* 기본 포인트 색: 하늘색 (구역마다 아래 .theme-* 에서 바뀐다) */
+  --color-brand-50: #eef8ff;
+  --color-brand-100: #d9efff;
+  --color-brand-500: #38a9f5;
+  --color-brand-600: #1d8fe1;
+  --color-brand-700: #1572bd;
 
   --color-income: #3182f6;
   --color-expense: #f04452;
 
   --shadow-card: 0 2px 16px rgb(25 31 40 / 0.05);
-  --shadow-float: 0 6px 20px rgb(193 53 132 / 0.22);
+  --shadow-float: 0 6px 20px color-mix(in srgb, var(--color-brand-500) 30%, transparent);
 
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
 }
 
-/* 인스타 그라데이션 배경 */
-@utility bg-insta {
-  background-image: linear-gradient(120deg, #833ab4 0%, #c13584 35%, #e1306c 62%, #fd5949 82%, #fcaf45 100%);
+/*
+ * 구역별 색. 안에 있는 버튼, 체크, 막대, 글자색이 모두 이 색을 따른다.
+ * --c1 ~ --c4 는 앱을 켤 때마다 src/lib/palette.ts 가 순서를 섞는다 (아래는 기본값).
+ */
+:root {
+  --c1: #34d3b0;
+  --c2: #36b3f4;
+  --c3: #9686ff;
+  --c4: #ff8db8;
+  --grad-angle: 120deg;
 }
 
-/* 인스타 그라데이션 글자 */
-@utility text-insta {
-  background-image: linear-gradient(120deg, #833ab4 0%, #c13584 40%, #e1306c 65%, #fd5949 85%, #fcaf45 100%);
+:root,
+.theme-main {
+  --grad: linear-gradient(var(--grad-angle), var(--c1) 0%, var(--c2) 35%, var(--c3) 68%, var(--c4) 100%);
+}
+
+.theme-money {
+  --grad: linear-gradient(var(--grad-angle), var(--c2) 0%, var(--c3) 55%, var(--c4) 100%);
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #dbeaff;
+  --color-brand-500: #4a9dff;
+  --color-brand-600: #2f7fef;
+  --color-brand-700: #2163c7;
+}
+
+.theme-todo {
+  --grad: linear-gradient(var(--grad-angle), var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
+  --color-brand-50: #eafbf7;
+  --color-brand-100: #ccf5ea;
+  --color-brand-500: #1fc2a8;
+  --color-brand-600: #0ea592;
+  --color-brand-700: #0b8475;
+}
+
+.theme-scrap {
+  --grad: linear-gradient(var(--grad-angle), var(--c4) 0%, var(--c3) 50%, var(--c2) 100%);
+  --color-brand-50: #f3f1ff;
+  --color-brand-100: #e6e1ff;
+  --color-brand-500: #8b7cf8;
+  --color-brand-600: #7461ee;
+  --color-brand-700: #5b46cf;
+}
+
+/* 아주 연한 그라데이션 바탕 (아이콘 동그라미 등) */
+@utility bg-grad-soft {
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--c2) 13%, white), color-mix(in srgb, var(--c3) 11%, white) 55%, color-mix(in srgb, var(--c4) 12%, white));
+}
+
+/* 그라데이션 배경 */
+@utility bg-grad {
+  background-image: var(--grad);
+}
+
+/* 그라데이션 글자 */
+@utility text-grad {
+  background-image: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -80,4 +131,10 @@ body {
 
 button {
   cursor: pointer;
+}
+
+/* 그라데이션 위 흰 글자를 또렷하게 */
+@utility on-grad {
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(25 31 40 / 0.14);
 }

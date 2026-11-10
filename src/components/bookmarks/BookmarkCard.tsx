@@ -19,9 +19,10 @@ interface BookmarkCardProps {
 export default function BookmarkCard({ bookmark, onOpen, onToggleRead, onEdit, converted, onConvert, onViewTodo }: BookmarkCardProps) {
   const read = bookmark.isRead === 1
   return (
-    <article className={`flex flex-col card p-5 ${read ? 'opacity-70' : ''}`}>
+    <article className={`relative flex flex-col overflow-hidden card p-5 ${read ? 'opacity-70' : ''}`}>
+      {!read && <span className="absolute inset-y-0 left-0 w-1.5 bg-grad" aria-hidden />}
       <div className="mb-2 flex items-start gap-2">
-        <span className={`mt-1.5 size-2 shrink-0 rounded-full ${read ? 'bg-slate-300' : 'bg-insta'}`} aria-hidden />
+        <span className={`mt-1.5 size-2 shrink-0 rounded-full ${read ? 'bg-slate-300' : 'bg-grad'}`} aria-hidden />
         <button type="button" onClick={onOpen} className="tap min-w-0 flex-1 text-left">
           <h3 className="line-clamp-2 text-[16px] font-bold text-slate-900 hover:text-brand-600">{bookmark.title}</h3>
           <p className="truncate text-xs text-slate-400">{domainOf(bookmark.url)}</p>
@@ -58,7 +59,7 @@ export default function BookmarkCard({ bookmark, onOpen, onToggleRead, onEdit, c
         >
           {read ? '읽음' : '안 읽음'}
         </button>
-        <button type="button" onClick={onOpen} className="tap inline-flex items-center gap-1 rounded-full bg-slate-900 px-3.5 py-1.5 font-bold text-white">
+        <button type="button" onClick={onOpen} className="tap inline-flex items-center gap-1 rounded-full bg-grad on-grad px-3.5 py-1.5 font-bold">
           열기
           <ExternalLink className="size-3.5" strokeWidth={2.5} aria-hidden />
         </button>

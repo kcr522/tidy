@@ -5,6 +5,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { ToastProvider } from './components/common/Toast.tsx'
 import './index.css'
+import { applyPalette, pickPalette } from './lib/palette'
+
+// 켤 때마다 그라데이션 색 순서와 방향을 바꾼다
+applyPalette(pickPalette())
 
 // 브라우저가 저장 공간 부족 시 데이터를 임의로 지우지 않도록 요청 (research.md 2번)
 navigator.storage?.persist?.().catch(() => {})

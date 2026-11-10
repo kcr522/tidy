@@ -27,7 +27,7 @@ export default function UnreadScrapCard({ unread, linked, onAdd, onOpen, onConve
           {unread.slice(0, MAX_ITEMS).map((b) => {
             const converted = b.id != null && linked.has(b.id)
             return (
-              <li key={b.id} className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3.5 py-3">
+              <li key={b.id} className="flex items-center gap-2 rounded-2xl bg-grad-soft px-3.5 py-3">
                 <button type="button" onClick={() => onOpen(b)} className="min-w-0 flex-1 text-left">
                   <p className="truncate text-sm font-semibold text-slate-800 hover:text-brand-700">{b.title}</p>
                   <p className="truncate text-xs text-slate-400">{domainOf(b.url)}</p>
