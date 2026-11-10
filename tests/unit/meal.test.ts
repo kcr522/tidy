@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { askClaudeMeal, MealError, mealPrompt, priceLine, sanitizeGuess, sanitizeMealRequest, type MealGuess } from '../../src/lib/ai/meal'
-import { mealEngineFor, mealUrlFrom } from '../../src/lib/ai/mealEngines'
+import { geminiMealEngine, mealEngineFor, mealUrlFrom } from '../../src/lib/ai/mealEngines'
 import { nearbyPlaces } from '../../src/lib/ai/places'
 import { readPhotoInfo, toDateTime, validLocation } from '../../src/lib/meal/photo'
 import { mealMemo, suggestedAmount } from '../../src/lib/meal/record'
@@ -137,11 +137,55 @@ describe('어느 AI에 물을지', () => {
     expect(mealEngineFor({ engine: 'local' })).toBeNull()
     expect(mealEngineFor({ engine: 'key' })).toBeNull()
     expect(mealEngineFor({ engine: 'server' })).toBeTypeOf('function')
+    expect(mealEngineFor({ engine: 'gemini' })).toBeNull()
+    expect(mealEngineFor({ engine: 'gemini', geminiKey: 'k' })).toBeTypeOf('function')
   })
 
   it('한마디 서버 주소에서 음식 사진 주소를 만든다', () => {
     expect(mealUrlFrom()).toBe('/api/meal')
     expect(mealUrlFrom('/api/feedback')).toBe('/api/meal')
     expect(mealUrlFrom('https://tidy.vercel.app/api/feedback')).toBe('https://tidy.vercel.app/api/meal')
+  })
+})
+
+describe('무료 Gemini', () => {
+  const req = { image: 'QUJD', date: '2026-11-10', time: '12:34', location: { lat: 37.5, lng: 127 } }
+  const answer = (text: string) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }))
+
+  it('구글 검색을 켜고 사진과 함께 묻고, 글로 온 JSON을 읽는다', async () => {
+    const fetcher = vi.fn(async () => answer(`\`\`\`json\n${JSON.stringify(guess)}\n\`\`\``))
+    const out = await geminiMealEngine('k', fetcher as never)(req)
+    expect(out).toEqual({ guess, nearby: [] })
+    const body = JSON.parse((fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.tools).toEqual([{ google_search: {} }])
+    expect(body.generationConfig.responseMimeType).toBeUndefined()
+    expect(body.contents[0].parts[0]).toEqual({ inlineData: { mimeType: 'image/jpeg', data: 'QUJD' } })
+    expect(body.systemInstruction.parts[0].text).toContain('JSON 하나만')
+  })
+
+  it('검색이 막히면 검색 없이 다시 묻고, 가격은 비운다', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'quota' } }), { status: 429 }))
+      .mockResolvedValueOnce(answer(JSON.stringify(guess)))
+    const out = await geminiMealEngine('k', fetcher as never)(req)
+    expect(out.guess).toMatchObject({ dish: '김치찌개', place: '진미식당', price: null, priceUrl: null })
+    const second = JSON.parse(fetcher.mock.calls[1][1].body as string)
+    expect(second.tools).toBeUndefined()
+  })
+
+  it('무료 사용량을 다 쓰면 알아듣기 쉬운 MealError', async () => {
+    const fetcher = vi.fn(async () => new Response('{}', { status: 429 }))
+    const err = await geminiMealEngine('k', fetcher as never)(req).catch((e) => e)
+    expect(err).toBeInstanceOf(MealError)
+    expect(err.message).toContain('무료 사용량')
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  it('키가 틀리면 다시 묻지 않는다', async () => {
+    const fetcher = vi.fn(async () => new Response('{}', { status: 403 }))
+    const err = await geminiMealEngine('k', fetcher as never)(req).catch((e) => e)
+    expect(err.message).toContain('키가 맞지 않아요')
+    expect(fetcher).toHaveBeenCalledTimes(1)
   })
 })

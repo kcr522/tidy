@@ -52,7 +52,7 @@ export default function MealCapture({ onSave }: Props) {
     const photo = await readPhotoInfo(file)
     setInfo(photo)
     if (!engine) {
-      setStep({ kind: 'edit', reason: "AI 연결이 '기본'이라 음식과 가격은 직접 적어 주세요. 설정 > AI 연결에서 Claude로 바꿀 수 있어요." })
+      setStep({ kind: 'edit', reason: "AI 연결이 '기본'이라 음식과 가격은 직접 적어 주세요. 설정 > AI 연결에서 'Gemini (무료)'를 고르면 AI가 찾아 줘요." })
       return
     }
     setStep({ kind: 'working' })

@@ -15,6 +15,8 @@ export interface GeminiRequest {
   /** 주면 JSON 으로만 답하게 한다. 빈 객체 {} 면 모양은 정하지 않고 JSON 만 */
   schema?: Record<string, unknown>
   maxTokens?: number
+  /** 구글 검색으로 근거 찾기 (무료 등급은 하루 횟수 제한이 따로 있다). 이때는 schema 를 같이 쓰지 않는다 */
+  search?: boolean
   signal?: AbortSignal
 }
 
@@ -62,11 +64,17 @@ type GeminiData = {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** 무료 사용량(분당·하루)을 넘었을 때 */
+export class GeminiLimitError extends Error {}
+/** 키가 틀렸을 때 */
+export class GeminiKeyError extends Error {}
+
 /** Gemini 에게 묻고 글 답을 돌려준다 */
 export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<string> {
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: req.system }] },
     contents: [{ role: 'user', parts: req.parts }],
+    ...(req.search ? { tools: [{ google_search: {} }] } : {}),
     generationConfig: {
       // 요즘 Flash 는 답하기 전에 생각하는 데도 토큰을 써서, 너무 작으면 답이 비어 버린다
       maxOutputTokens: Math.max(req.maxTokens ?? 2048, 2048),
@@ -103,8 +111,8 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
   }
   const data = (await res.json().catch(() => ({}))) as GeminiData
   const why = data.error?.message ?? ''
-  if (res.status === 429) throw new Error('오늘 무료 사용량을 다 썼어요. 잠시 뒤에 다시 해 주세요')
-  if (/api.?key/i.test(why) || res.status === 401 || res.status === 403) throw new Error('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
+  if (res.status === 429) throw new GeminiLimitError('오늘 무료 사용량을 다 썼어요. 잠시 뒤에 다시 해 주세요')
+  if (/api.?key/i.test(why) || res.status === 401 || res.status === 403) throw new GeminiKeyError('Gemini 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
   if (/location is not supported/i.test(why)) throw new Error('지금 있는 곳에서는 Gemini 무료 등급을 쓸 수 없어요')
   if (res.status === 500 || res.status === 503) throw new Error('구글 Gemini 서버가 붐벼요. 잠시 뒤에 다시 해 주세요')
   // 그 밖의 오류는 원인을 찾을 수 있게 구글이 준 이유를 같이 보여 준다
