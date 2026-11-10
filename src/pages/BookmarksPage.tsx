@@ -84,7 +84,7 @@ export default function BookmarksPage() {
             role="tab"
             aria-selected={filter === key}
             onClick={() => setFilter(key)}
-            className={`min-h-10 rounded-lg text-sm font-semibold ${filter === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+            className={`min-h-11 rounded-lg text-sm font-semibold ${filter === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
           >
             {label}
           </button>

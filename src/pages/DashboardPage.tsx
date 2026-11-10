@@ -12,7 +12,7 @@ import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
 import TodoForm from '../components/todos/TodoForm'
 import TransactionForm from '../components/transactions/TransactionForm'
 import type { Bookmark, Todo } from '../db/types'
-import { todayKey } from '../lib/date'
+import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkInput } from '../repositories/bookmarkRepo'
@@ -25,8 +25,8 @@ const SHEET_TITLE = { money: '수입/지출 추가', todo: '할 일 추가', scr
 
 /** 대시보드: 앱의 첫 화면 (spec US4, FR-050~055) */
 export default function DashboardPage() {
-  // 화면을 연 시점의 오늘
-  const [today] = useState(() => todayKey())
+  // 자정이 지나거나 앱이 다시 보이면 새로 계산된다
+  const today = useToday()
   const [year, month] = today.split('-').map(Number)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [converting, setConverting] = useState<Bookmark | null>(null)

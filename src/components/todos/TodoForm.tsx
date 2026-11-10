@@ -74,7 +74,7 @@ export default function TodoForm({ initial, defaultDueDate = null, onSubmit, onD
               role="radio"
               aria-checked={priority === p}
               onClick={() => setPriority(p)}
-              className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
+              className={`min-h-11 rounded-lg text-sm font-semibold transition-colors ${
                 priority === p ? `bg-white shadow-sm ${PRIORITY_LABEL[p].text}` : 'text-slate-500'
               }`}
             >

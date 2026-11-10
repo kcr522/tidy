@@ -75,7 +75,7 @@ export default function BookmarkForm({ initial, isDuplicate, onSubmit, onDelete 
         />
       </Field>
 
-      <Field label="제목 (선택, 비우면 사이트 주소로)" error={errors.title}>
+      <Field label={`제목 (선택, 비우면 사이트 주소로 · ${title.length}/${MAX_TITLE_LENGTH})`} error={errors.title}>
         <input value={title} maxLength={MAX_TITLE_LENGTH} placeholder="예: React 성능 최적화 팁" onChange={(e) => setTitle(e.target.value)} className={inputClass(!!errors.title)} />
       </Field>
 

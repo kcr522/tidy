@@ -32,14 +32,14 @@ export default function UnreadScrapCard({ unread, linked, onAdd, onOpen, onConve
                   <p className="truncate text-xs text-slate-400">{domainOf(b.url)}</p>
                 </button>
                 {converted ? (
-                  <button type="button" onClick={onViewTodo} className="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                  <button type="button" onClick={onViewTodo} className="tap shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
                     ✓ 할 일 보기
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onConvert(b)}
-                    className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-100"
+                    className="tap shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-100"
                   >
                     할 일로 전환
                   </button>

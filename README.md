@@ -94,6 +94,10 @@
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-empty.png" width="240"> <img src="docs/screenshots/day5-convert.png" width="240"> <img src="docs/screenshots/day5-scraps.png" width="240"> <img src="docs/screenshots/day5-todos.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
 
+**Day 6 · 카테고리 필터와 예외 처리**
+
+<img src="docs/screenshots/day6-money-all.png" width="240"> <img src="docs/screenshots/day6-filter.png" width="240"> <img src="docs/screenshots/day6-save-fail.png" width="240"> <img src="docs/screenshots/day6-midnight.png" width="240">
+
 </details>
 
 ## 어디서 쓸 수 있나요?
@@ -142,7 +146,7 @@ Spec Kit 방식으로 "무엇을 → 어떻게 → 할 일" 순서로 정리했�
 - [x] Day 3 — 할 일
 - [x] Day 4 — 스크랩
 - [x] Day 5 — 대시보드, 스크랩 → 할 일 연동
-- [ ] Day 6 — 필터, 예외 처리, 디자인 정돈
+- [x] Day 6 — 필터, 예외 처리, 디자인 정돈
 - [ ] Day 7 — 백업, PWA 배포, 폰 앱, 컴퓨터 앱
 
 ## 시작하기

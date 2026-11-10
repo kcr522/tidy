@@ -10,7 +10,7 @@ import { useToast } from '../components/common/Toast'
 import TodoForm from '../components/todos/TodoForm'
 import TodoItem from '../components/todos/TodoItem'
 import type { Todo } from '../db/types'
-import { todayKey } from '../lib/date'
+import { useToday } from '../hooks/useToday'
 import { sortTodos, todayProgress, todayTodos } from '../lib/summary'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
@@ -21,7 +21,7 @@ type Editor = { mode: 'add' } | { mode: 'edit'; item: Todo } | null
 
 /** 할 일 화면 (spec US2) */
 export default function TodosPage() {
-  const [today] = useState(() => todayKey())
+  const today = useToday()
   const location = useLocation()
   // 스크랩의 "할 일 보기"로 들어오면 전체 탭을 연다
   const [tab, setTab] = useState<Tab>(() => ((location.state as { tab?: Tab } | null)?.tab === 'all' ? 'all' : 'today'))
@@ -97,7 +97,7 @@ export default function TodosPage() {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`min-h-10 rounded-lg text-sm font-semibold ${tab === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+              className={`min-h-11 rounded-lg text-sm font-semibold ${tab === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
             >
               {label}
             </button>
