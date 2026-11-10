@@ -59,6 +59,39 @@
 - 서버 없이 기기 안에 저장해서 인터넷이 없어도 동작
 - 설정에서 **JSON 백업 내보내기/가져오기**로 기기를 옮겨도 그대로
 
+## 화면 미리보기
+
+> 만들면서 찍은 화면이에요. 날마다 새 화면이 생기면 [docs/screenshots](docs/screenshots)에 추가해요.
+
+| 폰 (가계부) | 폰 (할 일) | 폰 (스크랩) |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/day2-list.png" width="240"> | <img src="docs/screenshots/day3-today.png" width="240"> | <img src="docs/screenshots/day4-list.png" width="240"> |
+
+| 컴퓨터 (가계부) | 컴퓨터 (스크랩) |
+|:---:|:---:|
+| <img src="docs/screenshots/day2-desktop.png" width="420"> | <img src="docs/screenshots/day4-desktop.png" width="420"> |
+
+<details>
+<summary>날짜별 화면 전체 보기</summary>
+
+**Day 1 · 기본 화면과 메뉴**
+
+<img src="docs/screenshots/day1-mobile.png" width="240"> <img src="docs/screenshots/day1-desktop.png" width="420">
+
+**Day 2 · 가계부**
+
+<img src="docs/screenshots/day2-list.png" width="240"> <img src="docs/screenshots/day2-validate.png" width="240"> <img src="docs/screenshots/day2-desktop.png" width="420">
+
+**Day 3 · 할 일**
+
+<img src="docs/screenshots/day3-today.png" width="240"> <img src="docs/screenshots/day3-all.png" width="240">
+
+**Day 4 · 스크랩**
+
+<img src="docs/screenshots/day4-list.png" width="240"> <img src="docs/screenshots/day4-desktop.png" width="420">
+
+</details>
+
 ## 어디서 쓸 수 있나요?
 
 | 환경 | 방법 | 상태 |
