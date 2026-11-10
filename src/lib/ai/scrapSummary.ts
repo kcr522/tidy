@@ -22,7 +22,7 @@ export const SUMMARY_MODEL = 'claude-opus-5-5'
 /** 서버로 받을 캡처 크기 한도 (base64 글자 수) */
 export const MAX_IMAGE_B64 = 2_500_000
 
-const SYSTEM = `너는 "Tidy" 앱의 스크랩 정리 도우미야. 사용자가 나중에 보려고 저장한 링크(인스타그램, 네이버 블로그, X 글 등)가 무슨 내용인지 한국어로 정리해 줘.
+export const SUMMARY_SYSTEM = `너는 "Tidy" 앱의 스크랩 정리 도우미야. 사용자가 나중에 보려고 저장한 링크(인스타그램, 네이버 블로그, X 글 등)가 무슨 내용인지 한국어로 정리해 줘.
 
 형식:
 - 첫 줄: 한 문장 요약 (40자 안팎)
@@ -83,7 +83,7 @@ export async function askClaudeSummary(client: Anthropic, input: ScrapSummaryInp
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       output_config: { effort: 'low' },
-      system: SYSTEM,
+      system: SUMMARY_SYSTEM,
       messages: [{ role: 'user', content }],
     },
     { signal },

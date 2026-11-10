@@ -67,4 +67,11 @@ describe('결제 수단과 시간 (2차)', () => {
     expect(parseBackup(file(tx({ time: '10:00', account: '토스' })), 1).transactions[0].account).toBe('토스')
     expect(() => parseBackup(file({ ...tx({}), account: 3 }), 1)).toThrow('손상')
   })
+
+  it('백업: javascript: 같은 위험한 스크랩 주소는 거부 (보안)', () => {
+    const bm = (url: string) => ({ id: 1, url, title: 't', memo: '', isRead: 0, createdAt: '', updatedAt: '' })
+    const file = (b: object) => JSON.stringify({ app: 'tidy', appVersion: '0.1.0', schemaVersion: 1, exportedAt: '', transactions: [], todos: [], bookmarks: [b] })
+    expect(parseBackup(file(bm('https://naver.com')), 1).bookmarks).toHaveLength(1)
+    expect(() => parseBackup(file(bm('javascript:alert(1)')), 1)).toThrow()
+  })
 })

@@ -1,4 +1,4 @@
-import { ArrowUp, BookHeart, CalendarRange, ImagePlus, Loader2, Mic, Sparkles, Square, Wallet, X } from 'lucide-react'
+import { ArrowUp, BookHeart, CalendarRange, ExternalLink, ImagePlus, Loader2, Sparkles, Wallet, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AssistantError } from '../../lib/ai/assistant'
@@ -10,9 +10,9 @@ import { dayTitle } from '../../lib/calendar'
 import { categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatWon } from '../../lib/format'
+import { isWebUrl } from '../../lib/validate'
 import { shrinkImage } from '../../lib/image'
 import { shrinkPhoto } from '../../lib/meal/photo'
-import { useSpeech } from '../../hooks/useSpeech'
 import { diaryRepo } from '../../repositories/diaryRepo'
 import { eventRepo } from '../../repositories/eventRepo'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
@@ -39,10 +39,6 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
   const abort = useRef<AbortController | null>(null)
   const navigate = useNavigate()
   const toast = useToast()
-  const speech = useSpeech(
-    (said) => setText((t) => (t ? `${t} ${said}` : said)),
-    (msg) => toast(msg, 'error'),
-  )
 
   useEffect(() => () => abort.current?.abort(), [])
   useEffect(() => {
@@ -58,7 +54,6 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
 
   async function send(input: { text?: string; file?: File }) {
     if (busy) return
-    speech.stop()
     const said = input.text?.trim()
     let photo: string | undefined
     let image: string | undefined
@@ -83,6 +78,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
       const [transactions, aliases] = await Promise.all([transactionRepo.listAll(), merchantAliasRepo.list()])
       const res = await askAssistant(settings, { today, ...(said ? { text: said } : {}), ...(image ? { image } : {}), context: buildContext(transactions, aliases) }, ctrl.signal)
       if (ctrl.signal.aborted) return
+      if (res.fallback) add({ id: id(), from: 'ai', text: `${res.fallback.split(/\.\s/)[0].replace(/\.$/, "")}. 그래서 이번엔 기본 모드(AI 없이)로 답할게요.` })
       if (res.kind === 'event') {
         const first = res.events.map((e) => e.startDate).sort()[0]
         const last = res.events.map((e) => e.endDate).sort().at(-1)!
@@ -95,7 +91,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
         const entry = await diaryRepo.get(date)
         add({ id: id(), from: 'ai', text: res.reply, proposal: { kind: 'diary', date, text: res.diary.text, photo: entry?.photo ? undefined : photo, hasEntry: !!entry } })
       } else {
-        add({ id: id(), from: 'ai', text: res.reply })
+        add({ id: id(), from: 'ai', text: res.reply, ...(res.sources?.length ? { sources: res.sources } : {}) })
       }
     } catch (err) {
       if (ctrl.signal.aborted) return
@@ -186,6 +182,22 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
               <div key={m.id} className="flex max-w-[88%] flex-col items-start gap-2">
                 <p className="rounded-2xl rounded-bl-md bg-white px-3.5 py-2.5 text-[15px] whitespace-pre-wrap text-slate-800 shadow-card">{m.text}</p>
                 {'proposal' in m && <ProposalCard msg={m} onChoose={(c) => choose(m, c)} />}
+                {'sources' in m && m.sources && (
+                  <div className="flex flex-wrap gap-1.5 pl-1">
+                    {m.sources.filter((src) => isWebUrl(src.url)).map((src) => (
+                      <a
+                        key={src.url}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex max-w-[14rem] items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 shadow-card"
+                      >
+                        <ExternalLink className="size-3 shrink-0" aria-hidden />
+                        <span className="truncate">{src.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ),
           )}
@@ -214,22 +226,13 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
           />
           <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-3xl bg-slate-100 pr-1 pl-4">
             <input
-              value={speech.listening && speech.interim ? `${text} ${speech.interim}`.trim() : text}
+              value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={speech.listening ? '듣고 있어요…' : '메시지나 사진을 보내 보세요'}
+              placeholder="메시지나 사진을 보내 보세요"
               maxLength={500}
               className="min-w-0 flex-1 bg-transparent py-2 text-[15px] outline-none placeholder:text-slate-400"
               aria-label="메시지"
             />
-            <button
-              type="button"
-              onClick={speech.listening ? speech.stop : speech.start}
-              aria-pressed={speech.listening}
-              className={`flex size-9 shrink-0 items-center justify-center rounded-full ${speech.listening ? 'bg-expense animate-pulse text-white' : 'text-slate-500'}`}
-              aria-label={speech.listening ? '그만 말하기' : '말로 하기'}
-            >
-              {speech.listening ? <Square className="size-3.5" fill="currentColor" aria-hidden /> : <Mic className="size-5" aria-hidden />}
-            </button>
           </div>
           <button type="submit" disabled={busy || !text.trim()} className="bg-grad on-grad flex size-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40" aria-label="보내기">
             <ArrowUp className="size-5" strokeWidth={2.6} aria-hidden />

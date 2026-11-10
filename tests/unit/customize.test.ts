@@ -1,5 +1,7 @@
+import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
-import { defaultCustomization, parseCustomization, withFixedColors } from '../../src/lib/customize'
+import { defaultCustomization, MAX_PHOTOS, parseCustomization, photoRefs, sessionPhoto, withFixedColors } from '../../src/lib/customize'
+import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../src/lib/customPhotos'
 import { pickTheme } from '../../src/lib/palette'
 
 describe('꾸미기 (customize)', () => {
@@ -13,8 +15,9 @@ describe('꾸미기 (customize)', () => {
       background: { color: 'fixed', fixed: 'red', photo: 'javascript:alert(1)', clear: 140, cardClear: 99 },
       sections: { money: { color: 'fixed', colors: ['#111111', '#222222', '#333333'], photo: 'data:image/jpeg;base64,AA', clear: -5 } },
     })
-    expect(c.background).toMatchObject({ color: 'fixed', fixed: '#c9e7ff', photo: null, clear: 100, cardClear: 70 })
-    expect(c.sections.money).toMatchObject({ color: 'fixed', photo: 'data:image/jpeg;base64,AA', clear: 0 })
+    expect(c.background).toMatchObject({ color: 'fixed', fixed: '#c9e7ff', photos: [], clear: 100, cardClear: 70 })
+    // 예전 한 장짜리 photo 는 photos 로 옮겨 읽는다
+    expect(c.sections.money).toMatchObject({ color: 'fixed', photos: ['data:image/jpeg;base64,AA'], clear: 0 })
   })
 
   it('고정한 구역만 고른 색으로 바뀌고 나머지는 랜덤 그대로', () => {
@@ -30,5 +33,45 @@ describe('꾸미기 (customize)', () => {
     expect(parseCustomization({}).check).toEqual({ color: 'section', fixed: '#34c759' })
     expect(parseCustomization({ check: { color: 'fixed', fixed: '#ff00aa' } }).check).toEqual({ color: 'fixed', fixed: '#ff00aa' })
     expect(parseCustomization({ check: { color: 'fixed', fixed: 'url(x)' } }).check.fixed).toBe('#34c759')
+  })
+
+  it('사진 여러 장: 이상한 이름은 버리고, 같은 사진은 한 번만, 최대 장수까지', () => {
+    const many = Array.from({ length: 15 }, (_, i) => `idb:photo-${String(i).padStart(3, '0')}`)
+    const c = parseCustomization({ sections: { todo: { photos: ['idb:photo-000', 'idb:photo-000', 'javascript:x', 'idb:../x', ...many] } } })
+    expect(c.sections.todo.photos).toHaveLength(MAX_PHOTOS)
+    expect(c.sections.todo.photos[0]).toBe('idb:photo-000')
+    expect(c.sections.todo.photos).not.toContain('javascript:x')
+    expect(photoRefs(c)).toEqual(c.sections.todo.photos)
+  })
+
+  it('켤 때 고른 사진은 그 사이에 계속 같다', () => {
+    const list = ['idb:aaaaaa', 'idb:bbbbbb', 'idb:cccccc']
+    expect(sessionPhoto([], 'k')).toBeNull()
+    const first = sessionPhoto(list, 'test-key', () => 0.5)
+    expect(first).toBe('idb:bbbbbb')
+    expect(sessionPhoto(list, 'test-key', () => 0)).toBe(first)
+  })
+})
+
+describe('꾸미기 사진 보관함 (IndexedDB)', () => {
+  it('넣고, 다시 읽고, 안 쓰는 사진은 지운다', async () => {
+    const a = await storePhoto(new Blob(['a'], { type: 'image/jpeg' }))
+    const b = await storePhoto(new Blob(['b'], { type: 'image/jpeg' }))
+    expect(a).toMatch(/^idb:/)
+    expect(photoSrc(a)).toMatch(/^blob:/)
+    await prunePhotos([a])
+    expect(photoSrc(b)).toBeUndefined()
+    expect(photoSrc(a)).toBeDefined()
+    await loadPhotos([a, b])
+    expect(photoSrc(b)).toBeUndefined()
+    expect(photoSrc('data:image/png;base64,AA')).toBe('data:image/png;base64,AA')
+  })
+})
+
+describe('사진 맞춤', () => {
+  it('기본은 꽉 채우기·가운데, 이상한 값은 기본으로', () => {
+    const c = parseCustomization({ background: { fit: 'contain', pos: 'top' }, sections: { money: { fit: 'zoom', pos: 'left' } } })
+    expect(c.background).toMatchObject({ fit: 'contain', pos: 'top' })
+    expect(c.sections.money).toMatchObject({ fit: 'cover', pos: 'center' })
   })
 })

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, ImagePlus, Mic, Square, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ImagePlus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -7,7 +7,6 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import { addDays } from 'date-fns'
-import { useSpeech } from '../hooks/useSpeech'
 import { useToday } from '../hooks/useToday'
 import { dayTitle } from '../lib/calendar'
 import { parseDateKey, toDateKey } from '../lib/date'
@@ -105,11 +104,6 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
   const [deleting, setDeleting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
-  // 말로 쓰기: 끝난 문장을 글 끝에 붙인다
-  const speech = useSpeech(
-    (said) => setText((t) => (t && !/\s$/.test(t) ? `${t} ${said}` : t + said).slice(0, MAX_TEXT)),
-    (msg) => toast(msg, 'error'),
-  )
 
   const dirty = (text !== (entry?.text ?? '') || photo !== entry?.photo)
   const empty = text.trim() === '' && !photo
@@ -187,21 +181,7 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
           className="w-full resize-none rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
           aria-label="일기 내용"
         />
-        {speech.listening && (
-          <p className="mt-1 line-clamp-2 text-sm text-brand-600" aria-live="polite">
-            {speech.interim || '듣고 있어요… 말씀하세요'}
-          </p>
-        )}
-        <div className="mt-1 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={speech.listening ? speech.stop : speech.start}
-            aria-pressed={speech.listening}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${speech.listening ? 'bg-expense text-white' : 'bg-slate-100 text-slate-600'}`}
-          >
-            {speech.listening ? <Square className="size-3.5" fill="currentColor" aria-hidden /> : <Mic className="size-4" aria-hidden />}
-            {speech.listening ? '그만 말하기' : '말로 쓰기'}
-          </button>
+        <div className="mt-1 flex items-center justify-end">
           <span className="text-xs text-slate-400">
             {text.length}/{MAX_TEXT}
           </span>

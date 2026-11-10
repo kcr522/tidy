@@ -65,7 +65,7 @@ export interface DiaryGuess {
 /** AI → 앱 으로 돌아오는 것 */
 export interface AssistantReply {
   /** 찾은 것: 일정 / 결제 내역 / 일기 / 없음 */
-  kind: 'event' | 'payment' | 'diary' | 'none'
+  kind: 'event' | 'payment' | 'diary' | 'question' | 'none'
   /** 대화창에 보일 한두 문장 */
   reply: string
   events: EventGuess[]
@@ -98,7 +98,8 @@ export const ASSISTANT_SYSTEM = `너는 가계부·일정 앱 "Tidy" 안의 AI �
 - 행사, 모임, 마감, 신청 기간, 예약처럼 "앞으로 언제 무엇을 한다"면 kind="event".
 - 결제, 이체, 입금, 출금, 승인 내역, 영수증처럼 "돈이 오갔다"면 kind="payment".
 - "오늘 ~했다", "~한 일이 있었어"처럼 이미 지나간 하루 이야기, 기분, 느낌이면 kind="diary".
-- 셋 다 아니면 kind="none".
+- 돈 관리, 저축, 적금·예금, 청년 지원 상품, 청약, 대출, 소비 습관, 자기관리처럼 무언가를 "물어보는" 말이면 kind="question" (reply는 빈 글자 ""로. 답은 앱이 따로 만든다).
+- 넷 다 아니면 kind="none".
 
 일정(event):
 - 가장 중요한 일정 하나 (서로 다른 일정이 여러 개면 많아야 ${MAX_EVENTS}개).
@@ -138,7 +139,7 @@ export const REPORT_TOOL = {
     additionalProperties: false,
     required: ['kind', 'reply', 'events', 'payments', 'diary'],
     properties: {
-      kind: { type: 'string', enum: ['event', 'payment', 'diary', 'none'], description: '일정이면 event, 결제 내역이면 payment, 오늘 이야기면 diary, 셋 다 아니면 none' },
+      kind: { type: 'string', enum: ['event', 'payment', 'diary', 'question', 'none'], description: '일정이면 event, 결제 내역이면 payment, 오늘 이야기면 diary, 돈·생활 질문이면 question, 아니면 none' },
       reply: { type: 'string', description: '대화창에 보일 1~2문장' },
       events: {
         type: 'array',
@@ -312,13 +313,14 @@ export function sanitizeAssistantReply(raw: unknown): AssistantReply | null {
   const diaryText = str(d?.text, 2000)
   const diaryDate = validDate(d?.date)
   if (r.kind === 'diary' && diaryText && diaryDate) return { ...none, kind: 'diary', reply: reply || '그런 일이 있으셨군요', diary: { date: diaryDate, text: diaryText } }
+  if (r.kind === 'question') return { ...none, kind: 'question', reply }
   if (!['event', 'payment', 'diary', 'none'].includes(r.kind as string)) return null
   return { ...none, kind: 'none', reply: reply || '여기서는 일정이나 결제 내역을 찾지 못했어요' }
 }
 
 /** 도구가 없는 AI(Gemini)에게 알려 줄 답 모양 */
 export const JSON_SHAPE = `report 도구 대신, 아래 모양의 JSON 하나로만 답해 (다른 글 없이):
-{"kind":"event|payment|diary|none","reply":"…","events":[{"title":"…","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","time":"HH:mm 또는 null","place":"… 또는 null","note":""}],"payments":[{"type":"EXPENSE|INCOME","merchant":"…","amount":0,"date":"YYYY-MM-DD","time":"HH:mm 또는 null","account":"… 또는 null","category":"…"}],"diary":{"date":"YYYY-MM-DD","text":"…"} 또는 null}
+{"kind":"event|payment|diary|question|none","reply":"…","events":[{"title":"…","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","time":"HH:mm 또는 null","place":"… 또는 null","note":""}],"payments":[{"type":"EXPENSE|INCOME","merchant":"…","amount":0,"date":"YYYY-MM-DD","time":"HH:mm 또는 null","account":"… 또는 null","category":"…"}],"diary":{"date":"YYYY-MM-DD","text":"…"} 또는 null}
 해당 없는 칸은 빈 배열이나 null.`
 
 /** 글로 받은 JSON 답을 믿을 수 있는 모양으로 (Gemini, 또는 Claude가 도구 대신 글로 썼을 때) */

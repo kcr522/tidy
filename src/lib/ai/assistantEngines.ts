@@ -1,5 +1,6 @@
 import { askClaudeAssistant, assistantPrompt, AssistantError, ASSISTANT_SYSTEM, JSON_SHAPE, parseAssistantJson, type AssistantReply, type AssistantRequest } from './assistant'
-import { callGemini } from './gemini'
+import { askAdvisor } from './advisor'
+import { callGemini, type GeminiSource } from './gemini'
 import { localAssistant } from './assistantLocal'
 import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
 
@@ -14,6 +15,10 @@ export function assistantUrlFor(serverUrl?: string): string {
 
 export interface AssistantResult extends AssistantReply {
   engine: EngineId
+  /** AI를 못 써서 기본(AI 없이)으로 대신 답했을 때, 왜 그랬는지 */
+  fallback?: string
+  /** 질문에 답할 때 검색으로 찾은 출처 */
+  sources?: GeminiSource[]
 }
 
 /**
@@ -23,6 +28,31 @@ export interface AssistantResult extends AssistantReply {
  * - 서버 / 내 키: Claude가 사진과 글을 읽는다
  */
 export async function askAssistant(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  try {
+    const ai = await askAi(settings, req, signal)
+    if (ai?.kind === 'question') return await answerQuestion(settings, req, ai, signal)
+    if (ai) return ai
+  } catch (err) {
+    if (signal?.aborted) throw err
+    // AI를 못 쓰면(무료 사용량을 다 썼거나, 서버가 붐비거나, 인터넷이 끊기면) 멈추지 않고 기본(AI 없이)으로 답한다
+    const why = err instanceof Error ? err.message : 'AI에 연결하지 못했어요'
+    return { ...(await askLocal(req)), fallback: why }
+  }
+  return askLocal(req)
+}
+
+/** 돈·생활 질문: Gemini가 검색까지 해서 답한다 */
+async function answerQuestion(settings: AiSettings, req: AssistantRequest, ai: AssistantResult, signal?: AbortSignal): Promise<AssistantResult> {
+  const question = req.text?.trim() || '사진 속 내용에 대해 알려 줘'
+  if (settings.engine !== 'gemini' || !settings.geminiKey?.trim()) {
+    return { ...ai, kind: 'none', reply: ai.reply || '질문에 답하는 건 설정 > AI 연결에서 Gemini (무료)를 고르면 할 수 있어요.' }
+  }
+  const a = await askAdvisor(settings.geminiKey.trim(), question, req.today, req.context, signal)
+  return { ...ai, kind: 'question', reply: a.text.slice(0, 1500), sources: a.sources }
+}
+
+/** 고른 AI로 묻기. AI를 고르지 않았으면 null */
+async function askAi(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult | null> {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) {
     const parts = [
       ...(req.image ? [{ inlineData: { mimeType: 'image/jpeg', data: req.image } }] : []),
@@ -54,6 +84,10 @@ export async function askAssistant(settings: AiSettings, req: AssistantRequest, 
     const client = new Anthropic({ apiKey: settings.apiKey.trim(), dangerouslyAllowBrowser: true, maxRetries: 1 })
     return { ...(await askClaudeAssistant(client, req, signal)), engine: 'key' }
   }
+  return null
+}
+
+async function askLocal(req: AssistantRequest): Promise<AssistantResult> {
   // 기본(AI 없이): 사진이 있으면 기기 안에서 글자를 읽고, 은행·카드 캡처면 내역을 규칙으로 찾는다
   if (req.image) {
     const { recognizeText } = await import('../ocr/recognize')

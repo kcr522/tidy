@@ -6,7 +6,8 @@ import App from './App.tsx'
 import { ToastProvider } from './components/common/Toast.tsx'
 import './index.css'
 import { initColorMode, isDark, onDarkChange } from './lib/colorMode'
-import { applyCustomization, loadCustomization, onCustomizationChange, withFixedColors } from './lib/customize'
+import { loadPhotos } from './lib/customPhotos'
+import { applyCustomization, loadCustomization, onCustomizationChange, photoRefs, withFixedColors } from './lib/customize'
 import { applyTheme } from './lib/palette'
 import { randomTheme } from './lib/sessionTheme'
 
@@ -21,6 +22,8 @@ const paint = () => {
   applyCustomization(custom, theme)
 }
 paint()
+// 꾸미기 사진은 IndexedDB 에서 읽어야 해서, 읽고 나면 한 번 더 칠한다
+void loadPhotos(photoRefs(loadCustomization())).then(paint).catch(() => {})
 onDarkChange(paint)
 onCustomizationChange(paint)
 
