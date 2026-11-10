@@ -1,5 +1,6 @@
 import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
 import { callGemini } from './gemini'
+import { callGroq } from './groq'
 import { askClaudeSummary, localSummary, summaryPrompt, SummaryError, SUMMARY_SYSTEM, type ScrapSummaryInput } from './scrapSummary'
 
 export const DEFAULT_SUMMARY_URL = '/api/scrap-summary'
@@ -33,6 +34,14 @@ export async function summarizeScrap(settings: AiSettings, input: ScrapSummaryIn
       return { text: (await callGemini(settings.geminiKey.trim(), { system: SUMMARY_SYSTEM, parts, maxTokens: 2048, signal })).slice(0, 1200), engine: 'gemini' }
     } catch (err) {
       if (signal?.aborted) throw err
+      const groq = settings.groqKey?.trim()
+      if (groq) {
+        try {
+          return { text: (await callGroq(groq, { system: SUMMARY_SYSTEM, user: summaryPrompt(input), maxTokens: 1024, signal })).text.slice(0, 1200), engine: 'groq' }
+        } catch (err2) {
+          if (signal?.aborted) throw err2
+        }
+      }
       return { text: localSummary(input), engine: 'local' }
     }
   }

@@ -14,6 +14,7 @@ export default function AiSettingsSection() {
   const [engine, setEngine] = useState<EngineId>(settings.engine)
   const [apiKey, setApiKey] = useState(settings.apiKey ?? '')
   const [geminiKey, setGeminiKey] = useState(settings.geminiKey ?? '')
+  const [groqKey, setGroqKey] = useState(settings.groqKey ?? '')
   const [serverUrl, setServerUrl] = useState(settings.serverUrl ?? '')
   const [show, setShow] = useState(false)
   const toast = useToast()
@@ -23,6 +24,7 @@ export default function AiSettingsSection() {
     engine !== settings.engine ||
     apiKey.trim() !== (settings.apiKey ?? '') ||
     geminiKey.trim() !== (settings.geminiKey ?? '') ||
+    groqKey.trim() !== (settings.groqKey ?? '') ||
     serverUrl.trim() !== (settings.serverUrl ?? '')
 
   function submit() {
@@ -31,6 +33,7 @@ export default function AiSettingsSection() {
       engine,
       ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
       ...(geminiKey.trim() ? { geminiKey: geminiKey.trim() } : {}),
+      ...(groqKey.trim() ? { groqKey: groqKey.trim() } : {}),
       ...(serverUrl.trim() ? { serverUrl: serverUrl.trim() } : {}),
     })
     toast('AI 연결을 바꿨어요')
@@ -103,6 +106,27 @@ export default function AiSettingsSection() {
           </div>
           <p className="mt-1.5 text-xs break-keep text-slate-400">
             aistudio.google.com 에 구글 계정으로 들어가 'Get API key'를 누르면 무료로 만들 수 있어요. 카드 등록은 필요 없어요. 하루 사용 횟수 제한이 있고, 무료 등급 대화는 구글이 서비스 개선에 쓸 수 있어요. 키는 이 기기에만 저장돼요.
+          </p>
+        </div>
+      )}
+
+      {engine !== 'local' && (
+        <div className="px-5 pt-4">
+          <label htmlFor="ai-groq" className="mb-1.5 block text-sm font-semibold text-slate-700">
+            예비 AI: Groq API 키 (무료, 넣지 않아도 돼요)
+          </label>
+          <input
+            id="ai-groq"
+            type={show ? 'text' : 'password'}
+            value={groqKey}
+            onChange={(e) => setGroqKey(e.target.value)}
+            placeholder="gsk_..."
+            autoComplete="off"
+            spellCheck={false}
+            className={inputClass()}
+          />
+          <p className="mt-1.5 text-xs break-keep text-slate-400">
+            위에서 고른 AI가 한도를 다 쓰거나 붐비면 Groq가 대신 답해요. console.groq.com 에 구글 계정으로 들어가 'API Keys' → 'Create API Key'를 누르면 무료로 만들 수 있어요. 사진 읽기와 검색은 못 해요. 키는 이 기기에만 저장돼요.
           </p>
         </div>
       )}
