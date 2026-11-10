@@ -111,13 +111,13 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 **Independent Test**: spec.md US3의 Acceptance Scenarios 1~6
 
-- [ ] T034 [US3] 저장소 `src/repositories/bookmarkRepo.ts`: add, update, remove(연결된 todo의 bookmarkId 해제), toggleRead, findByUrl, list(filter)
-- [ ] T035 [P] [US3] 링크 열기 `src/platform/openUrl.ts`: 지금은 웹(`window.open(url, '_blank', 'noopener')`)만, Day 7에 앱 분기 추가
-- [ ] T036 [US3] 입력 폼 `src/components/bookmarks/BookmarkForm.tsx`: URL 자동 `https://`, 제목 비면 도메인, 중복 URL 확인 (FR-030~033)
-- [ ] T037 [US3] 카드 `src/components/bookmarks/BookmarkCard.tsx`: 제목, 도메인, 메모, 저장일, 읽음 토글, 열기(열면 읽음) (FR-034~036)
-- [ ] T038 [US3] 페이지 `src/pages/BookmarksPage.tsx`: 최근 순 카드 목록, 빈 화면 안내, 수정/삭제 (FR-038)
-- [ ] T039 [US3] US3 시나리오 1~6 확인
-- [ ] T040 💾 커밋 & 푸시: `feat: 스크랩 저장과 링크 열기`
+- [x] T034 [US3] 저장소 `src/repositories/bookmarkRepo.ts`: add, update, remove(연결된 todo의 bookmarkId 해제), toggleRead, findByUrl, list(filter)
+- [x] T035 [P] [US3] 링크 열기 `src/platform/openUrl.ts`: 지금은 웹(`window.open(url, '_blank', 'noopener')`)만, Day 7에 앱 분기 추가
+- [x] T036 [US3] 입력 폼 `src/components/bookmarks/BookmarkForm.tsx`: URL 자동 `https://`, 제목 비면 도메인, 중복 URL 확인 (FR-030~033)
+- [x] T037 [US3] 카드 `src/components/bookmarks/BookmarkCard.tsx`: 제목, 도메인, 메모, 저장일, 읽음 토글, 열기(열면 읽음) (FR-034~036)
+- [x] T038 [US3] 페이지 `src/pages/BookmarksPage.tsx`: 최근 순 카드 목록, 빈 화면 안내, 수정/삭제 (FR-038)
+- [x] T039 [US3] US3 시나리오 1~6 확인
+- [x] T040 💾 커밋 & 푸시: `feat: 스크랩 저장과 링크 열기`
 
 **Checkpoint**: 세 가지 핵심 기능이 각각 동작한다
 
@@ -158,7 +158,7 @@ description: "Tidy 1차 MVP 7일 작업 목록"
 
 - [ ] T054 [US6] 가계부 카테고리 필터, 필터 시 합계도 해당 카테고리 기준 (FR-018)
 - [x] T055 [US6] 할 일 '오늘' 탭에 기한 지난 미완료 맨 위, 오늘 완료한 것은 아래 (FR-023)
-- [ ] T056 [US6] 스크랩 '전체'/'안 읽음' 필터 (FR-037)
+- [x] T056 [US6] 스크랩 '전체'/'안 읽음' 필터 (FR-037)
 - [ ] T057 [P] 저장 실패 시 입력 유지 + "저장하지 못했어요" 토스트 (Edge Cases)
 - [ ] T058 [P] 긴 텍스트 말줄임, 글자 수 제한 표시 (Edge Cases)
 - [ ] T059 [P] 자정/월 변경 시 '오늘', '이번 달' 다시 계산 (앱이 다시 보일 때 `visibilitychange`로 갱신)
