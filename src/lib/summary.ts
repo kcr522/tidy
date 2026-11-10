@@ -1,4 +1,5 @@
 import type { Priority, Todo, Transaction } from '../db/types'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from './categories'
 
 export interface MonthSummary {
   income: number
@@ -30,6 +31,22 @@ export function usageRate(summary: Pick<MonthSummary, 'income' | 'expense'>): nu
 /** 오늘 지출 합계 (FR-051) */
 export function todayExpense(list: Transaction[], today: string): number {
   return list.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === today ? sum + t.amount : sum), 0)
+}
+
+// ───────────── 카테고리 필터 (FR-018) ─────────────
+
+const CATEGORY_ORDER: string[] = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES.filter((c) => c !== '기타')]
+
+/** 이 목록에 쓰인 카테고리 (기본 카테고리 순서) */
+export function categoriesUsed(list: Transaction[]): string[] {
+  const used = new Set(list.map((t) => t.category))
+  const rank = (c: string) => (CATEGORY_ORDER.includes(c) ? CATEGORY_ORDER.indexOf(c) : CATEGORY_ORDER.length)
+  return [...used].sort((a, b) => rank(a) - rank(b))
+}
+
+/** 카테고리로 거르기. null이면 전체 */
+export function filterByCategory(list: Transaction[], category: string | null): Transaction[] {
+  return category === null ? list : list.filter((t) => t.category === category)
 }
 
 export interface DayGroup {

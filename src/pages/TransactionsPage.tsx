@@ -10,25 +10,30 @@ import MonthSummary from '../components/transactions/MonthSummary'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
 import type { Transaction } from '../db/types'
-import { monthSummary } from '../lib/summary'
+import { useToday } from '../hooks/useToday'
+import { categoriesUsed, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
 type Editor = { mode: 'add' } | { mode: 'edit'; item: Transaction } | null
 
 /** 가계부 화면 (spec US1) */
 export default function TransactionsPage() {
-  // 화면을 연 시점의 이번 달
-  const [thisMonth] = useState(() => {
-    const now = new Date()
-    return { year: now.getFullYear(), month: now.getMonth() + 1 }
-  })
+  // 이번 달: 자정이나 월이 바뀌면 다시 계산된다
+  const today = useToday()
+  const [thisYear, thisMonthNum] = today.split('-').map(Number)
+  const thisMonth = useMemo(() => ({ year: thisYear, month: thisMonthNum }), [thisYear, thisMonthNum])
   const [ym, setYm] = useState(thisMonth)
+  const [category, setCategory] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const toast = useToast()
 
   const items = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
-  const summary = useMemo(() => monthSummary(items ?? []), [items])
+  const used = useMemo(() => categoriesUsed(items ?? []), [items])
+  const filtered = useMemo(() => (items ? filterByCategory(items, category) : undefined), [items, category])
+  // 필터를 고르면 위쪽 합계도 그 카테고리 기준 (US6 시나리오 2)
+  const summary = useMemo(() => monthSummary(filtered ?? []), [filtered])
+  const chips = category !== null && !used.includes(category) ? [...used, category] : used
 
   const moveMonth = (delta: number) =>
     setYm(({ year, month }) => {
@@ -81,7 +86,25 @@ export default function TransactionsPage() {
         onToday={isThisMonth ? undefined : () => setYm(thisMonth)}
       />
 
-      {items === undefined ? null : items.length === 0 ? (
+      {items !== undefined && items.length > 0 && (
+        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="카테고리 필터">
+          {[null, ...chips].map((c) => (
+            <button
+              key={c ?? 'all'}
+              type="button"
+              aria-pressed={category === c}
+              onClick={() => setCategory(c)}
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
+                category === c ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {c ?? '전체'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {items === undefined || filtered === undefined ? null : items.length === 0 ? (
         <EmptyState
           icon="💳"
           title="첫 내역을 기록해 보세요"
@@ -89,7 +112,19 @@ export default function TransactionsPage() {
           action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>}
         />
       ) : (
-        <TransactionList items={items} onSelect={(item) => setEditor({ mode: 'edit', item })} />
+        filtered.length === 0 ? (
+          <EmptyState
+            icon="🔍"
+            title={`이 달에는 ${category} 내역이 없어요`}
+            action={
+              <Button variant="secondary" onClick={() => setCategory(null)}>
+                전체 보기
+              </Button>
+            }
+          />
+        ) : (
+          <TransactionList items={filtered} onSelect={(item) => setEditor({ mode: 'edit', item })} />
+        )
       )}
 
       <Modal open={editor !== null} title={editor?.mode === 'edit' ? '내역 수정' : '내역 추가'} onClose={() => setEditor(null)}>

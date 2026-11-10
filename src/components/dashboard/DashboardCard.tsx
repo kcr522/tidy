@@ -28,7 +28,7 @@ export default function DashboardCard({ to, icon, title, addLabel, onAdd, childr
           onClick={onAdd}
           aria-label={addLabel}
           title={addLabel}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-lg font-bold text-brand-700 hover:bg-brand-100"
+          className="tap flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-lg font-bold text-brand-700 hover:bg-brand-100"
         >
           +
         </button>

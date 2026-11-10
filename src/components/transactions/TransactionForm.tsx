@@ -73,7 +73,7 @@ export default function TransactionForm({ initial, onSubmit, onDelete }: Transac
             role="radio"
             aria-checked={type === t}
             onClick={() => changeType(t)}
-            className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
+            className={`min-h-11 rounded-lg text-sm font-semibold transition-colors ${
               type === t ? (t === 'EXPENSE' ? 'bg-white text-expense shadow-sm' : 'bg-white text-income shadow-sm') : 'text-slate-500'
             }`}
           >

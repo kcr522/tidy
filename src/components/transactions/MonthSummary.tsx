@@ -15,15 +15,15 @@ export default function MonthSummary({ year, month, summary, onPrev, onNext, onT
   return (
     <section className="mb-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div className="mb-4 flex items-center justify-center gap-2">
-        <button type="button" onClick={onPrev} className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100" aria-label="이전 달">
+        <button type="button" onClick={onPrev} className="tap rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100" aria-label="이전 달">
           ‹
         </button>
         <h2 className="min-w-28 text-center text-lg font-bold">{formatMonthLabel(year, month)}</h2>
-        <button type="button" onClick={onNext} className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100" aria-label="다음 달">
+        <button type="button" onClick={onNext} className="tap rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100" aria-label="다음 달">
           ›
         </button>
         {onToday && (
-          <button type="button" onClick={onToday} className="ml-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+          <button type="button" onClick={onToday} className="tap ml-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
             이번 달
           </button>
         )}
