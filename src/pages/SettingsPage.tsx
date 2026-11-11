@@ -3,6 +3,8 @@ import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
 import AppLockCard from '../components/settings/AppLockCard'
+import AutoBackupCard from '../components/settings/AutoBackupCard'
+import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
 import WidgetCard from '../components/settings/WidgetCard'
 import { inputClass } from '../components/common/formStyles'
@@ -39,6 +41,7 @@ export default function SettingsPage() {
     try {
       const backup = await backupRepo.exportAll()
       await saveTextFile(backupFileName(todayKey()), JSON.stringify(backup, null, 2))
+      markBackedUp()
       toast('백업 파일을 저장했어요')
     } catch {
       toast('내보내지 못했어요. 다시 시도해 주세요', 'error')
@@ -106,6 +109,8 @@ export default function SettingsPage() {
         <WidgetCard />
 
         <CustomizeCard />
+
+        <AutoBackupCard />
 
         <section className="card divide-y divide-slate-100 overflow-hidden">
           <h2 className="px-5 pt-5 pb-3 font-bold">백업</h2>

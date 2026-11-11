@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
+import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { syncAlarms } from '../../platform/alarms'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -61,6 +62,9 @@ export default function AppLayout() {
 
   // 이번 달 예산의 80%를 쓰거나 넘으면 알려 준다
   useBudgetAlerts(today, toast)
+
+  // 자동 백업 (폰 앱: 때가 되면 조용히 파일로 저장)
+  useAutoBackup(today)
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
