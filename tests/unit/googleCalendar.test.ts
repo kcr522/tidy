@@ -21,7 +21,11 @@ beforeEach(() => {
   })
   vi.stubGlobal('window', new EventTarget())
   vi.stubGlobal('CustomEvent', class extends Event {})
-  vi.stubGlobal('fetch', async (url: string) => (feeds[url] ? new Response(feeds[url]) : new Response('', { status: 404 })))
+  // 웹에서는 /api/ical?url=… 로 우리 서버가 대신 읽는다
+  vi.stubGlobal('fetch', async (req: string) => {
+    const url = new URL(req, 'http://localhost').searchParams.get('url') ?? ''
+    return feeds[url] ? new Response(feeds[url]) : new Response(JSON.stringify({ error: '주소를 찾을 수 없어요' }), { status: 404 })
+  })
 })
 
 afterEach(async () => {
