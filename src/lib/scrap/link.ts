@@ -61,6 +61,20 @@ export function instagramEmbedUrl(url: string): string | null {
   }
 }
 
+/**
+ * X(트위터) 게시물 주소면 공식 퍼가기(embed) 주소. 아니면 null
+ * 예: https://x.com/someone/status/123 → https://platform.twitter.com/embed/Tweet.html?id=123
+ */
+export function xEmbedUrl(url: string): string | null {
+  if (detectSource(url) !== 'x') return null
+  try {
+    const m = new URL(url).pathname.match(/\/status(?:es)?\/(\d{1,25})/)
+    return m ? `https://platform.twitter.com/embed/Tweet.html?id=${m[1]}&lang=ko&dnt=true` : null
+  } catch {
+    return null
+  }
+}
+
 /** 유튜브 영상이면 퍼가기 주소 */
 export function youtubeEmbedUrl(url: string): string | null {
   if (detectSource(url) !== 'youtube') return null

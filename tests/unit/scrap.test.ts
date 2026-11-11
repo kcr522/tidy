@@ -10,6 +10,7 @@ import {
   naverBlogInnerUrl,
   parseLinkMeta,
   sharedTextWithoutUrl,
+  xEmbedUrl,
   youtubeEmbedUrl,
 } from '../../src/lib/scrap/link'
 import { buildPreview, PreviewError } from '../../src/lib/scrap/previewServer'
@@ -54,6 +55,10 @@ describe('링크 출처와 공유받기', () => {
     expect(instagramEmbedUrl('https://www.instagram.com/someone/')).toBeNull()
     expect(youtubeEmbedUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('https://www.youtube.com/embed/dQw4w9WgXcQ')
     expect(youtubeEmbedUrl('https://youtube.com/shorts/abcdefg')).toBe('https://www.youtube.com/embed/abcdefg')
+    expect(xEmbedUrl('https://x.com/someone/status/1790000000000000000?s=20')).toBe('https://platform.twitter.com/embed/Tweet.html?id=1790000000000000000&lang=ko&dnt=true')
+    expect(xEmbedUrl('https://mobile.twitter.com/someone/status/123456789')).toBe('https://platform.twitter.com/embed/Tweet.html?id=123456789&lang=ko&dnt=true')
+    expect(xEmbedUrl('https://x.com/someone')).toBeNull()
+    expect(xEmbedUrl('https://instagram.com/p/ABC/')).toBeNull()
   })
 
   it('서버가 내 컴퓨터나 사설망 주소는 읽지 않는다', () => {

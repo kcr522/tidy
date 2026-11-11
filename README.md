@@ -87,6 +87,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/ai-3-poster.png" width="200"> | <img src="docs/screenshots/ai-5-payment.png" width="200"> | <img src="docs/screenshots/ai-7-diary.png" width="200"> | <img src="docs/screenshots/ai-4-calendar-form.png" width="200"> |
 
+**스크랩 바로 캡처** (안드로이드 앱): 저장 → "캡처할래요?" → 앱 안에서 사이트 열기 → 캡처 → 자르기
+
+| 캡처할래요? | 앱 안 사이트 (모형) | 자르기 | 저장된 캡처 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/capture-1-ask.png" width="200"> | <img src="docs/screenshots/capture-2-inapp.png" width="200"> | <img src="docs/screenshots/capture-3-crop.png" width="200"> | <img src="docs/screenshots/capture-4-detail.png" width="200"> |
+
 **2차 새 화면**
 
 | 일기 타임라인 | 습관 | 적금 | 꾸미기 사진 |
