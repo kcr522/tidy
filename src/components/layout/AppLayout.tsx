@@ -7,6 +7,7 @@ import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
 import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
+import { useGooglePush } from '../../hooks/useGooglePush'
 import { syncAlarms } from '../../platform/alarms'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -69,6 +70,9 @@ export default function AppLayout() {
 
   // 구글 캘린더를 연결했으면 가끔 새로 가져온다
   useGoogleCalendarSync(today)
+
+  // 구글 계정을 연결했으면 Tidy 일정과 할 일이 바뀔 때마다 구글 캘린더에 보낸다
+  useGooglePush()
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
