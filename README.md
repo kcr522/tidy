@@ -87,6 +87,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/login-1-login.png" width="200"> | <img src="docs/screenshots/login-2-settings-account.png" width="200"> | <img src="docs/screenshots/login-6-choose.png" width="200"> | <img src="docs/screenshots/login-7-diary-photo-synced.png" width="200"> |
 
+**앱 잠금** (설정): 숫자 4자리 또는 8자리 이상 비밀번호 중에 고르고, 안드로이드 앱에서는 지문으로도 풀기
+
+| 잠금 방식 고르기 | 비밀번호 정하기 | 비밀번호 잠금 화면 | 지문으로 풀기 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/lock2-2-kind.png" width="200"> | <img src="docs/screenshots/lock2-4-password-set.png" width="200"> | <img src="docs/screenshots/lock2-6-lockscreen-password.png" width="200"> | <img src="docs/screenshots/lock2-8-lockscreen-bio.png" width="200"> |
+
 **AI 비서** (첫 화면 오른쪽 아래 동그라미): 포스터 → 캘린더, 결제 내역 캡처 → 가계부, 오늘 이야기 → 일기
 
 | 포스터 사진 | 결제 내역 캡처 | 오늘 있었던 일 | 내가 등록할게 |

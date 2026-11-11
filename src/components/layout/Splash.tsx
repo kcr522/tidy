@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { isDark } from '../../lib/colorMode'
 import { loadPhotos, photoSrc } from '../../lib/customPhotos'
 import { loadCustomization, splashPhoto } from '../../lib/customize'
+import { markSplashDone } from '../../lib/splashSignal'
 
 // 앱을 켤 때 한 번만 (화면을 옮겨 다녀도 다시 안 나온다)
 let shown = false
@@ -45,6 +46,11 @@ export default function Splash() {
     const t = setTimeout(() => setLeaving(true), ready ? state.seconds * 1000 : 3000)
     return () => clearTimeout(t)
   }, [state, ready, leaving])
+
+  // 시작 화면이 없거나 넘어가기 시작하면 알린다 (잠금 화면의 지문 창이 이때 뜬다)
+  useEffect(() => {
+    if (!state || leaving) markSplashDone()
+  }, [state, leaving])
 
   useEffect(() => {
     if (!leaving) return
