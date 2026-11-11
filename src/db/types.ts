@@ -92,6 +92,15 @@ export interface Todo {
  */
 export type TodoRepeat = { every: 'day' } | { every: 'week'; days: number[] } | { every: 'month'; day: number }
 
+/** 한 달 예산 (스키마 9부터). 매달 똑같이 적용된다 */
+export interface Budget {
+  /** 지출 카테고리 이름. '' 이면 한 달 전체 예산 */
+  category: string
+  /** 원, 1 이상 */
+  amount: number
+  updatedAt: string
+}
+
 /** 할 일 카테고리 색 */
 export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'
 
@@ -166,6 +175,12 @@ export interface CalendarEvent {
   endDate: string
   color: EventColor
   memo: string
+  /** 구글 캘린더에서 가져온 일정이면 'google' (고칠 수 없고, 새로 가져올 때마다 바뀐다) */
+  source?: 'google'
+  /** 구글 캘린더를 여러 개 연결했을 때 어느 캘린더인지 (인덱스 아님) */
+  calId?: string
+  /** 가져온 일정의 원래 id */
+  uid?: string
   createdAt: string
   updatedAt: string
 }

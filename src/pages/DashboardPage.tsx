@@ -10,6 +10,8 @@ import AssistantButton from '../components/assistant/AssistantButton'
 import AiFeedbackCard from '../components/dashboard/AiFeedbackCard'
 import HabitCard from '../components/dashboard/HabitCard'
 import MoneyCard from '../components/dashboard/MoneyCard'
+import BackupReminder from '../components/dashboard/BackupReminder'
+import ReportTeaser from '../components/dashboard/ReportTeaser'
 import PaydayCard from '../components/dashboard/PaydayCard'
 import TodayTodoCard from '../components/dashboard/TodayTodoCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
@@ -106,6 +108,9 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="대시보드" action={<span className="text-sm text-slate-500">{formatDateLabel(today)}</span>} />
+
+      {!loading && <BackupReminder hasData={(transactions?.length ?? 0) + (todos?.length ?? 0) > 0} />}
+      {!loading && <ReportTeaser today={today} />}
 
       {!loading && (
         // 폰: 세로로 쌓기, 컴퓨터: 2~3칸이고 모든 칸 높이를 같게 (FR-050)
