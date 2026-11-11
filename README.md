@@ -81,6 +81,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/design-dashboard.png" width="200"> | <img src="docs/screenshots/design-money-all.png" width="200"> | <img src="docs/screenshots/design-todos.png" width="200"> | <img src="docs/screenshots/design-scraps.png" width="200"> |
 
+**구글 로그인 + 기기 동기화** (켜는 방법: [docs/구글-로그인-설정.md](docs/구글-로그인-설정.md))
+
+| 첫 화면 로그인 | 설정 → 계정 | 고르기 | 다른 기기에 온 일기 사진 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/login-1-login.png" width="200"> | <img src="docs/screenshots/login-2-settings-account.png" width="200"> | <img src="docs/screenshots/login-6-choose.png" width="200"> | <img src="docs/screenshots/login-7-diary-photo-synced.png" width="200"> |
+
 **앱 잠금** (설정): 숫자 4자리 또는 8자리 이상 비밀번호 중에 고르고, 안드로이드 앱에서는 지문으로도 풀기
 
 | 잠금 방식 고르기 | 비밀번호 정하기 | 비밀번호 잠금 화면 | 지문으로 풀기 |

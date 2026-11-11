@@ -2,6 +2,7 @@ import { Fingerprint, Lock } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadLock, onLockChange, removeLock, shouldRelock, verifySecret, waitAfterFails } from '../../lib/appLock'
 import { afterSplash } from '../../lib/splashSignal'
+import { forgetSyncBeforeWipe } from '../../lib/sync/account'
 import { authenticateBiometric } from '../../platform/biometric'
 import { backupRepo } from '../../repositories/backupRepo'
 import Button from '../common/Button'
@@ -125,6 +126,8 @@ export default function LockScreen() {
   }
 
   async function resetAll() {
+    // 구글 로그인 중이면 먼저 클라우드와 끊는다 (클라우드 기록은 남겨서 다시 로그인하면 받을 수 있게)
+    await forgetSyncBeforeWipe()
     await backupRepo.clearAll()
     writeFails(null)
     removeLock()
