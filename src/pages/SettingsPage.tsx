@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
 import AppLockCard from '../components/settings/AppLockCard'
 import AutoBackupCard from '../components/settings/AutoBackupCard'
+import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
 import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
 import WidgetCard from '../components/settings/WidgetCard'
@@ -109,6 +110,8 @@ export default function SettingsPage() {
         <WidgetCard />
 
         <CustomizeCard />
+
+        <GoogleCalendarCard />
 
         <AutoBackupCard />
 

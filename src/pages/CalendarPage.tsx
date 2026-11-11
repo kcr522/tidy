@@ -28,6 +28,8 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(() => today.slice(0, 7))
   const [selected, setSelected] = useState(today)
   const [editor, setEditor] = useState<Editor>(null)
+  // 구글 캘린더에서 가져온 일정은 고칠 수 없어서 보기만 한다
+  const [googleItem, setGoogleItem] = useState<CalendarEvent | null>(null)
   const [deleting, setDeleting] = useState<CalendarEvent | Todo | null>(null)
   const toast = useToast()
 
@@ -277,11 +279,12 @@ export default function CalendarPage() {
             <ul className="divide-y divide-slate-100">
               {selEvents.map((e) => (
                 <li key={`e${e.id}`}>
-                  <button type="button" onClick={() => setEditor({ mode: 'event', item: e })} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => (e.source === 'google' ? setGoogleItem(e) : setEditor({ mode: 'event', item: e }))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: EVENT_COLORS[e.color].bg }} aria-hidden />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-semibold">{e.title}</span>
                       <span className="block text-xs text-slate-400">
+                        {e.source === 'google' && <span className="mr-1 rounded bg-blue-50 px-1 py-px text-[10px] font-bold text-blue-600">구글</span>}
                         {e.startDate === e.endDate ? '하루 일정' : `${shortDate(e.startDate)} ~ ${shortDate(e.endDate)} · ${eventDays(e)}일`}
                         {e.memo && ` · ${e.memo}`}
                       </span>
@@ -347,6 +350,16 @@ export default function CalendarPage() {
             onDelete={editor.mode === 'event' ? () => setDeleting(editor.item) : undefined}
           />
         ) : null}
+      </Modal>
+
+      <Modal open={googleItem !== null} title={googleItem?.title ?? ''} onClose={() => setGoogleItem(null)}>
+        {googleItem && (
+          <div className="space-y-2 text-sm text-slate-700">
+            <p>{googleItem.startDate === googleItem.endDate ? dayTitle(googleItem.startDate) : `${shortDate(googleItem.startDate)} ~ ${shortDate(googleItem.endDate)} · ${eventDays(googleItem)}일`}</p>
+            {googleItem.memo && <p className="text-slate-500">{googleItem.memo}</p>}
+            <p className="rounded-2xl bg-blue-50 px-3 py-2.5 text-xs break-keep text-blue-700">구글 캘린더에서 가져온 일정이에요. 바꾸려면 구글 캘린더에서 고쳐 주세요. 다음에 가져올 때 같이 바뀌어요.</p>
+          </div>
+        )}
       </Modal>
 
       <ConfirmDialog

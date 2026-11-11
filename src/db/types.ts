@@ -175,6 +175,10 @@ export interface CalendarEvent {
   endDate: string
   color: EventColor
   memo: string
+  /** 구글 캘린더에서 가져온 일정이면 'google' (고칠 수 없고, 새로 가져올 때마다 바뀐다) */
+  source?: 'google'
+  /** 가져온 일정의 원래 id */
+  uid?: string
   createdAt: string
   updatedAt: string
 }

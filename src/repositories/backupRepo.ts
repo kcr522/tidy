@@ -136,7 +136,7 @@ const COLORS = ['pink', 'orange', 'blue', 'green', 'purple', 'red']
 function isEvent(v: unknown): v is CalendarEvent {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && COLORS.includes(v.color as string) &&
-    isStr(v.memo) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.memo) && (v.source === undefined || v.source === 'google') && isOptStr(v.uid) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
