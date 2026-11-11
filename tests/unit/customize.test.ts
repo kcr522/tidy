@@ -85,7 +85,8 @@ describe('시작 화면 (2026-11-10)', () => {
     const c = withSplash()
     expect(c.splash).toMatchObject({ photos: ['data:image/jpeg;base64,AAA'], seconds: 3, matchColors: true })
     expect(c.splash.palettes['data:image/jpeg;base64,AAA']).toEqual(pal)
-    expect(parseCustomization({ splash: { seconds: 99, palettes: { x: pal } } }).splash).toEqual({ photos: [], seconds: 2, matchColors: true, palettes: {} })
+    expect(parseCustomization({ splash: { seconds: 99, palettes: { x: pal } } }).splash).toEqual({ photos: [], seconds: 2, matchColors: true, basic: true, palettes: {} })
+    expect(parseCustomization({ splash: { basic: false } }).splash.basic).toBe(false)
     expect(photoRefs(c)).toContain('data:image/jpeg;base64,AAA')
   })
 

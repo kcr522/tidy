@@ -59,6 +59,8 @@ export interface SplashStyle {
   /** 보여 주는 시간 (초) */
   seconds: number
   matchColors: boolean
+  /** 사진이 없을 때 기본 시작 화면(그날 랜덤 색 + 로고)을 잠깐 보여 줄지 */
+  basic: boolean
   /** 사진 이름 → 뽑아 둔 색 (켤 때 사진을 다시 읽지 않아도 되게) */
   palettes: Record<string, PhotoPalette>
 }
@@ -77,7 +79,9 @@ export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 /** 구역마다 넣을 수 있는 사진 수 */
 export const MAX_PHOTOS = 10
 
-export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, palettes: {} }
+export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {} }
+/** 기본 시작 화면을 보여 주는 시간 (ms). 앱이 느려 보이지 않게 짧게 */
+export const BASIC_SPLASH_MS = 1100
 export const SPLASH_SECONDS = [1, 2, 3, 5] as const
 
 export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', clear: 70, cardClear: 0 }
@@ -140,6 +144,7 @@ export function parseCustomization(raw: unknown): Customization {
     photos: splashPhotos,
     seconds: (SPLASH_SECONDS as readonly number[]).includes(sp.seconds as number) ? (sp.seconds as number) : DEFAULT_SPLASH.seconds,
     matchColors: sp.matchColors !== false,
+    basic: sp.basic !== false,
     palettes,
   }
   const secs = (r.sections ?? {}) as Record<string, Record<string, unknown> | undefined>
