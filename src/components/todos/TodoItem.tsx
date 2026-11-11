@@ -1,8 +1,9 @@
-import { Bell, Check, Link2 } from 'lucide-react'
+import { Bell, Check, Link2, Repeat } from 'lucide-react'
 import type { Todo } from '../../db/types'
 import { formatDateLabel } from '../../lib/format'
 import { isOverdue } from '../../lib/summary'
 import { timeLabel } from '../../lib/todoAlarms'
+import { repeatLabel } from '../../lib/todoRepeat'
 import { PRIORITY_LABEL } from './priority'
 
 interface TodoItemProps {
@@ -41,6 +42,13 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
       <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
         <span className={`size-2 shrink-0 rounded-full ${p.dot}`} title={`중요도 ${p.label}`} aria-label={`중요도 ${p.label}`} />
         <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-slate-400 line-through' : 'font-medium text-slate-800'}`}>{todo.title}</span>
+        {todo.repeat && !done && (
+          <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-500" title="반복">
+            <Repeat className="size-3.5" aria-hidden />
+            <span className="sr-only">반복</span>
+            {repeatLabel(todo.repeat)}
+          </span>
+        )}
         {todo.remindAt && todo.dueDate && !done && (
           <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-600" title="알림">
             <Bell className="size-3.5" aria-hidden />

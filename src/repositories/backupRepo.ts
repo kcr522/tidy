@@ -1,6 +1,7 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
 import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
+import { isTodoRepeat } from '../lib/todoRepeat'
 import { isWebUrl } from '../lib/validate'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -69,7 +70,7 @@ function isTodo(v: unknown): v is Todo {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isFlag(v.isCompleted) && (v.completedAt === null || isStr(v.completedAt)) &&
     (v.dueDate === null || isStr(v.dueDate)) && (v.priority === 'HIGH' || v.priority === 'MEDIUM' || v.priority === 'LOW') &&
-    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && (v.categoryId === undefined || isNum(v.categoryId)) && isOptStr(v.remindAt) && isStr(v.createdAt) && isStr(v.updatedAt)
+    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && (v.categoryId === undefined || isNum(v.categoryId)) && isOptStr(v.remindAt) && (v.repeat === undefined || isTodoRepeat(v.repeat)) && (v.repeatNextId === undefined || isNum(v.repeatNextId)) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
