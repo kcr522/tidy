@@ -239,6 +239,30 @@ describe('Gemini (무료)', () => {
     expect(body.contents[0].parts[0].inlineData.data).toBe('QQ==')
   })
 
+  it('빨리 답하게 생각은 끄고 묻는다 (thinkingBudget 0)', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = ok('안녕')
+    await callGemini('KEY', { system: 'S', parts: [{ text: 'x' }] }, f)
+    expect(JSON.parse(f.mock.calls[0][1].body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 })
+  })
+
+  it('생각 설정을 받지 않는 모델이면 빼고 다시 묻는다', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const f = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'Thinking budget is not supported for this model.' } }), { status: 400 }))
+      .mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '좋아요' }] } }] }), { status: 200 }))
+    await expect(callGemini('KEY', { system: 'S', parts: [{ text: 'x' }] }, f)).resolves.toBe('좋아요')
+    expect(JSON.parse(f.mock.calls[1][1].body).generationConfig.thinkingConfig).toBeUndefined()
+  })
+
+  it('너무 오래 걸리면 멈추고 에러를 낸다 (예비 AI·기본 모드로 넘어가게)', async () => {
+    const { callGemini } = await import('../../src/lib/ai/gemini')
+    const { AiTimeoutError } = await import('../../src/lib/ai/timeout')
+    const f = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))))
+    await expect(callGemini('KEY', { system: 'S', parts: [{ text: 'x' }], timeoutMs: 30 }, f as unknown as typeof fetch)).rejects.toBeInstanceOf(AiTimeoutError)
+  })
+
   it('무료 한도를 넘으면 알려 준다', async () => {
     const { callGemini } = await import('../../src/lib/ai/gemini')
     const f = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }))

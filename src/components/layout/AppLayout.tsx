@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
+import { prefetchPages } from '../../lib/lazyPage'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
 import { useAutoBackup } from '../../hooks/useAutoBackup'
@@ -73,6 +74,9 @@ export default function AppLayout() {
 
   // 구글 계정을 연결했으면 Tidy 일정과 할 일이 바뀔 때마다 구글 캘린더에 보낸다
   useGooglePush()
+
+  // 첫 화면이 뜬 뒤 쉬는 틈에 다른 화면들을 미리 읽어 둔다
+  useEffect(() => prefetchPages(), [])
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
@@ -90,7 +94,9 @@ export default function AppLayout() {
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 md:px-10 md:pt-10 md:pb-10">
-          <Outlet />
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <BottomTabBar />
@@ -166,5 +172,14 @@ function BottomTabBar() {
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+/** 화면 조각을 처음 읽는 잠깐 동안 (보통 눈에 안 띌 만큼 짧다) */
+function PageLoading() {
+  return (
+    <div className="flex justify-center pt-24" role="status" aria-label="불러오는 중">
+      <span className="size-6 animate-spin rounded-full border-2 border-slate-300 border-t-transparent" />
+    </div>
   )
 }

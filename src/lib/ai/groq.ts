@@ -6,6 +6,7 @@
  */
 
 import { appFetch } from '../../platform/nativeFetch'
+import { AiTimeoutError, deadline } from './timeout'
 
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 /** 큰 모델(하루 약 1,000번) → 작은 모델(하루 1만 번 넘게) */
@@ -17,6 +18,8 @@ export interface GroqRequest {
   /** true 면 JSON 으로만 답하게 한다 */
   json?: boolean
   maxTokens?: number
+  /** 모델 하나에 기다릴 시간(ms). 넘으면 멈추고 에러. 기본 20초 */
+  timeoutMs?: number
   signal?: AbortSignal
 }
 
@@ -25,6 +28,7 @@ export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof
   let last = 'Groq에서 답을 받지 못했어요'
   for (const model of models) {
     let res: Response
+    const limit = deadline(req.timeoutMs ?? 20_000, req.signal)
     try {
       res = await fetcher(GROQ_ENDPOINT, {
         method: 'POST',
@@ -39,14 +43,19 @@ export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof
           temperature: 0.4,
           ...(req.json ? { response_format: { type: 'json_object' } } : {}),
         }),
-        signal: req.signal,
+        signal: limit.signal,
       })
     } catch (err) {
+      limit.done()
       if (req.signal?.aborted) throw err
+      if (limit.timedOut()) throw new AiTimeoutError('Groq 답이 너무 오래 걸려서 멈췄어요')
       const why = err instanceof Error && err.message ? ` (${err.message.slice(0, 120)})` : ''
       throw new Error(`Groq에 연결하지 못했어요. 인터넷을 확인해 주세요${why}`)
     }
-    const data = (await res.json().catch(() => ({}))) as { choices?: { message?: { content?: string } }[]; error?: { message?: string; code?: string } }
+    const data = (await res
+      .json()
+      .catch(() => ({}))
+      .finally(limit.done)) as { choices?: { message?: { content?: string } }[]; error?: { message?: string; code?: string } }
     const why = data.error?.message ?? ''
     if (res.status === 401 || res.status === 403) throw new Error('Groq 키가 맞지 않아요. 설정 > AI 연결에서 확인해 주세요')
     // 한도를 다 썼거나(429), 모델이 없어졌거나(404·400 decommissioned), 붐비면(5xx) 다음 모델로

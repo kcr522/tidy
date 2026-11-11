@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { isDark } from '../../lib/colorMode'
 import { loadPhotos, photoSrc } from '../../lib/customPhotos'
-import { BASIC_SPLASH_MS, loadCustomization, splashPhoto } from '../../lib/customize'
+import { basicSplashDelay, loadCustomization, splashPhoto } from '../../lib/customize'
 import type { PhotoPalette } from '../../lib/photoPalette'
 import { markSplashDone } from '../../lib/splashSignal'
 
@@ -78,10 +78,10 @@ export default function Splash() {
       .catch(() => setLeaving(true))
   }, [state, src])
 
-  // 기본 시작 화면은 짧게
+  // 기본 시작 화면은 짧게: 앱을 누른 때부터 1.1초까지 (앱을 읽느라 걸린 시간만큼 줄인다)
   useEffect(() => {
     if (splash?.kind !== 'basic' || leaving) return
-    const t = setTimeout(() => setLeaving(true), BASIC_SPLASH_MS)
+    const t = setTimeout(() => setLeaving(true), basicSplashDelay(performance.now()))
     return () => clearTimeout(t)
   }, [splash, leaving])
 
@@ -99,7 +99,7 @@ export default function Splash() {
 
   useEffect(() => {
     if (!leaving) return
-    const t = setTimeout(() => setGone(true), 350)
+    const t = setTimeout(() => setGone(true), 300)
     return () => clearTimeout(t)
   }, [leaving])
 

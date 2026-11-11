@@ -80,8 +80,16 @@ export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 export const MAX_PHOTOS = 10
 
 export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {} }
-/** 기본 시작 화면을 보여 주는 시간 (ms). 앱이 느려 보이지 않게 짧게 */
+/**
+ * 기본 시작 화면은 앱을 누른 때부터 이 시간(ms)까지 보인다. 앱이 느려 보이지 않게 짧게.
+ * 앱을 읽는 데 걸린 시간도 여기에 들어가서, 화면이 늦게 뜬 만큼 시작 화면은 짧아진다
+ */
 export const BASIC_SPLASH_MS = 1100
+/** 그래도 시작 화면이 떴으면 이만큼(ms)은 보여 준다 (번쩍하고 사라지지 않게) */
+export const BASIC_SPLASH_MIN_MS = 450
+
+/** 기본 시작 화면을 앞으로 몇 ms 더 보여 줄지. now = 앱을 누른 뒤 지난 시간(ms) */
+export const basicSplashDelay = (now: number) => Math.max(BASIC_SPLASH_MIN_MS, BASIC_SPLASH_MS - now)
 export const SPLASH_SECONDS = [1, 2, 3, 5] as const
 
 export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', clear: 70, cardClear: 0 }
