@@ -11,6 +11,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TidyWidgetPlugin.class);
         // 앱 안에서 스크랩 사이트를 열고 화면을 캡처하는 기능 (ScrapCapturePlugin)
         registerPlugin(ScrapCapturePlugin.class);
+        // 구글 캘린더에 Tidy 일정을 넣을 때 쓰는 구글 계정 권한 (GoogleAuthPlugin)
+        registerPlugin(GoogleAuthPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
