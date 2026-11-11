@@ -92,6 +92,15 @@ export interface Todo {
  */
 export type TodoRepeat = { every: 'day' } | { every: 'week'; days: number[] } | { every: 'month'; day: number }
 
+/** 한 달 예산 (스키마 9부터). 매달 똑같이 적용된다 */
+export interface Budget {
+  /** 지출 카테고리 이름. '' 이면 한 달 전체 예산 */
+  category: string
+  /** 원, 1 이상 */
+  amount: number
+  updatedAt: string
+}
+
 /** 할 일 카테고리 색 */
 export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'
 

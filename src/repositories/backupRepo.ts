@@ -1,5 +1,5 @@
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
+import type { Budget, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isTodoRepeat } from '../lib/todoRepeat'
 import { isWebUrl } from '../lib/validate'
@@ -33,6 +33,8 @@ export interface Backup {
   savings?: SavingsPlan[]
   /** 할 일 카테고리 (스키마 8부터) */
   todoCategories?: TodoCategory[]
+  /** 한 달 예산 (스키마 9부터) */
+  budgets?: Budget[]
 }
 
 export interface BackupMedia {
@@ -87,6 +89,10 @@ function isCategory(v: unknown): v is ScrapCategory {
 
 function isTodoCategory(v: unknown): v is TodoCategory {
   return isObj(v) && isCategory(v) && isStr((v as unknown as Record<string, unknown>).color)
+}
+
+function isBudget(v: unknown): v is Budget {
+  return isObj(v) && isStr(v.category) && isNum(v.amount) && (v.amount as number) > 0 && isStr(v.updatedAt)
 }
 
 const isDataUrl = (v: unknown) => typeof v === 'string' && /^data:[\w/+.-]*;base64,/.test(v)
@@ -191,11 +197,13 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const categories = data.scrapCategories ?? []
   const media = data.scrapMedia ?? []
   const todoCategories = data.todoCategories ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories)) throw new InvalidBackupError()
+  const budgets = data.budgets ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories) || !Array.isArray(budgets)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
     !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings) ||
-    !todoCategories.every(isTodoCategory)
+    !todoCategories.every(isTodoCategory) ||
+    !budgets.every(isBudget)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -207,7 +215,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -229,6 +237,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         savings: await database.savings.toArray(),
         scrapCategories: await database.scrapCategories.toArray(),
         todoCategories: await database.todoCategories.toArray(),
+        budgets: await database.budgets.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
         ...rest,
@@ -260,6 +269,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.habitChecks.bulkAdd(backup.habitChecks ?? [])
         await database.savings.bulkAdd(backup.savings ?? [])
         await database.todoCategories.bulkAdd(backup.todoCategories ?? [])
+        await database.budgets.bulkAdd(backup.budgets ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)

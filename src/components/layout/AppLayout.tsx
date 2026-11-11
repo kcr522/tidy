@@ -4,6 +4,7 @@ import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
+import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
 import { syncAlarms } from '../../platform/alarms'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -57,6 +58,9 @@ export default function AppLayout() {
 
   // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
   useWidgetSync(todos, today)
+
+  // 이번 달 예산의 80%를 쓰거나 넘으면 알려 준다
+  useBudgetAlerts(today, toast)
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
