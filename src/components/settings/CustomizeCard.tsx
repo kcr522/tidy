@@ -162,6 +162,22 @@ export default function CustomizeCard() {
           <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
           <PhotoGrid photos={photos} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} palettes={splash.palettes} />
           {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
+          {photos.length === 0 && (
+            <>
+              <Label>사진이 없을 때</Label>
+              <Segmented
+                value={splash.basic ? 'on' : 'off'}
+                options={[
+                  ['on', '기본 시작 화면'],
+                  ['off', '바로 시작'],
+                ]}
+                onChange={(v) => setSplash({ basic: v === 'on' })}
+              />
+              <p className="mt-2 text-xs break-keep text-slate-500">
+                {splash.basic ? '그날 고른 색 위에 TIDY: 로고와 인사를 1초쯤 보여 줘요. 누르면 바로 넘어가요' : '시작 화면 없이 바로 첫 화면이 열려요'}
+              </p>
+            </>
+          )}
           {photos.length > 0 && (
             <>
               <Label>보여 주는 시간</Label>
