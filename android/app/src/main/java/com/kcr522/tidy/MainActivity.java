@@ -13,6 +13,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ScrapCapturePlugin.class);
         // 구글 캘린더에 Tidy 일정을 넣을 때 쓰는 구글 계정 권한 (GoogleAuthPlugin)
         registerPlugin(GoogleAuthPlugin.class);
+        // 앱 잠금을 지문으로 풀기 (BiometricPlugin)
+        registerPlugin(BiometricPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

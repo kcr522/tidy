@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { hashPin, isPin, loadLock, removeLock, setLockAfter, setPin, shouldRelock, verifyPin, waitAfterFails } from '../../src/lib/appLock'
+import { hashPin, isPassword, isPin, loadLock, removeLock, secretProblem, setBiometric, setLockAfter, setPin, setSecret, shouldRelock, verifyPin, verifySecret, waitAfterFails } from '../../src/lib/appLock'
 
 // node 테스트 환경용 간단한 localStorage
 const store = new Map<string, string>()
@@ -55,5 +55,44 @@ describe('앱 잠금', () => {
     expect(waitAfterFails(5)).toBe(30)
     expect(waitAfterFails(10)).toBe(60)
     expect(waitAfterFails(100)).toBe(300)
+  })
+})
+
+describe('앱 잠금 방식: 숫자 4자리 / 8자리 이상 비밀번호, 지문', () => {
+  beforeEach(() => store.clear())
+
+  it('비밀번호 방식은 8~64자, 공백만은 안 된다', () => {
+    expect(isPassword('abcd1234')).toBe(true)
+    expect(isPassword('abc123')).toBe(false)
+    expect(isPassword('        ')).toBe(false)
+    expect(isPassword('a'.repeat(65))).toBe(false)
+    expect(secretProblem('password', 'short')).toContain('8자리')
+    expect(secretProblem('pin', '12345')).toContain('4자리')
+    expect(secretProblem('password', '숫자랑글자섞기12')).toBeNull()
+  })
+
+  it('비밀번호 방식으로 정하고 풀기, 해시만 저장', async () => {
+    await setSecret('password', 'tidy-love-2026')
+    expect(loadLock()?.kind).toBe('password')
+    expect(await verifySecret('tidy-love-2026')).toBe(true)
+    expect(await verifySecret('tidy-love-2025')).toBe(false)
+    expect(JSON.stringify([...store.values()])).not.toContain('tidy-love')
+    await expect(setSecret('password', '1234')).rejects.toThrow('8자리')
+  })
+
+  it('예전에 저장한 잠금(방식 없음)은 숫자 4자리로 읽는다', async () => {
+    store.set('tidy-app-lock', JSON.stringify({ hash: await hashPin('1234', 's'), salt: 's', after: 60 }))
+    expect(loadLock()).toMatchObject({ kind: 'pin', after: 60, bio: false })
+    expect(await verifySecret('1234')).toBe(true)
+  })
+
+  it('방식을 바꿔도 지문과 잠그는 시간은 그대로', async () => {
+    await setPin('1234')
+    setLockAfter(300)
+    setBiometric(true)
+    await setSecret('password', 'longer-password')
+    expect(loadLock()).toMatchObject({ kind: 'password', after: 300, bio: true })
+    setBiometric(false)
+    expect(loadLock()?.bio).toBe(false)
   })
 })
