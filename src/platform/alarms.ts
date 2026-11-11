@@ -75,7 +75,13 @@ function markFired(key: string) {
   }
 }
 
-/** 폰 앱: 기기에 알림을 예약한다. id는 적금 id × 10 + 순번 */
+/**
+ * 알림 번호 (32비트 정수 안): 15억 + 적금 id × 10 + 순번.
+ * 할 일 알림(100만 + 할 일 id)과 겹치지 않게 떨어진 구간을 쓴다. 기기 동기화를 켜면 id가 커지므로(기기 번호 × 100000 + 순번) 접어 넣는다
+ */
+export const savingsAlarmId = (id: number, i: number) => 1_500_000_000 + (id % 60_000_000) * 10 + i
+
+/** 폰 앱: 기기에 알림을 예약한다 */
 async function scheduleNative(plans: SavingsPlan[], now: Date) {
   const { LocalNotifications } = await import('@capacitor/local-notifications')
   const pending = await LocalNotifications.getPending()
@@ -91,7 +97,7 @@ async function scheduleNative(plans: SavingsPlan[], now: Date) {
       // 매일·매주는 반복 알림 하나 (Capacitor 요일은 1(일) ~ 7(토))
       if (s.freq !== 'monthly') {
         const on = s.freq === 'daily' ? { hour, minute } : { weekday: (s.weekday ?? 0) + 1, hour, minute }
-        return [{ ...base, id: p.id! * 10, schedule: { on, allowWhileIdle: true } }]
+        return [{ ...base, id: savingsAlarmId(p.id!, 0), schedule: { on, allowWhileIdle: true } }]
       }
       // 매달은 말일(30·31일) 때문에 다음 6번을 날짜로 하나씩 예약한다. 앱을 열 때마다 다시 채운다
       const out: LocalNotificationSchema[] = []
@@ -99,7 +105,7 @@ async function scheduleNative(plans: SavingsPlan[], now: Date) {
       for (let i = 0; i < 6; i++) {
         const at = nextAlarm(p, from)
         if (!at) break
-        out.push({ ...base, id: p.id! * 10 + i, schedule: { at, allowWhileIdle: true } })
+        out.push({ ...base, id: savingsAlarmId(p.id!, i), schedule: { at, allowWhileIdle: true } })
         from = new Date(at.getTime() + 60_000)
       }
       return out

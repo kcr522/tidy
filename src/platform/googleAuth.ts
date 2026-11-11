@@ -1,11 +1,12 @@
 import { registerPlugin } from '@capacitor/core'
+import { firebaseWebClientId } from '../lib/firebaseConfig'
 import { isNativeApp } from './native'
 
 /** Tidy 가 만든 캘린더만 다룰 수 있는 권한 (사용자의 다른 캘린더는 못 본다) + 이메일 */
 export const CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.app.created', 'email']
 
 /** 웹에서 쓰는 구글 OAuth 클라이언트 id (비밀 값 아님). 없으면 웹에서는 연결할 수 없다 */
-export const WEB_CLIENT_ID: string = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID ?? ''
+export const WEB_CLIENT_ID: string = firebaseWebClientId
 
 export class GoogleAuthError extends Error {
   /** 사용자가 창을 닫았다 */
@@ -18,8 +19,11 @@ export class GoogleAuthError extends Error {
 
 interface GoogleAuthPlugin {
   authorize(o: { scopes: string[]; interactive: boolean }): Promise<{ accessToken?: string; needsConsent?: boolean; cancelled?: boolean }>
+  /** 구글 계정으로 로그인 (Firebase 에 넘길 ID 토큰) */
+  signIn(o: { webClientId: string }): Promise<{ idToken?: string; email?: string; cancelled?: boolean }>
+  signOut(): Promise<void>
 }
-const NativeAuth = registerPlugin<GoogleAuthPlugin>('GoogleAuth')
+export const NativeAuth = registerPlugin<GoogleAuthPlugin>('GoogleAuth')
 
 let cached: { token: string; until: number } | null = null
 

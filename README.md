@@ -81,6 +81,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/design-dashboard.png" width="200"> | <img src="docs/screenshots/design-money-all.png" width="200"> | <img src="docs/screenshots/design-todos.png" width="200"> | <img src="docs/screenshots/design-scraps.png" width="200"> |
 
+**구글 로그인 + 기기 동기화** (켜는 방법: [docs/구글-로그인-설정.md](docs/구글-로그인-설정.md))
+
+| 첫 화면 로그인 | 설정 → 계정 | 고르기 | 다른 기기에 온 일기 사진 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/login-1-login.png" width="200"> | <img src="docs/screenshots/login-2-settings-account.png" width="200"> | <img src="docs/screenshots/login-6-choose.png" width="200"> | <img src="docs/screenshots/login-7-diary-photo-synced.png" width="200"> |
+
 **AI 비서** (첫 화면 오른쪽 아래 동그라미): 포스터 → 캘린더, 결제 내역 캡처 → 가계부, 오늘 이야기 → 일기
 
 | 포스터 사진 | 결제 내역 캡처 | 오늘 있었던 일 | 내가 등록할게 |

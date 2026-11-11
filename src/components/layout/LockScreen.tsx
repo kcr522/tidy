@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { loadLock, onLockChange, removeLock, shouldRelock, verifyPin, waitAfterFails } from '../../lib/appLock'
+import { forgetSyncBeforeWipe } from '../../lib/sync/account'
 import { backupRepo } from '../../repositories/backupRepo'
 import Button from '../common/Button'
 import PinPad from '../common/PinPad'
@@ -95,6 +96,8 @@ export default function LockScreen() {
   }
 
   async function resetAll() {
+    // 구글 로그인 중이면 먼저 클라우드와 끊는다 (클라우드 기록은 남겨서 다시 로그인하면 받을 수 있게)
+    await forgetSyncBeforeWipe()
     await backupRepo.clearAll()
     writeFails(null)
     removeLock()
