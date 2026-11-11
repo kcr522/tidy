@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BarChart3, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
+import { BarChart3, CalendarCheck, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { budgetStatus } from '../../../lib/budget'
 import { formatWon } from '../../../lib/format'
@@ -21,6 +22,7 @@ const TITLE: Record<MenuView, string> = { menu: '가계부 메뉴', chart: '차�
 export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { onClose: () => void; today: string; initialView?: MenuView }) {
   const [view, setView] = useState<MenuView>(initialView)
   const budgets = useLiveQuery(() => budgetRepo.list(), [])
+  const navigate = useNavigate()
   const items = useLiveQuery(() => transactionRepo.listAll(), [])
   const rules = useLiveQuery(() => recurringRepo.list(), [])
 
@@ -75,6 +77,15 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
             desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈"
             hint={active.length > 0 ? `${active.length}개 · 매달 고정 지출 ${formatWon(fixedOut)}` : undefined}
             onClick={() => setView('fixed')}
+          />
+          <MenuItem
+            icon={<CalendarCheck className="size-5" aria-hidden />}
+            title="월간 리포트"
+            desc="한 달 동안 쓴 돈, 끝낸 할 일, 습관, 일기를 한 장으로"
+            onClick={() => {
+              onClose()
+              navigate('/report')
+            }}
           />
         </ul>
       )}
