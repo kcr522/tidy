@@ -74,9 +74,23 @@ export interface Todo {
   bookmarkId?: number
   /** 할 일 카테고리 (없으면 '기본'). 스키마 8부터 */
   categoryId?: number
+  /** 알림 시각 HH:mm (마감일 그날 이 시각에 울린다). 없으면 알림 없음 */
+  remindAt?: string
+  /** 반복: 끝내면 다음 날짜로 새 할 일이 생긴다 (마감일이 있을 때만) */
+  repeat?: TodoRepeat
+  /** 반복 할 일을 끝내서 생긴 다음 할 일 id (완료를 되돌리면 지운다) */
+  repeatNextId?: number
   createdAt: string
   updatedAt: string
 }
+
+/**
+ * 할 일 반복
+ * - day: 매일
+ * - week: 매주 days 요일 (0 일요일 ~ 6 토요일)
+ * - month: 매달 day일 (그 달에 없으면 말일)
+ */
+export type TodoRepeat = { every: 'day' } | { every: 'week'; days: number[] } | { every: 'month'; day: number }
 
 /** 할 일 카테고리 색 */
 export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'

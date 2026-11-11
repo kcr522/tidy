@@ -1,12 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
-import { Settings } from 'lucide-react'
+import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
+import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { syncAlarms } from '../../platform/alarms'
+import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
+import { todoRepo } from '../../repositories/todoRepo'
 import ColorModeButton from '../common/ColorModeButton'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
@@ -44,6 +47,16 @@ export default function AppLayout() {
     const done = new Set(todayChecks.split(',').filter(Boolean).map(Number))
     return syncAlarms(plans, (p) => p.habitId != null && done.has(p.habitId), (text) => toast(text))
   }, [plans, todayChecks, today, toast])
+
+  // 할 일 알림: 할 일이 바뀌면(추가, 시간 변경, 완료) 다시 맞춘다
+  const todos = useLiveQuery(() => todoRepo.listAll(), [])
+  useEffect(() => {
+    if (!todos) return
+    return syncTodoAlarms(todos, (text) => toast(text))
+  }, [todos, today, toast])
+
+  // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
+  useWidgetSync(todos, today)
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
@@ -51,6 +64,9 @@ export default function AppLayout() {
         <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
           <Logo />
           <div className="flex items-center gap-1">
+            <Link to="/search" className="tap rounded-full p-1.5 text-slate-500" aria-label="검색">
+              <Search className="size-[22px]" aria-hidden />
+            </Link>
             <ColorModeButton />
             <Link to="/settings" className="tap rounded-full p-1.5 text-slate-500" aria-label="설정">
               <Settings className="size-[22px]" aria-hidden />
@@ -77,6 +93,11 @@ function SideNav() {
         <Logo />
         <ColorModeButton className="bg-slate-100 hover:bg-slate-200" />
       </div>
+      {/* 전체 검색: 가계부·할 일·일기·스크랩에서 찾기 */}
+      <Link to="/search" className="mb-4 flex items-center gap-2 rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-200">
+        <Search className="size-4" aria-hidden />
+        검색
+      </Link>
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
           <NavLink

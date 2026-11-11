@@ -2,7 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
+import AppLockCard from '../components/settings/AppLockCard'
 import CustomizeCard from '../components/settings/CustomizeCard'
+import WidgetCard from '../components/settings/WidgetCard'
 import { inputClass } from '../components/common/formStyles'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
@@ -98,6 +100,10 @@ export default function SettingsPage() {
             <Stat label="스크랩" value={counts?.bookmarks} />
           </dl>
         </section>
+
+        <AppLockCard />
+
+        <WidgetCard />
 
         <CustomizeCard />
 

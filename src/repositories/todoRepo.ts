@@ -1,6 +1,7 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Priority, Todo } from '../db/types'
-import { nowIso } from '../lib/date'
+import type { Priority, Todo, TodoRepeat } from '../db/types'
+import { nowIso, todayKey } from '../lib/date'
+import { nextDueDate } from '../lib/todoRepeat'
 import { MAX_TITLE_LENGTH } from '../lib/validate'
 
 /** 화면에서 입력받는 값 */
@@ -10,6 +11,10 @@ export interface TodoInput {
   priority: Priority
   /** 할 일 카테고리 (없으면 '기본') */
   categoryId?: number
+  /** 알림 시각 HH:mm (마감일이 있을 때만) */
+  remindAt?: string
+  /** 반복 (마감일이 있을 때만) */
+  repeat?: TodoRepeat
 }
 
 /** 이미 할 일로 전환한 스크랩을 다시 전환하려 할 때 (FR-041) */
@@ -37,7 +42,7 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
 
     async update(id: number, input: TodoInput): Promise<void> {
       // 카테고리를 '기본'으로 돌리면 값을 지운다 (undefined는 update에서 무시되므로)
-      await database.todos.update(id, { ...input, categoryId: input.categoryId, updatedAt: nowIso() })
+      await database.todos.update(id, { ...input, categoryId: input.categoryId, remindAt: input.remindAt, repeat: input.repeat, updatedAt: nowIso() })
     },
 
     async remove(id: number): Promise<void> {
@@ -51,21 +56,53 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
     /**
      * 완료 ↔ 미완료 (FR-021). 완료 시각을 기록한다.
      * 스크랩에서 만든 할 일을 완료하면 그 스크랩도 읽음으로 바꾼다 (FR-042).
+     * 반복 할 일을 완료하면 다음 날짜로 새 할 일을 만든다. 완료를 되돌리면 그 새 할 일을 지운다 (아직 안 끝냈을 때).
+     * @returns 반복으로 새로 생긴 할 일의 마감일
      */
-    async toggleComplete(id: number): Promise<void> {
-      await database.transaction('rw', database.todos, database.bookmarks, async () => {
+    async toggleComplete(id: number, today: string = todayKey()): Promise<string | undefined> {
+      return database.transaction('rw', database.todos, database.bookmarks, async () => {
         const todo = await database.todos.get(id)
         if (!todo) return
         const now = nowIso()
         const completing = todo.isCompleted === 0
+        let nextId: number | undefined
+        let nextDue: string | undefined
+        if (completing && todo.repeat && todo.dueDate) {
+          nextDue = nextDueDate(todo.repeat, todo.dueDate, today)
+          nextId = await database.todos.add({
+            title: todo.title,
+            dueDate: nextDue,
+            priority: todo.priority,
+            ...(todo.categoryId != null && { categoryId: todo.categoryId }),
+            ...(todo.remindAt && { remindAt: todo.remindAt }),
+            repeat: todo.repeat,
+            isCompleted: 0,
+            completedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          })
+        }
+        // 완료를 되돌리면: 아직 안 끝낸 다음 할 일을 지우고 반복을 이 할 일로 되돌린다
+        let repeat = completing && nextId != null ? undefined : todo.repeat
+        if (!completing && todo.repeatNextId != null) {
+          const next = await database.todos.get(todo.repeatNextId)
+          if (next && next.isCompleted === 0) {
+            repeat = next.repeat
+            await database.todos.delete(todo.repeatNextId)
+          }
+        }
         await database.todos.update(id, {
           isCompleted: completing ? 1 : 0,
           completedAt: completing ? now : null,
+          // 반복은 다음 할 일로 넘긴다 (끝낸 할 일은 기록으로만 남는다)
+          repeat,
+          repeatNextId: nextId,
           updatedAt: now,
         })
         if (completing && todo.bookmarkId != null) {
           await database.bookmarks.update(todo.bookmarkId, { isRead: 1, updatedAt: now })
         }
+        return nextDue
       })
     },
 

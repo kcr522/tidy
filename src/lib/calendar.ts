@@ -86,6 +86,21 @@ export function shortWon(amount: number): string {
   return amount.toLocaleString('ko-KR')
 }
 
+/**
+ * 달력 칸에 들어가는 짧은 금액 (부호 빼고 5글자 안쪽): 9,800 · 4.5만 · 27만 · 1235만 · 1.2억
+ * 칸이 좁은 폰에서도 글씨가 칸 밖으로 나가지 않게 한다. 정확한 금액은 날짜를 누르면 아래 목록에 나온다.
+ */
+export function cellWon(amount: number): string {
+  const n = Math.abs(Math.round(amount))
+  const trim = (v: number) => String(v).replace(/\.0$/, '')
+  if (n < 10_000) return n.toLocaleString('ko-KR')
+  if (n < 100_000) return `${trim(Math.round(n / 1000) / 10)}만`
+  const man = Math.round(n / 10_000)
+  if (man < 10_000) return `${man}만`
+  const eok = n / 100_000_000
+  return `${eok < 10 ? trim(Math.round(eok * 10) / 10) : Math.round(eok)}억`
+}
+
 /** "11월 15일 (토)" */
 export function dayTitle(dateKey: string): string {
   const d = parseDateKey(dateKey)
