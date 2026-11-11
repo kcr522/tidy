@@ -201,7 +201,6 @@ export default function GoogleCalendarCard() {
                 <li>캘린더가 여러 개면 하나씩 연결하고 색을 다르게 골라요</li>
               </ol>
             )}
-            {!isNativeApp() && <p className="mt-2 text-xs text-slate-400">웹에서는 구글이 막아서 연결이 안 될 수 있어요. 갤럭시 앱에서는 돼요.</p>}
           </div>
         )}
       </div>

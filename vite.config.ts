@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
+import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
 import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
 
 /** 개발 중(npm run dev)에도 링크 미리보기가 되도록: 배포 때 api/preview.ts 가 하는 일을 똑같이 한다 */
@@ -19,6 +20,19 @@ function devPreviewApi(): Plugin {
         } catch (err) {
           res.statusCode = err instanceof PreviewError ? err.status : 502
           res.end(JSON.stringify({ error: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' }))
+        }
+      })
+      // 구글 캘린더 불러오기 (배포 때는 api/ical.ts)
+      server.middlewares.use('/api/ical', async (req, res) => {
+        const url = new URL(req.url ?? '', 'http://localhost').searchParams.get('url') ?? ''
+        try {
+          const text = await fetchIcal(url, fetch, AbortSignal.timeout(15000))
+          res.setHeader('content-type', 'text/calendar; charset=utf-8')
+          res.end(text)
+        } catch (err) {
+          res.statusCode = err instanceof IcalProxyError ? err.status : 502
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ error: err instanceof Error ? err.message : '가져오지 못했어요' }))
         }
       })
     },

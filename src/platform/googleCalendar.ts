@@ -110,14 +110,17 @@ async function fetchText(url: string): Promise<string> {
     if (res.status >= 400) throw new CalendarFetchError(`가져오지 못했어요 (${res.status})`)
     return typeof res.data === 'string' ? res.data : String(res.data ?? '')
   }
+  // 웹: 브라우저는 구글 주소를 직접 못 읽어서(CORS) 우리 서버(api/ical.ts)가 대신 읽는다
   let res: Response
   try {
-    res = await fetch(url)
+    res = await fetch(`/api/ical?url=${encodeURIComponent(url)}`)
   } catch {
-    // 구글은 웹 페이지에서 바로 읽는 걸 막아 둔다 (CORS)
-    throw new CalendarFetchError('웹에서는 구글이 막아서 못 가져와요. 갤럭시 앱에서 연결해 주세요')
+    throw new CalendarFetchError('가져오지 못했어요. 인터넷을 확인해 주세요')
   }
-  if (!res.ok) throw new CalendarFetchError(`가져오지 못했어요 (${res.status})`)
+  if (!res.ok) {
+    const msg = ((await res.json().catch(() => null)) as { error?: string } | null)?.error
+    throw new CalendarFetchError(msg ?? `가져오지 못했어요 (${res.status})`)
+  }
   return res.text()
 }
 
