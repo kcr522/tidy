@@ -100,3 +100,12 @@ describe('시작 화면 (2026-11-10)', () => {
     expect(withSplashColors(off, false)).toBe(off)
   })
 })
+
+describe('기본 시작 화면 시간', () => {
+  it('앱을 누른 때부터 1.1초까지, 앱이 늦게 뜬 만큼 짧게, 그래도 0.45초는 보여 준다', async () => {
+    const { basicSplashDelay } = await import('../../src/lib/customize')
+    expect(basicSplashDelay(200)).toBe(900)
+    expect(basicSplashDelay(600)).toBe(500)
+    expect(basicSplashDelay(2500)).toBe(450)
+  })
+})

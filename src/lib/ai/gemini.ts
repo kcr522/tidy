@@ -5,6 +5,8 @@
 /** 쓰는 모델. 무료 등급은 Flash 만 되고, 별칭이라 새 Flash 가 나오면 따라간다 (사진도 읽는다) */
 export const GEMINI_MODEL = 'gemini-flash-latest'
 
+import { AiTimeoutError, deadline } from './timeout'
+
 const ENDPOINT = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 
 export type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } }
@@ -17,8 +19,18 @@ export interface GeminiRequest {
   maxTokens?: number
   /** 구글 검색으로 근거 찾기 (무료 등급은 하루 횟수 제한이 따로 있다). 이때는 schema 를 같이 쓰지 않는다 */
   search?: boolean
+  /**
+   * 답하기 전에 생각하는 데 쓸 토큰. 기본 0 = 생각하지 않고 바로 답한다.
+   * 요즘 Flash 는 기본으로 한참 생각하고 답해서 몇 초씩 더 걸린다. 이 앱이 묻는 건 대부분 정리·분류라 생각 없이도 충분하다.
+   */
+  think?: number
+  /** 이 시간(ms)이 지나도 답이 없으면 멈추고 에러 (부르는 쪽이 예비 AI·기본 모드로 넘어간다). 기본 25초, 검색하면 40초 */
+  timeoutMs?: number
   signal?: AbortSignal
 }
+
+/** 생각 설정(thinkingConfig)을 받지 않는 모델 (한 번 거절당하면 앱을 켜 둔 동안 기억) */
+const noThinkConfig = new Set<string>()
 
 /** 이 키로 쓸 수 있는 Flash 모델 목록 (구글에 물어본 결과를 앱을 켜 둔 동안 기억) */
 const modelCache = new Map<string, Promise<string[]>>()
@@ -87,38 +99,63 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
 
 /** Gemini 에게 묻고 글 답과, 검색했다면 출처까지 돌려준다 */
 export async function callGeminiWithSources(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<{ text: string; sources: GeminiSource[] }> {
-  const body = JSON.stringify({
-    systemInstruction: { parts: [{ text: req.system }] },
-    contents: [{ role: 'user', parts: req.parts }],
-    ...(req.search ? { tools: [{ google_search: {} }] } : {}),
-    generationConfig: {
-      // 요즘 Flash 는 답하기 전에 생각하는 데도 토큰을 써서, 너무 작으면 답이 비어 버린다
-      maxOutputTokens: Math.max(req.maxTokens ?? 2048, 2048),
-      ...(req.schema ? { responseMimeType: 'application/json' } : {}),
-      ...(req.schema && Object.keys(req.schema).length ? { responseJsonSchema: req.schema } : {}),
-    },
-  })
-  const send = async (model: string) => {
+  const makeBody = (thinking: boolean) =>
+    JSON.stringify({
+      systemInstruction: { parts: [{ text: req.system }] },
+      contents: [{ role: 'user', parts: req.parts }],
+      ...(req.search ? { tools: [{ google_search: {} }] } : {}),
+      generationConfig: {
+        // 생각을 켜 두면 생각에도 토큰을 써서, 너무 작으면 답이 비어 버린다
+        maxOutputTokens: Math.max(req.maxTokens ?? 2048, 2048),
+        ...(req.schema ? { responseMimeType: 'application/json' } : {}),
+        ...(req.schema && Object.keys(req.schema).length ? { responseJsonSchema: req.schema } : {}),
+        ...(thinking ? { thinkingConfig: { thinkingBudget: req.think ?? 0 } } : {}),
+      },
+    })
+  const limit = deadline(req.timeoutMs ?? (req.search ? 40_000 : 25_000), req.signal)
+  const tooSlow = () => new AiTimeoutError('Gemini 답이 너무 오래 걸려서 멈췄어요')
+  const send = async (model: string): Promise<Response> => {
+    let res: Response
     try {
-      return await fetcher(ENDPOINT(model), {
+      res = await fetcher(ENDPOINT(model), {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-        body,
-        signal: req.signal,
+        body: makeBody(!noThinkConfig.has(model)),
+        signal: limit.signal,
       })
     } catch (err) {
       if (req.signal?.aborted) throw err
+      if (limit.timedOut()) throw tooSlow()
       throw new Error('Gemini에 연결하지 못했어요. 인터넷을 확인해 주세요')
     }
+    // 생각 설정을 모르는 모델이면 빼고 한 번 더
+    if (res.status === 400 && !noThinkConfig.has(model)) {
+      const why = ((await res.clone().json().catch(() => ({}))) as GeminiData).error?.message ?? ''
+      if (/think/i.test(why)) {
+        noThinkConfig.add(model)
+        return send(model)
+      }
+    }
+    return res
   }
+  try {
+    return await ask(send, apiKey, fetcher, limit.signal)
+  } catch (err) {
+    if (!req.signal?.aborted && limit.timedOut()) throw tooSlow()
+    throw err
+  } finally {
+    limit.done()
+  }
+}
 
+async function ask(send: (model: string) => Promise<Response>, apiKey: string, fetcher: typeof fetch, signal: AbortSignal): Promise<{ text: string; sources: GeminiSource[] }> {
   // 모델 이름을 못 찾거나(404) 구글 서버가 붐비면(500·503) 다른 무료 모델로 차례로 다시 묻는다
   const retry = (r: Response) => r.status === 404 || r.status === 500 || r.status === 503
   let res = await send(GEMINI_MODEL)
   if (retry(res)) {
     // 이 키로 지금 쓸 수 있는 Flash 모델을 구글에 물어보고, 좋은 순으로 많아야 3개 더 시도
     const tried = new Set([GEMINI_MODEL])
-    const others = (await listFlashModels(apiKey, fetcher, req.signal)).filter((m) => !tried.has(m)).slice(0, 3)
+    const others = (await listFlashModels(apiKey, fetcher, signal)).filter((m) => !tried.has(m)).slice(0, 3)
     for (const model of others) {
       if (!retry(res)) break
       if (res.status !== 404) await wait(800)
