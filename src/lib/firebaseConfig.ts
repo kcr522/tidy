@@ -10,12 +10,12 @@
  * 갤럭시 앱에서 구글 로그인할 때 쓴다.
  */
 const FIREBASE = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  appId: '',
+  apiKey: 'AIzaSyAlkxWKQPttsDaUo4Obe_nX36mz1IsKM7o',
+  authDomain: 'tidy-b0d8d.firebaseapp.com',
+  projectId: 'tidy-b0d8d',
+  appId: '1:735899105039:web:29279d0d19ab773512f07a',
 }
-const WEB_CLIENT_ID = ''
+const WEB_CLIENT_ID = '735899105039-5d43litd03sol3rs6f55fk5taevsemfh.apps.googleusercontent.com'
 
 const env = import.meta.env
 
