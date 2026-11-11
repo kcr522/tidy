@@ -1,3 +1,4 @@
+import { formatDateLabel } from '../lib/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BookHeart, Check, ChevronLeft, ChevronRight, Plus, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -115,7 +116,9 @@ export default function CalendarPage() {
   }
 
   async function toggle(t: Todo) {
-    if (t.id != null) await todoRepo.toggleComplete(t.id).catch(() => toast('바꾸지 못했어요', 'error'))
+    if (t.id == null) return
+    const next = await todoRepo.toggleComplete(t.id).catch(() => void toast('바꾸지 못했어요', 'error'))
+    if (next) toast(`다음 할 일을 ${formatDateLabel(next)}에 만들었어요`)
   }
 
   async function confirmDelete() {

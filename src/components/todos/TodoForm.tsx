@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, BellOff } from 'lucide-react'
+import { Bell, BellOff, Repeat } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import type { Priority, Todo } from '../../db/types'
+import type { Priority, Todo, TodoRepeat } from '../../db/types'
+import { parseDateKey, todayKey } from '../../lib/date'
+import { repeatLabel, WEEK_ORDER, WEEKDAY_SHORT } from '../../lib/todoRepeat'
 import { timeLabel } from '../../lib/todoAlarms'
 import { MAX_TITLE_LENGTH, validateTitle } from '../../lib/validate'
 import { requestAlarmPermission } from '../../platform/alarms'
@@ -33,6 +35,7 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? 'MEDIUM')
   const [categoryId, setCategoryId] = useState<number | undefined>(initial ? initial.categoryId : defaultCategoryId)
   const [remindAt, setRemindAt] = useState(initial?.remindAt ?? '')
+  const [repeat, setRepeat] = useState<TodoRepeat | undefined>(initial?.repeat)
   const [permNote, setPermNote] = useState<string>()
   const categories = useLiveQuery(() => todoCategoryRepo.list(), [])
   const [error, setError] = useState<string>()
@@ -52,6 +55,29 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
     )
   }
 
+  /** 반복 종류 고르기. 마감일이 없으면 오늘로 정한다 (반복은 마감일부터 센다) */
+  function pickRepeat(every: TodoRepeat['every'] | null) {
+    if (every === null) return setRepeat(undefined)
+    const due = dueDate || (defaultDueDate ?? todayKey())
+    if (!dueDate) setDueDate(due)
+    const d = parseDateKey(due)
+    setRepeat(every === 'day' ? { every } : every === 'week' ? { every, days: [d.getDay()] } : { every, day: d.getDate() })
+  }
+
+  /** 매주 요일 켜고 끄기 (하나는 남긴다) */
+  function toggleDay(day: number) {
+    if (repeat?.every !== 'week') return
+    const days = repeat.days.includes(day) ? repeat.days.filter((x) => x !== day) : [...repeat.days, day]
+    if (days.length > 0) setRepeat({ every: 'week', days })
+  }
+
+  /** 마감일을 바꾸면 매달 반복 날짜도 따라간다 */
+  function changeDueDate(v: string) {
+    setDueDate(v)
+    if (!v) setRepeat(undefined)
+    else if (repeat?.every === 'month') setRepeat({ every: 'month', day: parseDateKey(v).getDate() })
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const result = validateTitle(title, '할 일을 입력해 주세요')
@@ -62,7 +88,7 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
     setError(undefined)
     setSaving(true)
     try {
-      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId, remindAt: dueDate && remindAt ? remindAt : undefined })
+      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId, remindAt: dueDate && remindAt ? remindAt : undefined, repeat: dueDate ? repeat : undefined })
     } finally {
       setSaving(false)
     }
@@ -84,14 +110,63 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
 
       <Field label="마감일 (선택)">
         <div className="flex gap-2">
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass()} />
+          <input type="date" value={dueDate} onChange={(e) => changeDueDate(e.target.value)} className={inputClass()} />
           {dueDate && (
-            <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => setDueDate('')}>
+            <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => changeDueDate('')}>
               지우기
             </Button>
           )}
         </div>
       </Field>
+
+      <div>
+        <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600">
+          <Repeat className="size-4" aria-hidden /> 반복 (선택)
+        </span>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="반복">
+          {([
+            [null, '안 함'],
+            ['day', '매일'],
+            ['week', '매주'],
+            ['month', '매달'],
+          ] as const).map(([every, label]) => {
+            const on = (repeat?.every ?? null) === every
+            return (
+              <button
+                key={label}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => pickRepeat(every)}
+                className={`min-h-10 rounded-full px-3.5 text-sm font-semibold transition ${on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {repeat?.every === 'week' && (
+          <div className="mt-2 flex gap-1" role="group" aria-label="반복할 요일">
+            {WEEK_ORDER.map((d) => {
+              const on = repeat.days.includes(d)
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleDay(d)}
+                  className={`size-10 rounded-full text-sm font-bold transition ${on ? 'bg-grad on-grad' : `bg-slate-100 ${d === 0 ? 'text-expense' : 'text-slate-500'}`}`}
+                >
+                  {WEEKDAY_SHORT[d]}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <p className="mt-1.5 text-xs text-slate-500">
+          {repeat ? `${repeatLabel(repeat)} 반복해요. 끝내면 다음 할 일이 저절로 생겨요` : '매일, 매주, 매달 하는 일이면 골라 주세요'}
+        </p>
+      </div>
 
       <div>
         <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600">

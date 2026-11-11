@@ -77,7 +77,8 @@ export default function DashboardPage() {
   async function toggle(todo: Todo) {
     if (todo.id == null) return
     try {
-      await todoRepo.toggleComplete(todo.id)
+      const next = await todoRepo.toggleComplete(todo.id)
+      if (next) toast(`다음 할 일을 ${formatDateLabel(next)}에 만들었어요`)
     } catch {
       toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
     }
