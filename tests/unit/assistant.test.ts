@@ -143,6 +143,24 @@ describe('AI 없이(기본) 대답하기', () => {
     expect(localAssistant({ today: TODAY, text: '내일 오후 3시 치과 예약' }).events[0]).toMatchObject({ title: '치과 예약', startDate: '2026-11-11', time: '15:00' })
   })
 
+  it('"25일부터 27일까지"처럼 뒤 날짜에 달이 없어도 기간으로, "다음 달 5일"도 알아본다', () => {
+    expect(localAssistant({ today: TODAY, text: '11월 25일부터 27일까지 제주도 여행' }).events[0]).toMatchObject({ title: '제주도 여행', startDate: '2026-11-25', endDate: '2026-11-27' })
+    expect(localAssistant({ today: TODAY, text: '다음 달 5일 정기검진 예약' }).events[0]).toMatchObject({ startDate: '2026-12-05' })
+    expect(localAssistant({ today: '2026-12-10', text: '다음 달 5일 정기검진' }).events[0]).toMatchObject({ startDate: '2027-01-05' })
+  })
+
+  it('"8천원"도 금액으로, 브랜드가 아니어도 낱말로 카테고리를 고른다', () => {
+    expect(localAssistant({ today: TODAY, text: '점심 김밥천국 8천원' }).payments[0]).toMatchObject({ amount: 8000, category: '식비' })
+    expect(localAssistant({ today: TODAY, text: '어제 택시비 12000원 냈어' }).payments[0]).toMatchObject({ amount: 12000, category: '교통', date: '2026-11-09' })
+    expect(localAssistant({ today: TODAY, text: '약국에서 감기약 4500원' }).payments[0]).toMatchObject({ category: '의료/건강' })
+  })
+
+  it('질문이면 AI를 켜면 답할 수 있다고 알려 준다', () => {
+    const r = localAssistant({ today: TODAY, text: '적금이랑 예금 차이가 뭐야?' })
+    expect(r.kind).toBe('none')
+    expect(r.reply).toContain('Gemini')
+  })
+
   it('지난 이야기면 일기', () => {
     for (const text of ['오늘 친구랑 한강에 갔어', '오늘 팀장님한테 칭찬받았다', '어제 영화 봤는데 너무 재밌었어']) {
       const r = localAssistant({ today: TODAY, text })

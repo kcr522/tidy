@@ -1,6 +1,7 @@
 import { addDays, format } from 'date-fns'
 import { parseDateKey } from '../date'
 import { matchMerchant } from '../merchants'
+import { guessCategory } from '../ocr/bankText'
 import type { AssistantReply, AssistantRequest, EventGuess, PaymentGuess } from './assistant'
 
 // AI 없이(설정 > AI 연결 '기본') 쓰는 대화창: 글에서 날짜·금액·지난 이야기를 규칙으로 찾는다.
@@ -43,6 +44,21 @@ export function findDates(text: string, today: string, future = true): Found[] {
     push(parseDateKey(k).getDate() === +m[3] ? k : null, m)
   }
   for (const m of text.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)) push(withYear(today, +m[1], +m[2], future), m)
+  // "11월 25일부터 27일까지", "11월 25~27일": 뒤쪽 날짜는 앞의 달을 그대로 쓴다
+  for (const m of text.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일?\s*(?:부터|~|-|–)\s*(\d{1,2})\s*일/g)) {
+    const at = m.index! + m[0].lastIndexOf(m[3])
+    const second = text.slice(at).match(/^\d{1,2}\s*일/)!
+    second.index = at
+    push(withYear(today, +m[1], +m[3], future), second)
+  }
+  // "다음 달 5일", "이번 달 20일"
+  for (const m of text.matchAll(/(다음\s*달|담달|이번\s*달)\s*(\d{1,2})\s*일/g)) {
+    const next = /다음|담/.test(m[1])
+    const y = Number(today.slice(0, 4))
+    const mon = Number(today.slice(5, 7)) + (next ? 1 : 0)
+    const k = mon > 12 ? `${y + 1}-01-${pad(+m[2])}` : `${y}-${pad(mon)}-${pad(+m[2])}`
+    push(parseDateKey(k).getDate() === +m[2] ? k : null, m)
+  }
   // 11.20 / 11/20 (시각 12:30, 금액 1,000 과 헷갈리지 않게)
   for (const m of text.matchAll(/(?<![\d,:])(\d{1,2})[./](\d{1,2})(?![\d,:])/g)) push(withYear(today, +m[1], +m[2], future), m)
   const rel: [RegExp, number][] = [
@@ -84,6 +100,8 @@ export function findTime(text: string): { time: string; text: string } | null {
 export function findAmount(text: string): { amount: number; text: string } | null {
   const man = text.match(/(\d+(?:\.\d+)?)\s*만\s*(?:(\d+)\s*천)?\s*원?/)
   if (man) return { amount: Math.round(parseFloat(man[1]) * 10000 + (man[2] ? +man[2] * 1000 : 0)), text: man[0] }
+  const chun = text.match(/(\d+)\s*천\s*원/)
+  if (chun) return { amount: +chun[1] * 1000, text: chun[0] }
   const won = text.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/)
   if (won) return { amount: Number(won[1].replace(/,/g, '')), text: won[0] }
   return null
@@ -116,6 +134,13 @@ function cleanTitle(text: string, remove: string[]): string {
     .trim()
 }
 
+/** 브랜드 목록에 없을 때: 글에 든 낱말로 지출 카테고리를 고른다 (택시 → 교통, 약국 → 의료/건강 …) */
+function expenseCategory(text: string): string {
+  const c = guessCategory(text)
+  if (c !== '기타') return c
+  return /점심|저녁|아침|야식|밥|간식|배달/.test(text) ? '식비' : '기타'
+}
+
 /** AI 없이 대답하기 */
 export function localAssistant(req: AssistantRequest): AssistantReply {
   const none = { events: [], payments: [], diary: null }
@@ -135,7 +160,7 @@ export function localAssistant(req: AssistantRequest): AssistantReply {
     const date = findDates(text, today, false)[0]
     const time = findTime(text.replace(amount.text, ' '))
     const income = /입금|들어왔|받았|월급|용돈/.test(text)
-    const merchant = cleanTitle(text, [amount.text, date?.text ?? '', time?.text ?? '']).replace(/(오늘|어제)\s*/g, '') || (income ? '입금' : '결제')
+    const merchant = cleanTitle(text, [amount.text, date?.text ?? '', time?.text ?? '']).replace(/(오늘|어제|아침|점심|저녁|야식)\s+/g, '') || (income ? '입금' : '결제')
     const brand = matchMerchant(merchant)
     const p: PaymentGuess = {
       type: income ? 'INCOME' : 'EXPENSE',
@@ -144,7 +169,7 @@ export function localAssistant(req: AssistantRequest): AssistantReply {
       date: date?.date ?? today,
       time: time?.time ?? null,
       account: null,
-      category: income ? (/월급/.test(text) ? '월급' : /용돈/.test(text) ? '용돈' : '기타') : (brand?.brand.category ?? '기타'),
+      category: income ? (/월급/.test(text) ? '월급' : /용돈/.test(text) ? '용돈' : '기타') : (brand?.brand.category ?? expenseCategory(text)),
     }
     return { ...none, kind: 'payment', reply: `${merchant} ${p.amount.toLocaleString('ko-KR')}원, 가계부에 적어 둘 내역이네요.`, payments: [p] }
   }
@@ -164,7 +189,14 @@ export function localAssistant(req: AssistantRequest): AssistantReply {
     const title = cleanTitle(text, [a.text, range ? b.text : '', time?.text ?? '']) || '새 일정'
     const e: EventGuess = { title, startDate: a.date, endDate: range ? b.date : a.date, time: time?.time ?? null, place: null, note: '' }
     const d = parseDateKey(e.startDate)
-    return { ...none, kind: 'event', reply: `${d.getMonth() + 1}월 ${d.getDate()}일(${WEEK[d.getDay()]})에 "${title}" 일정이 있네요.`, events: [e] }
+    const day = (x: Date) => `${x.getMonth() + 1}월 ${x.getDate()}일(${WEEK[x.getDay()]})`
+    const when = e.endDate !== e.startDate ? `${day(d)}부터 ${day(parseDateKey(e.endDate))}까지` : `${day(d)}에`
+    return { ...none, kind: 'event', reply: `${when} "${title}" 일정이 있네요.`, events: [e] }
+  }
+
+  // 4) 돈·생활 질문은 AI가 있어야 답할 수 있다
+  if (/[?？]$|뭐야|뭐예요|얼마|어떻게|어때|알려\s*줘|좋아\?|차이|추천/.test(text)) {
+    return { ...none, kind: 'none', reply: '질문에 답하는 건 AI가 있어야 해요. 설정 > AI 연결에서 Gemini (무료)를 고르면 검색까지 해서 답해 드려요.' }
   }
 
   return {
