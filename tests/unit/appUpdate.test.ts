@@ -17,6 +17,7 @@ describe('앱 업데이트', () => {
 
   it('바뀐 점에서 Merge 줄과 고정 안내는 뺀다', () => {
     expect(releaseNotes(release.body)).toEqual(['앱 안에서 바로 업데이트하기'])
+    expect(releaseNotes('새 기능\n\nCo-Authored-By: A <a@b.c>\nClaude-Session: https://x')).toEqual(['새 기능'])
     expect(releaseNotes(null)).toEqual([])
   })
 

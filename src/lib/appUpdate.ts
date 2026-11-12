@@ -32,12 +32,12 @@ export function versionCodeOfTag(tag: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-/** 릴리스 설명에서 "바뀐 것"만 뽑는다. "Merge pull request …" 줄과 고정 안내 문장은 뺀다 */
+/** 릴리스 설명에서 "바뀐 것"만 뽑는다. "Merge pull request …", Co-Authored-By 같은 줄과 고정 안내 문장은 뺀다 */
 export function releaseNotes(body: string | null | undefined): string[] {
   return (body ?? '')
     .split(/\r?\n/)
     .map((l) => l.replace(/^[-*•]\s*/, '').trim())
-    .filter((l) => l && !/^Merge (pull request|branch)/i.test(l) && !l.startsWith(FIXED_NOTE))
+    .filter((l) => l && !/^(Merge (pull request|branch)|Co-Authored-By:|Claude-Session:|Signed-off-by:)/i.test(l) && !l.startsWith(FIXED_NOTE))
     .slice(0, 5)
 }
 
