@@ -164,13 +164,14 @@ export default function CalendarPage() {
         >
           <div className="mb-1 flex items-center gap-1 px-2 pt-1">
             <h1 className="flex-1 text-[26px] whitespace-nowrap font-extrabold tracking-tight">
-              {m}월 <span className="text-base font-semibold text-slate-400">{y}</span>
+              {m}월 {/* 폰은 버튼이 많아 올해면 연도를 뺀다 */}
+              <span className={`text-base font-semibold text-slate-400 ${y === Number(today.slice(0, 4)) ? 'hidden sm:inline' : ''}`}>{y}</span>
             </h1>
             <button
               type="button"
               // 금액은 칸이 좁아 넘쳐서, 가계부의 금액 전용 달력으로 보낸다 (사용자 요청 2026-11-10)
               onClick={() => navigate('/money', { state: { view: 'calendar', date: selected } })}
-              className="mr-1 flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
+              className="mr-1 flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
               title="금액 달력 열기 (가계부)"
               aria-label="금액 달력"
             >
@@ -184,7 +185,7 @@ export default function CalendarPage() {
               onClick={toggleDiaryView}
               aria-pressed={diaryView}
               aria-label="일기 달력"
-              className={`mr-1 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold ${diaryView ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-500'}`}
+              className={`mr-1 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold ${diaryView ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-500'}`}
               title={diaryView ? '일정 달력으로 돌아가기' : '일기 쓴 날 보기'}
             >
               <BookHeart className="size-3.5" aria-hidden />
@@ -192,7 +193,7 @@ export default function CalendarPage() {
               <span className="hidden sm:inline">달력</span>
             </button>
             {(month !== today.slice(0, 7) || selected !== today) && (
-              <button type="button" onClick={() => pick(today)} className="mr-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
+              <button type="button" onClick={() => pick(today)} className="mr-1 shrink-0 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
                 오늘
               </button>
             )}
@@ -400,7 +401,18 @@ export default function CalendarPage() {
       </Modal>
 
       <Modal open={viewing !== null} title={viewing ? `${dayTitle(viewing.date)} 일기` : ''} onClose={() => setViewing(null)}>
-        {viewing && <DiaryViewer diary={viewing} onEdit={() => navigate('/diary', { state: { date: viewing.date } })} />}
+        {viewing && (
+          <DiaryViewer
+            diary={diaries.get(viewing.date) ?? viewing}
+            onEdit={() => navigate('/diary', { state: { date: viewing.date } })}
+            onCover={(src) =>
+              diaryRepo
+                .setCover(viewing.date, src)
+                .then(() => toast('대표 사진으로 정했어요'))
+                .catch(() => toast('바꾸지 못했어요. 다시 시도해 주세요', 'error'))
+            }
+          />
+        )}
       </Modal>
 
       <ConfirmDialog
