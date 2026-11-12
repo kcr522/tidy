@@ -1,6 +1,8 @@
-import { Clock, PenLine, Star } from 'lucide-react'
+import { Clock, FileText, PenLine, Star } from 'lucide-react'
 import type { Diary } from '../../db/types'
+import { extLabel, formatBytes } from '../../lib/attachments'
 import { diaryPhotos, sortByTime } from '../../lib/diaryPhotos'
+import { openAttachment } from '../../platform/openAttachment'
 
 /** 캘린더에서 누른 날의 일기를 읽기 전용으로 보여 준다. 고치려면 일기 화면으로 */
 export default function DiaryViewer({ diary, onEdit, onCover }: { diary: Diary; onEdit: () => void; onCover?: (src: string) => void }) {
@@ -41,6 +43,24 @@ export default function DiaryViewer({ diary, onEdit, onCover }: { diary: Diary; 
                   ))}
               </div>
               {p.note && <p className="mt-1 text-sm text-slate-500">{p.note}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!!diary.attachments?.length && (
+        <ul className="space-y-1.5" aria-label="첨부한 파일">
+          {diary.attachments.map((a, i) => (
+            <li key={i}>
+              <button type="button" onClick={() => void openAttachment(a).catch(() => undefined)} className="flex w-full items-center gap-2.5 rounded-xl bg-slate-100 px-2 py-1.5 text-left">
+                <span className="flex size-9 shrink-0 flex-col items-center justify-center rounded-lg bg-white text-brand-600">
+                  <FileText className="size-4" aria-hidden />
+                  <span className="text-[8px] leading-none font-bold">{extLabel(a.name)}</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-slate-800">{a.name}</span>
+                  <span className="block text-xs text-slate-500">{formatBytes(a.size)}</span>
+                </span>
+              </button>
             </li>
           ))}
         </ul>

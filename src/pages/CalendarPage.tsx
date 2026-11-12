@@ -1,16 +1,19 @@
 import { formatDateLabel } from '../lib/format'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookHeart, Check, ChevronLeft, ChevronRight, Plus, Wallet } from 'lucide-react'
+import { BookHeart, Check, ChevronLeft, ChevronRight, Paperclip, Plus, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import CalendarAddForm from '../components/calendar/CalendarAddForm'
+import { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
+import { useFileDrop } from '../hooks/useFileDrop'
+import { MAX_ATTACHMENTS } from '../lib/attachments'
 import DiaryMonth from '../components/calendar/DiaryMonth'
 import DiaryViewer from '../components/calendar/DiaryViewer'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
 import { useToast } from '../components/common/Toast'
 import TodoForm from '../components/todos/TodoForm'
-import type { CalendarEvent, Diary, Todo } from '../db/types'
+import type { Attachment, CalendarEvent, Diary, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { dayTitle, monthGrid, shiftMonth, todosOn } from '../lib/calendar'
 import { EVENT_COLORS, eventCovers, eventDays, layoutWeeks, type Bar } from '../lib/eventLayout'
@@ -23,7 +26,7 @@ const WEEK = ['일', '월', '화', '수', '목', '금', '토']
 /** 한 칸에 그리는 막대 줄 수. 넘치면 "+n" */
 const MAX_LANES = 3
 
-type Editor = { mode: 'add'; draft?: EventInput } | { mode: 'event'; item: CalendarEvent } | { mode: 'todo'; item: Todo } | null
+type Editor = { mode: 'add'; draft?: EventInput; files?: Attachment[] } | { mode: 'event'; item: CalendarEvent } | { mode: 'todo'; item: Todo } | null
 
 /** 월간 캘린더: 일정(여러 날은 긴 막대)과 할 일을 한 화면에 */
 export default function CalendarPage() {
@@ -80,6 +83,12 @@ export default function CalendarPage() {
     else setEditor(null)
   }
   const closeEditor = () => (editor?.mode === 'add' && editor.draft ? nextDraft() : setEditor(null))
+  // 컴퓨터에서 파일을 끌어다 놓으면: 고른 날에 새 일정을 열고 파일을 붙여 둔다 (창이 열려 있으면 그 창이 받는다)
+  const dragging = useFileDrop(async (files) => {
+    const { added, error } = await filesToAttachments(files, MAX_ATTACHMENTS)
+    if (error) toast(error, 'error')
+    if (added.length) setEditor({ mode: 'add', files: added })
+  }, editor === null)
   const weeks = useMemo(() => layoutWeeks(grid, events ?? [], todos ?? [], MAX_LANES), [grid, events, todos])
 
   const selEvents = useMemo(
@@ -298,7 +307,7 @@ export default function CalendarPage() {
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">{selDiary ? '일기' : selected <= today ? '일기 쓰기' : '일기'}</span>
               <span className="line-clamp-1 text-sm text-slate-500">
-                {selDiary ? selDiary.text || '사진만 있어요' : selected <= today ? '이날 한 일을 남겨 보세요' : '그날이 되면 쓸 수 있어요'}
+                {selDiary ? selDiary.text || (selDiary.photo ? '사진만 있어요' : '파일만 있어요') : selected <= today ? '이날 한 일을 남겨 보세요' : '그날이 되면 쓸 수 있어요'}
               </span>
             </span>
             <ChevronRight className="size-4 text-slate-300" aria-hidden />
@@ -325,6 +334,12 @@ export default function CalendarPage() {
                         )}
                         {e.startDate === e.endDate ? '하루 일정' : `${shortDate(e.startDate)} ~ ${shortDate(e.endDate)} · ${eventDays(e)}일`}
                         {e.memo && ` · ${e.memo}`}
+                        {!!e.attachments?.length && (
+                          <span className="ml-1 inline-flex items-center gap-0.5 align-[-2px]">
+                            · <Paperclip className="size-3" aria-label="첨부" />
+                            {e.attachments.length}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>
@@ -383,6 +398,7 @@ export default function CalendarPage() {
             today={today}
             initial={editor.mode === 'event' ? editor.item : undefined}
             draft={editor.mode === 'add' ? editor.draft : undefined}
+            initialFiles={editor.mode === 'add' ? editor.files : undefined}
             onSaveEvent={saveEvent}
             onSaveTodo={saveTodo}
             onDelete={editor.mode === 'event' ? () => setDeleting(editor.item) : undefined}
@@ -414,6 +430,8 @@ export default function CalendarPage() {
           />
         )}
       </Modal>
+
+      <DropOverlay show={dragging} label={`${dayTitle(selected)} 일정에 첨부해요`} />
 
       <ConfirmDialog
         open={deleting !== null}

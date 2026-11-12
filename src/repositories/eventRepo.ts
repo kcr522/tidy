@@ -1,12 +1,15 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
 import type { CalendarEvent } from '../db/types'
+import { cleanAttachments } from '../lib/attachments'
 import { nowIso } from '../lib/date'
 
-export type EventInput = Pick<CalendarEvent, 'title' | 'startDate' | 'endDate' | 'color' | 'memo'>
+export type EventInput = Pick<CalendarEvent, 'title' | 'startDate' | 'endDate' | 'color' | 'memo' | 'attachments'>
 
-/** 끝 날짜가 시작보다 앞이면 서로 바꿔 둔다 */
+/** 끝 날짜가 시작보다 앞이면 서로 바꿔 둔다. 첨부는 다듬고, 없으면 칸을 비운다 */
 function normalize(input: EventInput): EventInput {
-  return input.endDate < input.startDate ? { ...input, startDate: input.endDate, endDate: input.startDate } : input
+  const swapped = input.endDate < input.startDate ? { ...input, startDate: input.endDate, endDate: input.startDate } : input
+  const attachments = cleanAttachments(input.attachments)
+  return { ...swapped, attachments: attachments.length ? attachments : undefined }
 }
 
 export function createEventRepo(database: TidyDB = defaultDb) {

@@ -1,5 +1,6 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Diary, DiaryPhoto } from '../db/types'
+import type { Attachment, Diary, DiaryPhoto } from '../db/types'
+import { cleanAttachments } from '../lib/attachments'
 import { cleanPhotos, diaryPhotos } from '../lib/diaryPhotos'
 import { nowIso } from '../lib/date'
 import { randomDiaryColor } from '../lib/eventLayout'
@@ -10,6 +11,8 @@ export interface DiaryInput {
   photo?: string
   /** 사진 여러 장 (있으면 photo 대신 이걸 쓴다) */
   photos?: DiaryPhoto[]
+  /** 붙인 파일 (PDF, 문서 등) */
+  attachments?: Attachment[]
   /** 대표 사진 (photos 중 하나의 src). 없으면 예전 대표 사진을 지키고, 그것도 없으면 첫 장 */
   cover?: string
 }
@@ -38,6 +41,8 @@ export function createDiaryRepo(database: TidyDB = defaultDb, random: () => numb
         entry.photo = photos.find((p) => p.src === cover)?.src ?? photos[0].src
         entry.photos = photos
       }
+      const files = cleanAttachments(input.attachments)
+      if (files.length) entry.attachments = files
       await database.diaries.put(entry)
     },
 
