@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import LoginScreen from './components/account/LoginScreen'
 import SyncChoiceDialog from './components/account/SyncChoiceDialog'
 import AppLayout from './components/layout/AppLayout'
+import AppUpdatePrompt from './components/layout/AppUpdatePrompt'
 import LockScreen from './components/layout/LockScreen'
 import Splash from './components/layout/Splash'
 import DashboardPage from './pages/DashboardPage'
@@ -27,6 +28,7 @@ export default function App() {
     <LockScreen />
     <LoginScreen />
     <SyncChoiceDialog />
+    <AppUpdatePrompt />
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />

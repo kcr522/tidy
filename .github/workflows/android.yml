@@ -64,6 +64,10 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Tidy 1.0.${{ github.run_number }}
-          body: 폰에서 이 파일(tidy.apk)을 받아 설치하면 이전 기록은 그대로 두고 업데이트돼요.
+          # 앱 안 업데이트 창의 "바뀐 점"에 커밋 메시지(합친 PR 제목)가 보인다 (src/lib/appUpdate.ts 의 releaseNotes)
+          body: |
+            ${{ github.event.head_commit.message }}
+
+            폰에서 이 파일(tidy.apk)을 받아 설치하면 이전 기록은 그대로 두고 업데이트돼요.
           files: tidy.apk
           make_latest: true
