@@ -143,7 +143,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
         })
       } else {
         const old = await diaryRepo.get(p.date)
-        await diaryRepo.save(p.date, { text: [old?.text, p.text].filter(Boolean).join('\n\n'), photos: [...diaryPhotos(old), ...(p.photo ? [{ src: p.photo, time: nowTime() }] : [])] })
+        await diaryRepo.save(p.date, { text: [old?.text, p.text].filter(Boolean).join('\n\n'), photos: [...diaryPhotos(old), ...(p.photo ? [{ src: p.photo, time: nowTime() }] : [])], attachments: old?.attachments })
         add({ id: id(), from: 'ai', text: `${dayTitle(p.date)} 일기에 남겼어요 📔${old ? ' 전에 쓴 일기 뒤에 붙였어요.' : ''}` })
       }
     } catch {

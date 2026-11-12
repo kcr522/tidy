@@ -101,6 +101,8 @@ export function makeSnippet(text: string, term: string, radius = 40): string {
   return `${start > 0 ? '…' : ''}${flat.slice(start, end)}${end < flat.length ? '…' : ''}`
 }
 
+const fileNames = (list?: { name: string }[]) => (list ?? []).map((a) => a.name).join(' · ')
+
 /**
  * 검색어로 모든 기록을 찾는다. 검색어가 비어 있으면 빈 목록.
  * 같은 종류 안에서는 최근 것이 위로 온다.
@@ -142,6 +144,7 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
       [
         ['일기', d.text],
         ['사진 메모', notes],
+        ['첨부 파일', fileNames(d.attachments)],
       ],
       terms,
     )
@@ -171,6 +174,7 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
       [
         ['일정', e.title],
         ['메모', e.memo],
+        ['첨부 파일', fileNames(e.attachments)],
       ],
       terms,
     )

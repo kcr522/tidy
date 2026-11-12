@@ -2,18 +2,21 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, ChevronRight, Clock, ImagePlus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import AttachmentField, { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import { addDays } from 'date-fns'
+import { useFileDrop } from '../hooks/useFileDrop'
 import { useToday } from '../hooks/useToday'
+import { MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, cleanAttachments, readAsDataUrl } from '../lib/attachments'
 import { dayTitle } from '../lib/calendar'
 import { parseDateKey, toDateKey } from '../lib/date'
 import { shrinkImage } from '../lib/image'
 import { readPhotoInfo } from '../lib/meal/photo'
 import { MAX_DIARY_PHOTOS, MAX_PHOTO_NOTE, cleanPhotos, diaryPhotos, nowTime, sortByTime } from '../lib/diaryPhotos'
-import type { Diary, DiaryPhoto } from '../db/types'
+import type { Attachment, Diary, DiaryPhoto } from '../db/types'
 import { diaryRepo } from '../repositories/diaryRepo'
 
 const MAX_TEXT = 2000
@@ -77,8 +80,9 @@ export default function DiaryPage() {
                       <span className="block text-sm font-bold">
                         {dayTitle(d.date)}
                         {(d.photos?.length ?? 0) > 1 && <span className="ml-1.5 text-xs font-semibold text-slate-400">사진 {d.photos!.length}장</span>}
+                        {!!d.attachments?.length && <span className="ml-1.5 text-xs font-semibold text-slate-400">파일 {d.attachments.length}개</span>}
                       </span>
-                      <span className="line-clamp-2 text-sm text-slate-500">{d.text || '사진만 있어요'}</span>
+                      <span className="line-clamp-2 text-sm text-slate-500">{d.text || (d.photo ? '사진만 있어요' : '파일만 있어요')}</span>
                     </span>
                   </button>
                 </li>
@@ -111,6 +115,7 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
   const [photos, setPhotos] = useState<Item[]>(() =>
     [...diaryPhotos(entry), ...(draft?.photo ? [{ src: draft.photo, time: nowTime() }] : [])].map(withKey),
   )
+  const [files, setFiles] = useState<Attachment[]>(() => entry?.attachments ?? [])
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -118,13 +123,14 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
   const toast = useToast()
 
   const cleaned = cleanPhotos(photos)
-  const dirty = text !== (entry?.text ?? '') || JSON.stringify(cleaned) !== JSON.stringify(cleanPhotos(diaryPhotos(entry)))
-  const empty = text.trim() === '' && photos.length === 0
+  const dirty = text !== (entry?.text ?? '') || JSON.stringify(cleaned) !== JSON.stringify(cleanPhotos(diaryPhotos(entry))) ||
+    JSON.stringify(cleanAttachments(files)) !== JSON.stringify(cleanAttachments(entry?.attachments))
+  const empty = text.trim() === '' && photos.length === 0 && files.length === 0
   const room = MAX_DIARY_PHOTOS - photos.length
   const timeline = sortByTime(photos)
 
   /** 사진 여러 장을 넣는다. 찍은 시간은 사진 정보에서 읽고, 없으면 파일 시간 */
-  async function pickPhotos(list: FileList | null) {
+  async function pickPhotos(list: FileList | File[] | null) {
     const files = Array.from(list ?? [])
     if (files.length === 0) return
     if (room <= 0) {
@@ -136,7 +142,10 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
     const added: Item[] = []
     for (const file of files.slice(0, room)) {
       try {
-        const [src, info] = await Promise.all([shrinkImage(file), readPhotoInfo(file)])
+        // GIF 는 줄이면 움직임이 사라져서 그대로 넣는다
+        const isGif = file.type === 'image/gif'
+        if (isGif && file.size > MAX_ATTACHMENT_BYTES) throw new Error('too big')
+        const [src, info] = await Promise.all([isGif ? readAsDataUrl(file) : shrinkImage(file), readPhotoInfo(file)])
         added.push(withKey({ src, time: info.time }))
       } catch {
         failed++
@@ -148,6 +157,19 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
     else if (failed) toast(`${failed}장은 넣지 못했어요. 다른 사진으로 해 주세요`, 'error')
   }
 
+  /** 컴퓨터에서 끌어다 놓기: 사진·GIF 는 사진 타임라인으로, 나머지는 파일로 */
+  const dragging = useFileDrop(async (dropped) => {
+    const isPic = (f: File) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)
+    const pics = dropped.filter(isPic)
+    const others = dropped.filter((f) => !isPic(f))
+    if (pics.length) await pickPhotos(pics)
+    if (others.length) {
+      const { added, error } = await filesToAttachments(others, MAX_ATTACHMENTS - files.length)
+      setFiles((old) => [...old, ...added].slice(0, MAX_ATTACHMENTS))
+      if (error) toast(error, 'error')
+    }
+  })
+
   const change = (key: string, patch: Partial<DiaryPhoto>) => setPhotos((old) => old.map((p) => (p.key === key ? { ...p, ...patch } : p)))
   const drop = (key: string) => setPhotos((old) => old.filter((p) => p.key !== key))
 
@@ -155,7 +177,7 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
     if (empty) return
     setSaving(true)
     try {
-      await diaryRepo.save(date, { text: text.trim(), photos: cleaned })
+      await diaryRepo.save(date, { text: text.trim(), photos: cleaned, attachments: files })
       toast('일기를 저장했어요')
     } catch {
       toast('저장하지 못했어요. 사진이 너무 크면 다른 사진으로 해 주세요', 'error')
@@ -235,7 +257,7 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
             className={`mb-3 flex w-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-60 ${photos.length ? 'min-h-14' : 'min-h-24'}`}
           >
             <ImagePlus className="size-6" aria-hidden />
-            {adding ? '사진 넣는 중…' : photos.length ? `사진 더 넣기 (${photos.length}/${MAX_DIARY_PHOTOS})` : `사진 넣기 (선택, ${MAX_DIARY_PHOTOS}장까지)`}
+            {adding ? '사진 넣는 중…' : photos.length ? `사진 더 넣기 (${photos.length}/${MAX_DIARY_PHOTOS})` : `사진·GIF 넣기 (선택, ${MAX_DIARY_PHOTOS}장까지)`}
           </button>
         )}
         <input
@@ -265,7 +287,12 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
           </span>
         </div>
 
-        <div className="mt-2 flex gap-2">
+        <div className="mt-3">
+          <span className="mb-1.5 block text-sm font-medium text-slate-600">파일 (선택)</span>
+          <AttachmentField value={files} onChange={setFiles} addLabel="파일 첨부 (PDF, 문서 등)" />
+        </div>
+
+        <div className="mt-3 flex gap-2">
           {entry && (
             <Button variant="secondary" className="text-expense" onClick={() => setDeleting(true)}>
               삭제
@@ -275,8 +302,11 @@ function DiaryEditor({ date, today, entry, draft, onShift: shift }: EditorProps)
             {saving ? '저장 중…' : entry && !dirty ? '저장됨' : '저장'}
           </Button>
         </div>
-        <p className="mt-2 text-center text-xs text-slate-400">사진은 찍은 시간 순서로 줄 세워져요. 시간을 눌러 바꿀 수 있어요. 첫 사진이 캘린더 날짜 뒤에 흐리게 보여요.</p>
+        <p className="mt-2 text-center text-xs text-slate-400">사진은 찍은 시간 순서로 줄 세워져요. 시간을 눌러 바꿀 수 있어요. 첫 사진이 캘린더 날짜 뒤에 흐리게 보여요. GIF 도 움직이는 그대로 들어가요.</p>
+        <p className="mt-1 hidden text-center text-xs text-slate-400 md:block">컴퓨터에서 사진이나 파일을 끌어다 놓아도 돼요</p>
       </section>
+
+      <DropOverlay show={dragging} label={`${dayTitle(date)} 일기에 넣어요`} />
 
       <ConfirmDialog
         open={deleting}

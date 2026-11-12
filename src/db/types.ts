@@ -181,8 +181,22 @@ export interface CalendarEvent {
   calId?: string
   /** 가져온 일정의 원래 id */
   uid?: string
+  /** 메모에 붙인 사진·파일 (최대 10개) */
+  attachments?: Attachment[]
   createdAt: string
   updatedAt: string
+}
+
+/** 일정 메모·일기에 붙인 사진이나 파일 (PDF, 문서, GIF 등) */
+export interface Attachment {
+  /** 파일 이름 (예: 영수증.pdf) */
+  name: string
+  /** MIME 종류 (예: application/pdf, image/gif) */
+  type: string
+  /** 바이트 수 */
+  size: number
+  /** 파일 내용 data URL (백업·동기화가 그대로 되게 글자로 둔다) */
+  src: string
 }
 
 /** 일기: 하루에 하나 (2차) */
@@ -203,6 +217,8 @@ export interface Diary {
   photo?: string
   /** 사진 여러 장 (최대 10장, 시간 순서). 예전 일기에는 없다 */
   photos?: DiaryPhoto[]
+  /** 붙인 파일 (PDF, 문서 등, 최대 10개) */
+  attachments?: Attachment[]
   /** 사진이 없을 때 캘린더에 칠할 색 (쓸 때 아무거나 하나 고른다) */
   color: string
   createdAt: string

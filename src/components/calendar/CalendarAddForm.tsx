@@ -1,11 +1,12 @@
 import { CalendarRange, Check, ListChecks } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import type { CalendarEvent, EventColor } from '../../db/types'
+import type { Attachment, CalendarEvent, EventColor } from '../../db/types'
 import { dayTitle } from '../../lib/calendar'
 import { EVENT_COLORS, eventDays } from '../../lib/eventLayout'
 import { MAX_TITLE_LENGTH, validateMemo, validateTitle } from '../../lib/validate'
 import type { EventInput } from '../../repositories/eventRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
+import AttachmentField from '../common/AttachmentField'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
@@ -22,13 +23,15 @@ interface Props {
   initial?: CalendarEvent
   /** 새 일정에 채워 둘 값 (AI 대화창의 "내가 등록할게") */
   draft?: EventInput
+  /** 캘린더 화면에 끌어다 놓은 파일 (새 일정에 붙여 둔다) */
+  initialFiles?: Attachment[]
   onSaveEvent: (input: EventInput) => Promise<void>
   onSaveTodo: (input: TodoInput) => Promise<void>
   onDelete?: () => void
 }
 
 /** 캘린더에서 "추가": 일정(기간)과 할 일을 한 곳에서 쓴다 */
-export default function CalendarAddForm({ date, today, initial, draft, onSaveEvent, onSaveTodo, onDelete }: Props) {
+export default function CalendarAddForm({ date, today, initial, draft, initialFiles, onSaveEvent, onSaveTodo, onDelete }: Props) {
   const [kind, setKind] = useState<Kind>('event')
   const base = initial ?? draft
   const [title, setTitle] = useState(base?.title ?? '')
@@ -36,6 +39,7 @@ export default function CalendarAddForm({ date, today, initial, draft, onSaveEve
   const [end, setEnd] = useState(base?.endDate ?? date)
   const [color, setColor] = useState<EventColor>(base?.color ?? 'pink')
   const [memo, setMemo] = useState(base?.memo ?? '')
+  const [files, setFiles] = useState<Attachment[]>(base?.attachments ?? initialFiles ?? [])
   const [when, setWhen] = useState<When>(date > today ? 'day' : 'today')
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
@@ -54,7 +58,7 @@ export default function CalendarAddForm({ date, today, initial, draft, onSaveEve
         if (!start || !end) return setError('날짜를 골라 주세요')
         if (end < start) return setError('끝나는 날이 시작하는 날보다 앞이에요')
         const m = validateMemo(memo)
-        await onSaveEvent({ title: t.value, startDate: start, endDate: end, color, memo: m.ok ? m.value : '' })
+        await onSaveEvent({ title: t.value, startDate: start, endDate: end, color, memo: m.ok ? m.value : '', attachments: files })
       } else {
         const dueDate = when === 'today' ? today : when === 'day' ? date : null
         await onSaveTodo({ title: t.value, dueDate, priority: 'MEDIUM' })
@@ -149,6 +153,7 @@ export default function CalendarAddForm({ date, today, initial, draft, onSaveEve
           <Field label="메모 (선택)">
             <input value={memo} maxLength={200} onChange={(e) => setMemo(e.target.value)} placeholder="장소나 준비물" className={inputClass()} />
           </Field>
+          <AttachmentField value={files} onChange={setFiles} acceptDrop />
         </>
       ) : (
         <div>

@@ -2,6 +2,7 @@ import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
 import type { Budget, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isTodoRepeat } from '../lib/todoRepeat'
+import { isAttachmentList } from '../lib/attachments'
 import { isWebUrl } from '../lib/validate'
 
 /** 백업 파일 형식 (FR-060). 나중 버전에서도 읽을 수 있게 앱/스키마 버전을 넣는다 */
@@ -136,7 +137,7 @@ const COLORS = ['pink', 'orange', 'blue', 'green', 'purple', 'red']
 function isEvent(v: unknown): v is CalendarEvent {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && COLORS.includes(v.color as string) &&
-    isStr(v.memo) && (v.source === undefined || v.source === 'google') && isOptStr(v.uid) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.memo) && (v.source === undefined || v.source === 'google') && isOptStr(v.uid) && isAttachmentList(v.attachments) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 
@@ -144,7 +145,7 @@ const isDiaryPhoto = (v: unknown) => isObj(v) && isStr(v.src) && isOptStr(v.time
 
 function isDiary(v: unknown): v is Diary {
   return (
-    isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && (v.photos === undefined || (Array.isArray(v.photos) && v.photos.every(isDiaryPhoto))) &&
+    isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && (v.photos === undefined || (Array.isArray(v.photos) && v.photos.every(isDiaryPhoto))) && isAttachmentList(v.attachments) &&
     isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
