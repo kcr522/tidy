@@ -7,11 +7,13 @@ import CalendarAddForm from '../components/calendar/CalendarAddForm'
 import { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
 import { useFileDrop } from '../hooks/useFileDrop'
 import { MAX_ATTACHMENTS } from '../lib/attachments'
+import DiaryMonth from '../components/calendar/DiaryMonth'
+import DiaryViewer from '../components/calendar/DiaryViewer'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
 import { useToast } from '../components/common/Toast'
 import TodoForm from '../components/todos/TodoForm'
-import type { Attachment, CalendarEvent, Todo } from '../db/types'
+import type { Attachment, CalendarEvent, Diary, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { dayTitle, monthGrid, shiftMonth, todosOn } from '../lib/calendar'
 import { EVENT_COLORS, eventCovers, eventDays, layoutWeeks, type Bar } from '../lib/eventLayout'
@@ -45,6 +47,18 @@ export default function CalendarPage() {
   const diaryList = useLiveQuery(() => diaryRepo.listBetween(grid[0], grid[grid.length - 1]), [grid])
   const diaries = useMemo(() => new Map((diaryList ?? []).map((d) => [d.date, d])), [diaryList])
   const selDiary = diaries.get(selected)
+  // 일기 달력: 일기 쓴 날만 사진/색으로 보여 주고, 누르면 그 일기를 연다 (사용자 요청 2026-11-12)
+  const [diaryView, setDiaryView] = useState(() => readDiaryView())
+  const [viewing, setViewing] = useState<Diary | null>(null)
+  function toggleDiaryView() {
+    const next = !diaryView
+    setDiaryView(next)
+    try {
+      localStorage.setItem(DIARY_VIEW_KEY, next ? '1' : '0')
+    } catch {
+      // 저장 못 해도 이번에는 바뀐다
+    }
+  }
   const navigate = useNavigate()
   const location = useLocation()
   // AI 대화창의 "내가 등록할게": 찾은 일정을 하나씩 채워서 추가 창을 연다
@@ -158,21 +172,37 @@ export default function CalendarPage() {
           onTouchEnd={onTouchEnd}
         >
           <div className="mb-1 flex items-center gap-1 px-2 pt-1">
-            <h1 className="flex-1 text-[26px] font-extrabold tracking-tight">
-              {m}월 <span className="text-base font-semibold text-slate-400">{y}</span>
+            <h1 className="flex-1 text-[26px] whitespace-nowrap font-extrabold tracking-tight">
+              {m}월 {/* 폰은 버튼이 많아 올해면 연도를 뺀다 */}
+              <span className={`text-base font-semibold text-slate-400 ${y === Number(today.slice(0, 4)) ? 'hidden sm:inline' : ''}`}>{y}</span>
             </h1>
             <button
               type="button"
               // 금액은 칸이 좁아 넘쳐서, 가계부의 금액 전용 달력으로 보낸다 (사용자 요청 2026-11-10)
               onClick={() => navigate('/money', { state: { view: 'calendar', date: selected } })}
-              className="mr-1 flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
+              className="mr-1 flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
               title="금액 달력 열기 (가계부)"
+              aria-label="금액 달력"
             >
               <Wallet className="size-3.5" aria-hidden />
-              금액 달력
+              금액
+              {/* 폰은 칸이 좁아 '달력'을 뺀다 */}
+              <span className="hidden sm:inline">달력</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleDiaryView}
+              aria-pressed={diaryView}
+              aria-label="일기 달력"
+              className={`mr-1 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold ${diaryView ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-500'}`}
+              title={diaryView ? '일정 달력으로 돌아가기' : '일기 쓴 날 보기'}
+            >
+              <BookHeart className="size-3.5" aria-hidden />
+              일기
+              <span className="hidden sm:inline">달력</span>
             </button>
             {(month !== today.slice(0, 7) || selected !== today) && (
-              <button type="button" onClick={() => pick(today)} className="mr-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
+              <button type="button" onClick={() => pick(today)} className="mr-1 shrink-0 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
                 오늘
               </button>
             )}
@@ -192,7 +222,8 @@ export default function CalendarPage() {
             ))}
           </div>
 
-          <div role="grid" className="flex flex-col gap-1">
+          {diaryView && <DiaryMonth grid={grid} month={month} today={today} selected={selected} diaries={diaries} onPick={pick} onOpen={setViewing} />}
+          <div role="grid" className={`flex flex-col gap-1 ${diaryView ? 'hidden' : ''}`}>
             {weeks.map((week) => (
               <div key={week.days[0]} role="row" className="relative h-[104px] [--lane-h:19px] sm:h-[114px] sm:[--lane-h:21px]">
                 <div className="absolute inset-0 grid grid-cols-7 gap-1">
@@ -263,7 +294,7 @@ export default function CalendarPage() {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/diary', { state: { date: selected } })}
+            onClick={() => (selDiary ? setViewing(selDiary) : navigate('/diary', { state: { date: selected } }))}
             className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left"
           >
             {selDiary?.photo ? (
@@ -385,6 +416,21 @@ export default function CalendarPage() {
         )}
       </Modal>
 
+      <Modal open={viewing !== null} title={viewing ? `${dayTitle(viewing.date)} 일기` : ''} onClose={() => setViewing(null)}>
+        {viewing && (
+          <DiaryViewer
+            diary={diaries.get(viewing.date) ?? viewing}
+            onEdit={() => navigate('/diary', { state: { date: viewing.date } })}
+            onCover={(src) =>
+              diaryRepo
+                .setCover(viewing.date, src)
+                .then(() => toast('대표 사진으로 정했어요'))
+                .catch(() => toast('바꾸지 못했어요. 다시 시도해 주세요', 'error'))
+            }
+          />
+        )}
+      </Modal>
+
       <DropOverlay show={dragging} label={`${dayTitle(selected)} 일정에 첨부해요`} />
 
       <ConfirmDialog
@@ -398,6 +444,15 @@ export default function CalendarPage() {
       />
     </>
   )
+}
+
+const DIARY_VIEW_KEY = 'tidy.calendar.diaryView'
+function readDiaryView(): boolean {
+  try {
+    return localStorage.getItem(DIARY_VIEW_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 function shortDate(key: string): string {
