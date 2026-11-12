@@ -26,8 +26,16 @@ export const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID || FIREBASE.appId,
 }
 
-/** 구글 로그인(갤럭시 앱)에 쓰는 웹 클라이언트 ID. 구글 캘린더 웹 연결과 같은 값을 써도 된다 */
+/** Firebase(TIDY) 프로젝트의 웹 클라이언트 ID (웹에서 구글 캘린더 연결에 쓴다) */
 export const firebaseWebClientId: string = env.VITE_GOOGLE_WEB_CLIENT_ID || WEB_CLIENT_ID
+
+/**
+ * 갤럭시 앱 구글 로그인에 쓰는 웹 클라이언트 ID.
+ * 갤럭시 앱(패키지 + SHA-1)은 구글 캘린더 때문에 먼저 만든 "Creat" 프로젝트에 등록돼 있고, 같은 앱은 한 프로젝트에만 등록할 수 있다.
+ * 그래서 Creat 프로젝트의 웹 클라이언트로 ID 토큰을 받고, Firebase → Authentication → Google →
+ * "외부 프로젝트의 클라이언트 ID 허용 목록"에 이 ID를 넣어 TIDY 가 받아 주게 한다.
+ */
+export const nativeSignInClientId: string = env.VITE_NATIVE_SIGNIN_CLIENT_ID || '191657953450-ibqv63uisrrcu0b07mbq9bkughh59mrv.apps.googleusercontent.com'
 
 /** 설정이 들어 있어야 로그인 화면이 나온다 */
 export const firebaseReady = (): boolean => Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId)

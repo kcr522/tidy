@@ -5,7 +5,7 @@
 import type { FirebaseApp } from 'firebase/app'
 import type { Auth, User } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
-import { firebaseConfig, firebaseReady, firebaseWebClientId } from '../lib/firebaseConfig'
+import { firebaseConfig, firebaseReady, nativeSignInClientId } from '../lib/firebaseConfig'
 import { GoogleAuthError, NativeAuth } from './googleAuth'
 import { isNativeApp } from './native'
 
@@ -54,10 +54,10 @@ export async function signInWithGoogle(): Promise<User> {
   const { auth } = await loadFirebase()
   const { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth')
   if (isNativeApp()) {
-    if (!firebaseWebClientId) throw new GoogleAuthError('구글 로그인 설정(웹 클라이언트 ID)이 아직 없어요')
+    if (!nativeSignInClientId) throw new GoogleAuthError('구글 로그인 설정(웹 클라이언트 ID)이 아직 없어요')
     let r
     try {
-      r = await NativeAuth.signIn({ webClientId: firebaseWebClientId })
+      r = await NativeAuth.signIn({ webClientId: nativeSignInClientId })
     } catch (err) {
       throw new GoogleAuthError(err instanceof Error ? err.message : '구글 로그인 오류')
     }
