@@ -5,6 +5,7 @@ import { loadPhotos, photoSrc } from '../../lib/customPhotos'
 import { basicSplashDelay, loadCustomization, splashPhoto } from '../../lib/customize'
 import type { PhotoPalette } from '../../lib/photoPalette'
 import { markSplashDone } from '../../lib/splashSignal'
+import logoUrl from '../../assets/logo.svg'
 
 // 앱을 켤 때 한 번만 (화면을 옮겨 다녀도 다시 안 나온다)
 let shown = false
@@ -34,6 +35,7 @@ function BasicSplash({ leaving, onSkip }: { leaving: boolean; onSkip: () => void
       role="presentation"
     >
       <div className="animate-splash-pop flex flex-col items-center text-center">
+        <img src={logoUrl} alt="" className="mb-4 size-20 rounded-[22px] shadow-lg shadow-black/15" />
         <p className="text-[56px] leading-none font-black tracking-tight">TIDY:</p>
         <p className="mt-3 text-sm font-semibold opacity-80">가계부 · 할 일 · 스크랩</p>
       </div>
