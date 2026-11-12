@@ -5,6 +5,7 @@ import { useAccount } from '../../hooks/useAccount'
 import { login, logout, skipLogin } from '../../lib/sync/account'
 import { loginSkipped } from '../../lib/sync/state'
 import { GoogleAuthError } from '../../platform/googleAuth'
+import logoUrl from '../../assets/logo.svg'
 
 /** 구글 G 로고 (공식 색) */
 export function GoogleLogo({ className = 'size-5' }: { className?: string }) {
@@ -58,6 +59,7 @@ export default function LoginScreen() {
       <div className="bg-grad pointer-events-none absolute inset-x-0 top-0 h-[46vh] rounded-b-[48px] opacity-90" aria-hidden />
       <div className="relative mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
         <div className="on-grad mb-8 text-center">
+          <img src={logoUrl} alt="" className="mx-auto mb-4 size-[72px] rounded-[20px] shadow-lg shadow-black/15" />
           <p className="text-[44px] leading-none font-black tracking-tight">TIDY:</p>
           <p className="mt-3 text-[15px] font-semibold opacity-90">가계부 · 할 일 · 스크랩을 한곳에</p>
         </div>
