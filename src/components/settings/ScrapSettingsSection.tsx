@@ -32,7 +32,7 @@ export default function ScrapSettingsSection() {
         </label>
       )}
       <p className="border-t border-slate-100 px-5 py-4 text-xs leading-relaxed text-slate-500">
-        인스타그램·네이버·X에서 <b>공유 → Tidy</b>로 바로 보내려면: 안드로이드 크롬에서 Tidy를 “홈 화면에 추가(앱 설치)” 해 두세요. 아이폰은 폰 앱을 만들 때 공유 기능을 따로 붙여야 해요. 그 전에는 링크를 복사해서 붙여 넣으면 돼요.
+        인스타그램·네이버·X에서 <b>공유 → Tidy에 스크랩</b>을 누르면 바로 저장 창이 열려요. 안드로이드 앱을 깔았으면 공유 목록에 Tidy가 떠요(처음엔 목록 맨 끝 “더보기”에 있을 수 있어요). 웹만 쓸 때는 안드로이드 크롬에서 Tidy를 “홈 화면에 추가(앱 설치)” 해 두면 떠요. 아이폰은 아직 안 돼요. 링크를 복사해서 붙여 넣으면 돼요.
       </p>
     </section>
   )

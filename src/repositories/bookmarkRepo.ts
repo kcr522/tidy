@@ -39,6 +39,14 @@ export function createBookmarkRepo(database: TidyDB = defaultDb) {
       await database.bookmarks.update(id, { ...rec, updatedAt: nowIso() })
     },
 
+    /** 서버에서 읽어 온 본문(설명)이나 다듬은 제목만 바꾸기 */
+    async patch(id: number, fields: { title?: string; description?: string }): Promise<void> {
+      const out: Partial<Bookmark> = {}
+      if (fields.title) out.title = fields.title
+      if (fields.description) out.description = fields.description
+      if (Object.keys(out).length) await database.bookmarks.update(id, { ...out, updatedAt: nowIso() })
+    },
+
     /** AI(또는 기본) 요약 저장 */
     async setSummary(id: number, summary: string): Promise<void> {
       await database.bookmarks.update(id, { summary, summaryAt: nowIso() })

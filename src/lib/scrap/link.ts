@@ -106,6 +106,59 @@ export function tidyDescription(desc: string | undefined): string | undefined {
   return (m ? m[1] : desc).trim() || undefined
 }
 
+/**
+ * 인스타그램·X 미리보기 제목 앞뒤에 붙는 "Instagram의 OO님 : "…"", "OO on Instagram: "…"", "… / X" 를 떼고
+ * 따옴표 안 글(게시글 본문)만 돌려준다. 그런 모양이 아니면 null
+ */
+export function socialCaptionFromTitle(title: string | undefined): string | null {
+  if (!title) return null
+  const t = title.trim().replace(/\s*\/\s*X$/, '')
+  const m =
+    t.match(/^(?:Instagram|X|트위터|Twitter)의\s.{0,80}?님\s*[:：]\s*["“]?([\s\S]*?)["”]?$/) ??
+    t.match(/^.{0,80}?\son\s(?:Instagram|X|Twitter)\s*[:：]\s*["“]?([\s\S]*?)["”]?$/i) ??
+    t.match(/^.{0,80}?님의\s(?:Instagram|인스타그램)[^:：]*[:：]\s*["“]?([\s\S]*?)["”]?$/)
+  return m ? m[1].trim() : null
+}
+
+/** 사용자 이름만 있는 제목인가 ("Instagram의 OO님", "OO님의 Instagram 게시물", "OO (@id) • Instagram photos and videos") */
+export function isNameOnlySocialTitle(title: string | undefined): boolean {
+  if (!title) return false
+  return /^(?:Instagram|X)의\s[^:：]{0,80}님$|님의\s(?:Instagram|인스타그램)|on\s(?:Instagram|X)$|•\s*Instagram|^Instagram$|^X$/i.test(title.trim())
+}
+
+/**
+ * AI 없이 만드는 짧은 제목: 게시글 본문의 첫 줄(첫 문장)에서 해시태그·@아이디·주소를 빼고 40자 안으로
+ * 예: "웬만한 디저트는 이제 집에서 만들어요 🍪\n재료: …  #홈베이킹" → "웬만한 디저트는 이제 집에서 만들어요 🍪"
+ */
+export function simpleTitle(text: string | undefined, max = 40): string {
+  if (!text) return ''
+  const cleaned = text
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/#[\p{L}\p{N}_]+/gu, ' ')
+    .replace(/(^|\s)@[\w.]+/g, ' ')
+  const line =
+    cleaned
+      .split(/\n+/)
+      .map((l) => l.replace(/[\s\u200b\u00a0]+/g, ' ').replace(/^[\s.•·\-–—:"“”'|]+|[\s.•·\-–—:"“”'|]+$/g, '').trim())
+      .find((l) => l.replace(/[\p{Extended_Pictographic}\s]/gu, '').length >= 2) ?? ''
+  // 첫 문장이 충분히 길면 거기서 끊는다
+  const sentence = line.match(/^(.{8,}?(?:[.!?。！？]|다\.|요\.|요!|요~|ㅋㅋ+|ㅎㅎ+))(\s|$)/u)?.[1] ?? line
+  const one = sentence.replace(/[.。]$/, '').trim()
+  if (one.length <= max) return one
+  const cut = one.slice(0, max)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trim()}…`
+}
+
+/** 미리보기 제목을 보기 좋게: 인스타그램·X는 "OO님의 …" 대신 게시글 본문으로 짧은 제목을 만든다 */
+export function tidyTitle(title: string | undefined, description: string | undefined, source: LinkSource): string | undefined {
+  if (source !== 'instagram' && source !== 'x') return title
+  const caption = socialCaptionFromTitle(title)
+  // 이름이 붙지 않은 보통 제목이면 그대로 둔다
+  if (caption === null && title && !isNameOnlySocialTitle(title)) return title
+  return simpleTitle(description) || simpleTitle(caption ?? undefined) || (source === 'instagram' ? 'Instagram 게시물' : 'X 게시물')
+}
+
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" }
 
 export function decodeEntities(s: string): string {
@@ -149,9 +202,11 @@ export function parseLinkMeta(html: string, pageUrl: string): LinkMeta {
     }
   }
   const type = meta['og:type']?.toLowerCase() ?? ''
+  const rawTitle = clean(meta['og:title'] ?? meta['twitter:title'] ?? titleTag, 200)
+  const description = tidyDescription(clean(meta['og:description'] ?? meta['twitter:description'] ?? meta['description'], 1000))
   return {
-    title: clean(meta['og:title'] ?? meta['twitter:title'] ?? titleTag, 200),
-    description: tidyDescription(clean(meta['og:description'] ?? meta['twitter:description'] ?? meta['description'], 1000)),
+    title: tidyTitle(rawTitle, description, detectSource(pageUrl)),
+    description,
     siteName: clean(meta['og:site_name'], 60),
     image,
     isVideo: type.startsWith('video') || !!meta['og:video'] || !!meta['og:video:url'] || undefined,

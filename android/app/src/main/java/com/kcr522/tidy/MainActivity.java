@@ -17,6 +17,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BiometricPlugin.class);
         // 앱 안에서 새 버전 내려받아 설치하기 (AppUpdatePlugin)
         registerPlugin(AppUpdatePlugin.class);
+        // 인스타그램·X 등에서 "공유 → Tidy" 로 들어온 링크 받기 (ShareIntentPlugin)
+        registerPlugin(ShareIntentPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

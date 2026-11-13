@@ -17,6 +17,7 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
 import { detectSource } from '../lib/scrap/link'
+import { enrichScrap, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter } from '../repositories/bookmarkRepo'
@@ -29,6 +30,7 @@ type Editor = { mode: 'add'; prefill?: { url: string; title?: string } } | { mod
 type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
+const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v1'
 
 /** 공유받기(/share)에서 넘어오는 값 */
 export interface ShareState {
@@ -72,6 +74,18 @@ export default function BookmarksPage() {
   }, [all, cat])
   const catName = (id: number | undefined) => categories.find((c) => c.id === id)?.name
 
+  // 예전에 저장한 "Instagram의 OO님 : …" 제목을 한 번 짧게 정리한다
+  useEffect(() => {
+    if (!all?.length) return
+    try {
+      if (localStorage.getItem(TITLE_FIX_KEY)) return
+      localStorage.setItem(TITLE_FIX_KEY, '1')
+    } catch {
+      return
+    }
+    tidyOldScrapTitles(all).catch(() => undefined)
+  }, [all])
+
   // 다른 앱에서 공유하기로 들어왔으면 바로 저장 창을 연다
   useEffect(() => {
     const share = (location.state as ShareState | null)?.share
@@ -104,6 +118,11 @@ export default function BookmarksPage() {
       if (input.source) rememberCategory(input.source, input.categoryId ?? null)
       setEditor(null)
       if (!isNew) return
+      // 동영상 캡션·게시글 본문을 서버에서 읽어 같이 남기고, "OO님의 Instagram" 같은 제목은 본문으로 짧게 (기다리지 않고 뒤에서)
+      bookmarkRepo
+        .get(id)
+        .then((b) => b && enrichScrap(b))
+        .catch(() => undefined)
       // 새 링크면 서버가 사이트 화면을 자동으로 찍고 → 보여 주면서 "편집" / "그냥 올리기". 끄면 예전처럼 "캡처본도 같이 저장할까요?"
       if (autoCaptureEnabled()) setAutoShot({ id, url: input.url })
       else if (askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
