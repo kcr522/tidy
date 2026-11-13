@@ -2,12 +2,34 @@ import { describe, expect, it } from 'vitest'
 import { askAssistant } from '../../src/lib/ai/assistantEngines'
 import { engineFor } from '../../src/lib/ai/engines'
 import { clearGeminiModelCache } from '../../src/lib/ai/gemini'
-import { callGroq, GROQ_ENDPOINT, GROQ_MODELS } from '../../src/lib/ai/groq'
+import { callGroq, clearGroqModelCache, GROQ_ENDPOINT, GROQ_MODELS, GROQ_MODELS_URL, pickGroqModels } from '../../src/lib/ai/groq'
 
 const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status })
 const answer = (content: string) => json({ choices: [{ message: { content } }] })
 
 describe('예비 AI: Groq', () => {
+  it('정해 둔 모델이 다 없어지면(404) 모델 목록에서 새 모델을 찾아 묻는다', async () => {
+    clearGroqModelCache()
+    const asked: string[] = []
+    const f = (async (url: string, init?: RequestInit) => {
+      if (url === GROQ_MODELS_URL) return json({ data: [{ id: 'whisper-large-v3' }, { id: 'openai/gpt-oss-20b' }, { id: 'openai/gpt-oss-120b' }, { id: 'llama-guard-4-12b' }] })
+      const model = JSON.parse(String(init?.body)).model as string
+      asked.push(model)
+      return model.startsWith('openai/') ? answer('새 모델 답') : json({ error: { message: 'The model does not exist', code: 'model_not_found' } }, 404)
+    }) as typeof fetch
+    expect(await callGroq('G', { system: 'S', user: 'U' }, f)).toEqual({ text: '새 모델 답', model: 'openai/gpt-oss-120b' })
+    expect(asked).toEqual([...GROQ_MODELS, 'openai/gpt-oss-120b'])
+    // 다음부터는 찾은 모델로 바로
+    asked.length = 0
+    await callGroq('G', { system: 'S', user: 'U' }, f)
+    expect(asked).toEqual(['openai/gpt-oss-120b'])
+    clearGroqModelCache()
+  })
+
+  it('모델 목록에서 음성·안전 검사 모델은 빼고 큰 모델 먼저', () => {
+    expect(pickGroqModels(['whisper-large-v3', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'meta-llama/llama-guard-4-12b', 'playai-tts'])).toEqual(['openai/gpt-oss-120b', 'llama-3.1-8b-instant'])
+  })
+
   it('큰 모델 한도가 차면 작은 모델로 묻는다', async () => {
     const models: string[] = []
     const f = (async (url: string, init?: RequestInit) => {
@@ -54,6 +76,20 @@ describe('예비 AI: Groq', () => {
       const engine = engineFor({ engine: 'gemini', geminiKey: 'K', groqKey: 'G' })
       const snapshot = { date: '2026-11-10', todayTotal: 0, items: [], monthExpense: 0, monthIncome: 0, dailyAverage: null }
       expect(await engine.generate('feedback', snapshot)).toBe('오늘도 잘 아꼈어요')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('소비 한마디: Gemini도 Groq도 안 되면 둘 다 이유를 보여 준다', async () => {
+    clearGeminiModelCache()
+    clearGroqModelCache()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (url: string) => (String(url).includes('generativelanguage') ? json({}, 429) : json({}, 401))) as typeof fetch
+    try {
+      const engine = engineFor({ engine: 'gemini', geminiKey: 'K', groqKey: 'G' })
+      const snapshot = { date: '2026-11-10', todayTotal: 0, items: [], monthExpense: 0, monthIncome: 0, dailyAverage: null }
+      await expect(engine.generate('feedback', snapshot)).rejects.toThrow(/사용량.*예비 AI\(Groq\)도 안 됐어요: Groq 키가 맞지 않아요/)
     } finally {
       globalThis.fetch = real
     }

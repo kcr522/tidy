@@ -77,7 +77,9 @@ export interface ProxyRequest {
 }
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models'
+/** Groq 모델 이름 (모델이 바뀌어도 되게 모양만 본다. 예: llama-3.3-70b-versatile, openai/gpt-oss-120b) */
+const GROQ_MODEL = /^[\w.-]+(\/[\w.-]+)?$/
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/'
 
 /** 앱이 보내도 되는 Gemini 주소: 모델 목록(GET), 답 만들기(POST) */
@@ -181,7 +183,7 @@ export function tokensOf(provider: 'gemini' | 'groq', data: unknown): number {
 
 interface AiCall {
   provider: 'gemini' | 'groq'
-  /** Gemini 주소 뒤쪽 (models/…:generateContent) */
+  /** Gemini 주소 뒤쪽 (models/…:generateContent), Groq 는 모델 목록일 때 'models' */
   path?: string
   method?: string
   payload?: unknown
@@ -228,9 +230,16 @@ export async function handleAiProxy(req: ProxyRequest, env: AiProxyEnv, fetcher:
     url = GEMINI_BASE + path
     headers['x-goog-api-key'] = key
   } else {
-    const model = (call.payload as { model?: unknown } | null)?.model
-    if (typeof model !== 'string' || !GROQ_MODELS.includes(model)) return err(400, '요청 형식이 맞지 않아요')
-    url = GROQ_ENDPOINT
+    if (call.method === 'GET' && call.path === 'models') {
+      // 모델 목록 (횟수에 세지 않는다)
+      method = 'GET'
+      counts = false
+      url = GROQ_MODELS_URL
+    } else {
+      const model = (call.payload as { model?: unknown } | null)?.model
+      if (typeof model !== 'string' || model.length > 80 || !GROQ_MODEL.test(model)) return err(400, '요청 형식이 맞지 않아요')
+      url = GROQ_ENDPOINT
+    }
     headers.authorization = `Bearer ${key}`
   }
 

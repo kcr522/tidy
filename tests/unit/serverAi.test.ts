@@ -38,6 +38,10 @@ function fakeNet(opts: { gemini?: (body: unknown) => Response; email?: string } 
       expect(headers['x-goog-api-key']).toBe('SERVER-G')
       return opts.gemini?.(JSON.parse(String(init?.body ?? '{}'))) ?? json({ candidates: [{ content: { parts: [{ text: '좋아요' }] } }], usageMetadata: { totalTokenCount: 120 } })
     }
+    if (url === 'https://api.groq.com/openai/v1/models') {
+      expect(headers.authorization).toBe('Bearer Q')
+      return json({ data: [{ id: 'openai/gpt-oss-120b' }] })
+    }
     throw new Error(`모르는 주소 ${url}`)
   }) as typeof fetch
   return { f, counts, calls }
@@ -68,8 +72,17 @@ describe('Tidy AI 서버 (api/ai)', () => {
   it('정해 둔 주소만 대신 묻는다', async () => {
     const net = fakeNet()
     expect((await handleAiProxy(post({ ...geminiCall, path: 'models/gemini-x:deleteEverything' }), env(), net.f)).status).toBe(400)
-    expect((await handleAiProxy(post({ provider: 'groq', payload: { model: 'gpt-huge' } }), env({ groqKey: 'Q' }), net.f)).status).toBe(400)
+    // Groq 모델 이름은 바뀔 수 있어서 모양만 본다
+    expect((await handleAiProxy(post({ provider: 'groq', payload: { model: '../../admin?x=1' } }), env({ groqKey: 'Q' }), net.f)).status).toBe(400)
+    expect((await handleAiProxy(post({ provider: 'groq', payload: {} }), env({ groqKey: 'Q' }), net.f)).status).toBe(400)
     expect((await handleAiProxy(post({ provider: 'groq', payload: { model: 'llama-3.1-8b-instant' } }), env(), net.f)).status).toBe(503)
+  })
+
+  it('Groq 모델 목록은 횟수에 세지 않고 그대로 알려 준다 (모델 이름이 바뀌었을 때 새로 찾으려고)', async () => {
+    const net = fakeNet()
+    const r = await handleAiProxy(post({ provider: 'groq', method: 'GET', path: 'models' }), env({ groqKey: 'Q' }), net.f)
+    expect(r.body).toEqual({ status: 200, data: { data: [{ id: 'openai/gpt-oss-120b' }] } })
+    expect(net.calls.some((u) => u.includes('documents:commit'))).toBe(false)
   })
 
   it('한 번 쓸 때마다 횟수와 토큰을 세서 남은 횟수를 돌려주고, 하루 횟수를 넘으면 막는다', async () => {

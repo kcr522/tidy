@@ -42,6 +42,7 @@ async function idToken(): Promise<string | null> {
 function target(url: string): { provider: 'gemini' | 'groq'; path?: string } | null {
   const g = url.match(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/(.+)$/)
   if (g) return { provider: 'gemini', path: g[1] }
+  if (url === 'https://api.groq.com/openai/v1/models') return { provider: 'groq', path: 'models' }
   if (url.startsWith('https://api.groq.com/')) return { provider: 'groq' }
   return null
 }
