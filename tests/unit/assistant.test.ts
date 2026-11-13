@@ -1,18 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import type Anthropic from '@anthropic-ai/sdk'
-import { askClaudeAssistant, AssistantError, assistantPrompt, eventMemo, sanitizeAssistantReply, sanitizeAssistantRequest } from '../../src/lib/ai/assistant'
-import { assistantUrlFor } from '../../src/lib/ai/assistantEngines'
+import { assistantPrompt, eventMemo, sanitizeAssistantReply, sanitizeAssistantRequest } from '../../src/lib/ai/assistant'
 import { findAmount, findDates, findTime, localAssistant } from '../../src/lib/ai/assistantLocal'
 import { greeting } from '../../src/lib/assistant/greetings'
 import { buildContext, matchAccount, refineEvents, refinePayments } from '../../src/lib/assistant/learn'
 import type { CalendarEvent, MerchantAlias, Transaction } from '../../src/db/types'
 
 const TODAY = '2026-11-10' // 화요일
-
-function fakeClient(res: unknown) {
-  const create = vi.fn().mockResolvedValue(res)
-  return { client: { beta: { messages: { create } } } as unknown as Anthropic, create }
-}
 
 const tx = (over: Partial<Transaction>): Transaction => ({
   type: 'EXPENSE',
@@ -90,26 +83,6 @@ describe('AI 답 다듬기', () => {
   it('캘린더 메모: 시각 · 장소 · 메모', () => {
     expect(eventMemo({ time: '14:30', place: '시민공원', note: '참가비 무료' })).toBe('오후 2:30 · 시민공원 · 참가비 무료')
     expect(eventMemo({ time: '00:05', place: null, note: '' })).toBe('오전 12:05')
-  })
-})
-
-describe('Claude 호출', () => {
-  it('report 도구로 받은 결과를 돌려주고, 사진을 먼저 보낸다', async () => {
-    const input = { kind: 'diary', reply: '좋은 하루였네요', events: [], payments: [], diary: { date: TODAY, text: '산책했다.' } }
-    const { client, create } = fakeClient({ stop_reason: 'tool_use', content: [{ type: 'tool_use', name: 'report', input }] })
-    await expect(askClaudeAssistant(client, { today: TODAY, image: 'QUJD', text: '오늘 산책했어' })).resolves.toMatchObject({ kind: 'diary' })
-    const body = create.mock.calls[0][0]
-    expect(body.tool_choice).toEqual({ type: 'tool', name: 'report' })
-    expect(body.messages[0].content[0]).toMatchObject({ type: 'image', source: { data: 'QUJD' } })
-  })
-
-  it('거절하면 AssistantError', async () => {
-    await expect(askClaudeAssistant(fakeClient({ stop_reason: 'refusal', content: [] }).client, { today: TODAY, text: 'x' })).rejects.toBeInstanceOf(AssistantError)
-  })
-
-  it('서버 주소는 AI 소비 한마디 주소 옆', () => {
-    expect(assistantUrlFor()).toBe('/api/assistant')
-    expect(assistantUrlFor('https://tidy.vercel.app/api/feedback')).toBe('https://tidy.vercel.app/api/assistant')
   })
 })
 

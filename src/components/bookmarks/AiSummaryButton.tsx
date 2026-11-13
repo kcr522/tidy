@@ -47,7 +47,7 @@ export default function AiSummaryButton({ bookmark, categoryName, onDone, size =
     try {
       const r = await summarizeScrap(settings, input)
       text = r.text
-      if (r.engine === 'local') toast('AI 없이 미리보기 내용으로 정리했어요. 설정 > AI 연결에서 Claude를 연결할 수 있어요')
+      if (r.engine === 'local') toast('AI 없이 미리보기 내용으로 정리했어요. 설정 > AI 연결에서 Tidy AI를 고르면 AI가 정리해요')
     } catch (err) {
       // AI 연결이 안 되면 기본 요약이라도
       text = localSummary(input)

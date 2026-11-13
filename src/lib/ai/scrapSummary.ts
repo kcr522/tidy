@@ -1,6 +1,4 @@
-// 스크랩 AI 요약: 프롬프트, 들어온 값 다듬기, Claude 호출, AI 없이 만드는 간단 요약
-// 이 파일은 앱과 서버(api/scrap-summary.ts) 둘 다 쓴다. 그래서 다른 파일을 import 하지 않는다 (타입만 예외).
-import type Anthropic from '@anthropic-ai/sdk'
+// 스크랩 AI 요약: 프롬프트, 들어온 값 다듬기, AI 없이 만드는 간단 요약
 
 /** AI에게 보내는 스크랩 정보 */
 export interface ScrapSummaryInput {
@@ -18,7 +16,6 @@ export interface ScrapSummaryInput {
 
 export class SummaryError extends Error {}
 
-export const SUMMARY_MODEL = 'claude-opus-5-5'
 /** 서버로 받을 캡처 크기 한도 (base64 글자 수) */
 export const MAX_IMAGE_B64 = 2_500_000
 
@@ -69,32 +66,6 @@ export function sanitizeSummaryInput(raw: unknown): ScrapSummaryInput | null {
     if (mt === 'image/jpeg' || mt === 'image/png' || mt === 'image/webp') out.image = { mediaType: mt, data: img.data }
   }
   return out
-}
-
-/** Claude에게 요약을 받는다. 앱(내 API 키)과 서버가 같은 함수를 쓴다 */
-export async function askClaudeSummary(client: Anthropic, input: ScrapSummaryInput, signal?: AbortSignal): Promise<string> {
-  const content: Anthropic.Beta.BetaContentBlockParam[] = []
-  if (input.image) content.push({ type: 'image', source: { type: 'base64', media_type: input.image.mediaType, data: input.image.data } })
-  content.push({ type: 'text', text: summaryPrompt(input) })
-  const res = await client.beta.messages.create(
-    {
-      model: SUMMARY_MODEL,
-      max_tokens: 2048,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'low' },
-      system: SUMMARY_SYSTEM,
-      messages: [{ role: 'user', content }],
-    },
-    { signal },
-  )
-  if (res.stop_reason === 'refusal') throw new SummaryError('AI가 이번엔 정리하지 않았어요')
-  const text = res.content
-    .flatMap((b) => (b.type === 'text' ? [b.text] : []))
-    .join('')
-    .trim()
-  if (!text) throw new SummaryError('AI가 빈 답을 줬어요')
-  return text
 }
 
 function sentences(s: string): string[] {

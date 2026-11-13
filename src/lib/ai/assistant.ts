@@ -1,6 +1,4 @@
 // AI 대화창: 사진(포스터·공지·결제 내역 캡처)이나 글을 보고 일정 또는 가계부 내역을 찾아 "등록할까요?" 묻는다
-// 이 파일은 앱과 서버(api/assistant.ts) 둘 다 쓴다. 그래서 다른 파일을 import 하지 않는다 (타입만 예외).
-import type Anthropic from '@anthropic-ai/sdk'
 
 /** 이전 기록에서 배운 것: AI가 이름·카테고리·결제 수단을 늘 쓰던 대로 맞추게 한다 */
 export interface AssistantContext {
@@ -323,7 +321,7 @@ export const JSON_SHAPE = `report 도구 대신, 아래 모양의 JSON 하나로
 {"kind":"event|payment|diary|question|none","reply":"…","events":[{"title":"…","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","time":"HH:mm 또는 null","place":"… 또는 null","note":""}],"payments":[{"type":"EXPENSE|INCOME","merchant":"…","amount":0,"date":"YYYY-MM-DD","time":"HH:mm 또는 null","account":"… 또는 null","category":"…"}],"diary":{"date":"YYYY-MM-DD","text":"…"} 또는 null}
 해당 없는 칸은 빈 배열이나 null.`
 
-/** 글로 받은 JSON 답을 믿을 수 있는 모양으로 (Gemini, 또는 Claude가 도구 대신 글로 썼을 때) */
+/** 글로 받은 JSON 답을 믿을 수 있는 모양으로 (Gemini·Groq) */
 export function parseAssistantJson(text: string): AssistantReply | null {
   return replyFromText(text)
 }
@@ -340,41 +338,6 @@ function replyFromText(text: string): AssistantReply | null {
 }
 
 export class AssistantError extends Error {}
-
-/** 쓰는 모델 (AI 소비 한마디와 같은 모델) */
-export const ASSISTANT_MODEL = 'claude-opus-5-5'
-
-/** 사진·글을 Claude에게 보여 주고 일정이나 결제 내역을 받아 온다. 앱(내 API 키)과 서버가 같은 함수를 쓴다 */
-export async function askClaudeAssistant(client: Anthropic, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantReply> {
-  const content: Anthropic.Beta.BetaContentBlockParam[] = []
-  if (req.image) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: req.image } })
-  content.push({ type: 'text', text: assistantPrompt(req) })
-
-  const res = await client.beta.messages.create(
-    {
-      model: ASSISTANT_MODEL,
-      max_tokens: 8192,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'low' },
-      system: ASSISTANT_SYSTEM,
-      tools: [REPORT_TOOL],
-      tool_choice: { type: 'tool', name: REPORT_TOOL.name },
-      messages: [{ role: 'user', content }],
-    },
-    { signal },
-  )
-  if (res.stop_reason === 'refusal') throw new AssistantError('AI가 이 사진은 보지 않았어요')
-  for (const block of res.content) {
-    if (block.type === 'tool_use' && block.name === REPORT_TOOL.name) {
-      const out = sanitizeAssistantReply(block.input)
-      if (out) return out
-    }
-  }
-  const fromText = replyFromText(res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join(''))
-  if (fromText) return fromText
-  throw new AssistantError('사진에서 내용을 알아내지 못했어요')
-}
 
 /** 캘린더 메모에 넣을 한 줄: "오후 3:00 · 시민공원 · 참가비 무료" */
 export function eventMemo(g: Pick<EventGuess, 'time' | 'place' | 'note'>): string {

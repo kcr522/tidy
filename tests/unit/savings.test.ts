@@ -162,3 +162,12 @@ describe('적금 습관 연속 기록', () => {
     expect(scheduledStreak(new Set(['2026-09-10']), '2026-11-05', s)).toBe(0)
   })
 })
+
+describe('적금 AI 답 읽기 (Gemini)', () => {
+  it('글에 섞인 JSON 을 꺼내 다듬는다', async () => {
+    const { draftFromText, savingsPrompt } = await import('../../src/lib/ai/savingsPrompt')
+    expect(draftFromText('```json\n{"name":"청년적금","amount":300000,"rate":4.5,"freq":"monthly","day":null}\n```')).toEqual({ name: '청년적금', amount: 300000, rate: 4.5, freq: 'monthly' })
+    expect(() => draftFromText('모르겠어요')).toThrow('읽지 못했어요')
+    expect(savingsPrompt({ today: '2026-11-13', text: '월 30만원' })).toContain('월 30만원')
+  })
+})

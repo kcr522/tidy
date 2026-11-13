@@ -1,6 +1,6 @@
 import { Check, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { DEFAULT_SERVER_URL, ENGINE_LABEL, type EngineId } from '../../lib/ai/engines'
+import { ENGINE_LABEL, type EngineId } from '../../lib/ai/engines'
 import type { AiServerStatus } from '../../lib/ai/proxyServer'
 import { fetchAiServerStatus } from '../../lib/ai/serverAi'
 import { useAiSettings } from '../../lib/ai/settings'
@@ -9,35 +9,29 @@ import Button from '../common/Button'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 
-const ORDER: EngineId[] = ['tidy', 'gemini', 'local', 'server', 'key']
+const ORDER: EngineId[] = ['tidy', 'gemini', 'local']
 
 /** 설정 > AI 연결: 한마디를 어디서 받아 올지 고른다 */
 export default function AiSettingsSection() {
   const [settings, save] = useAiSettings()
   const [engine, setEngine] = useState<EngineId>(settings.engine)
-  const [apiKey, setApiKey] = useState(settings.apiKey ?? '')
   const [geminiKey, setGeminiKey] = useState(settings.geminiKey ?? '')
   const [groqKey, setGroqKey] = useState(settings.groqKey ?? '')
-  const [serverUrl, setServerUrl] = useState(settings.serverUrl ?? '')
   const [show, setShow] = useState(false)
   const toast = useToast()
 
-  const keyMissing = (engine === 'key' && !apiKey.trim()) || (engine === 'gemini' && !geminiKey.trim())
+  const keyMissing = engine === 'gemini' && !geminiKey.trim()
   const changed =
     engine !== settings.engine ||
-    apiKey.trim() !== (settings.apiKey ?? '') ||
     geminiKey.trim() !== (settings.geminiKey ?? '') ||
-    groqKey.trim() !== (settings.groqKey ?? '') ||
-    serverUrl.trim() !== (settings.serverUrl ?? '')
+    groqKey.trim() !== (settings.groqKey ?? '')
 
   function submit() {
     if (keyMissing) return
     save({
       engine,
-      ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
       ...(geminiKey.trim() ? { geminiKey: geminiKey.trim() } : {}),
       ...(groqKey.trim() ? { groqKey: groqKey.trim() } : {}),
-      ...(serverUrl.trim() ? { serverUrl: serverUrl.trim() } : {}),
     })
     toast('AI 연결을 바꿨어요')
   }
@@ -133,55 +127,6 @@ export default function AiSettingsSection() {
           <p className="mt-1.5 text-xs break-keep text-slate-400">
             위에서 고른 AI가 한도를 다 쓰거나 붐비면 Groq가 대신 답해요. console.groq.com 에 구글 계정으로 들어가 'API Keys' → 'Create API Key'를 누르면 무료로 만들 수 있어요. 사진 읽기와 검색은 못 해요. 키는 이 기기에만 저장돼요.
           </p>
-        </div>
-      )}
-
-      {engine === 'key' && (
-        <div className="px-5 pt-4">
-          <label htmlFor="ai-key" className="mb-1.5 block text-sm font-semibold text-slate-700">
-            Claude API 키
-          </label>
-          <div className="relative">
-            <input
-              id="ai-key"
-              type={show ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-ant-..."
-              autoComplete="off"
-              spellCheck={false}
-              className={`${inputClass()} pr-12`}
-            />
-            <button
-              type="button"
-              onClick={() => setShow((v) => !v)}
-              className="tap absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-2 text-slate-400"
-              aria-label={show ? '키 숨기기' : '키 보기'}
-            >
-              {show ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs break-keep text-slate-400">
-            console.anthropic.com에서 만들 수 있어요. 이 기기에만 저장되고 백업 파일에는 들어가지 않아요. 한마디 한 번에 10~20원쯤 들어요.
-          </p>
-        </div>
-      )}
-
-      {engine === 'server' && (
-        <div className="px-5 pt-4">
-          <label htmlFor="ai-server" className="mb-1.5 block text-sm font-semibold text-slate-700">
-            서버 주소 (비워 두면 기본)
-          </label>
-          <input
-            id="ai-server"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            placeholder={DEFAULT_SERVER_URL}
-            autoComplete="off"
-            spellCheck={false}
-            className={inputClass()}
-          />
-          <p className="mt-1.5 text-xs break-keep text-slate-400">Vercel에 ANTHROPIC_API_KEY를 넣어 두면 이 주소가 Claude에게 대신 물어봐요. 음식 사진은 같은 서버의 /api/meal 로 가고, KAKAO_REST_API_KEY도 넣으면 근처 식당을 지도에서 찾아요.</p>
         </div>
       )}
 

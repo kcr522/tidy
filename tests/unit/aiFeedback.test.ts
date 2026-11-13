@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Transaction } from '../../src/db/types'
 import { engineFor, localEngine } from '../../src/lib/ai/engines'
 import { localFeedback } from '../../src/lib/ai/localEngine'
-import { askClaude, FEEDBACK_MODES, sanitizeSnapshot, systemPrompt, userPrompt, type FeedbackMode } from '../../src/lib/ai/prompts'
+import { FEEDBACK_MODES, sanitizeSnapshot, systemPrompt, userPrompt, type FeedbackMode } from '../../src/lib/ai/prompts'
 import { buildSnapshot, snapshotKey } from '../../src/lib/ai/snapshot'
 
 const t = (type: Transaction['type'], amount: number, date: string, memo = '', category = '식비', time?: string): Transaction => ({
@@ -106,32 +106,8 @@ describe('localFeedback', () => {
 
 describe('engineFor', () => {
   it('키가 없으면 기본으로 돌아간다', () => {
-    expect(engineFor({ engine: 'key' })).toBe(localEngine)
+    expect(engineFor({ engine: 'gemini' })).toBe(localEngine)
     expect(engineFor({ engine: 'local' })).toBe(localEngine)
-    expect(engineFor({ engine: 'server' }).id).toBe('server')
-    expect(engineFor({ engine: 'key', apiKey: 'sk-ant-x' }).id).toBe('key')
-  })
-})
-
-describe('askClaude', () => {
-  const s = buildSnapshot(month, today)
-  const fake = (res: object) => {
-    const create = vi.fn().mockResolvedValue(res)
-    return { client: { beta: { messages: { create } } } as never, create }
-  }
-
-  it('모델, 말투, 내역을 담아 묻고 글만 돌려준다', async () => {
-    const { client, create } = fake({ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: ' 잘했어! ' }] })
-    await expect(askClaude(client, 'cheer', s)).resolves.toBe('잘했어!')
-    const req = create.mock.calls[0][0]
-    expect(req.model).toBe('claude-opus-5-5')
-    expect(req.fallbacks).toBe('default')
-    expect(req.system).toContain('무조건 칭찬')
-    expect(req.messages[0].content).toContain('올리브영')
-  })
-
-  it('거절되면 오류', async () => {
-    const { client } = fake({ stop_reason: 'refusal', content: [] })
-    await expect(askClaude(client, 'feedback', s)).rejects.toThrow('답하지 않았어요')
+    expect(engineFor({ engine: 'tidy' }).id).toBe('tidy')
   })
 })

@@ -2,77 +2,38 @@ import { callGemini } from './gemini'
 import { callGroq } from './groq'
 import { localFeedback } from './localEngine'
 import { SERVER_KEY } from './serverAi'
-import { askClaude, FeedbackError, systemPrompt, userPrompt, type FeedbackMode, type SpendingSnapshot } from './prompts'
+import { FeedbackError, systemPrompt, userPrompt, type FeedbackMode, type SpendingSnapshot } from './prompts'
 
 /**
  * AI 연결 방법. 화면은 이 모양만 알고, 실제로 어디에 묻는지는 몰라도 된다.
- * 새 방법(예: Firebase Functions)이 생기면 여기에 하나 더 만들면 된다.
+ * 유료 AI(Claude)는 쓰지 않는다 (사용자 요청 2026-11-13). 무료 Gemini·Groq 와 기본(AI 없이)만.
  */
 export interface FeedbackEngine {
   id: EngineId
   generate(mode: FeedbackMode, snapshot: SpendingSnapshot, signal?: AbortSignal): Promise<string>
 }
 
-export type EngineId = 'tidy' | 'local' | 'gemini' | 'groq' | 'server' | 'key'
+export type EngineId = 'tidy' | 'local' | 'gemini' | 'groq'
 
 export interface AiSettings {
   engine: EngineId
-  /** engine = 'key' 일 때: 사용자 본인의 Claude API 키 (이 기기에만 저장) */
-  apiKey?: string
   /** engine = 'gemini' 일 때: 무료 Gemini API 키 (이 기기에만 저장) */
   geminiKey?: string
   /** 예비 AI: Groq 무료 키. 고른 AI가 막히면(한도 초과 등) 이걸로 다시 묻는다 (이 기기에만 저장) */
   groqKey?: string
-  /** engine = 'server' 일 때: 한마디를 받아 올 주소 */
-  serverUrl?: string
 }
-
-export const DEFAULT_SERVER_URL = '/api/feedback'
 
 export const ENGINE_LABEL: Record<EngineId, { title: string; desc: string }> = {
   tidy: { title: 'Tidy AI (자동, 무료)', desc: '키를 넣지 않아도 돼요. Tidy 서버에 미리 넣어 둔 무료 AI가 답해요. 구글 로그인하면 쓸 수 있고, 하루 횟수 제한이 있어요.' },
   local: { title: '기본 (AI 없이)', desc: '인터넷 없이 앱이 정해진 문장으로 말해 줘요. 무료예요.' },
   groq: { title: 'Groq (무료, 예비)', desc: 'Gemini 한도를 다 쓰면 대신 답해요.' },
   gemini: { title: 'Gemini (내 무료 키)', desc: '내가 만든 구글 Gemini 무료 키로 이 기기에서 바로 물어봐요. 하루 사용 횟수 제한이 있어요.' },
-  server: { title: 'Claude (Tidy 서버)', desc: '배포한 서버가 Claude에게 물어봐요. 키는 서버에만 있어요.' },
-  key: { title: 'Claude (내 API 키)', desc: '이 기기에서 바로 Claude에게 물어봐요. 키는 이 기기에만 저장돼요.' },
 }
 
 /** 기기 안에서 만든다 */
 export const localEngine: FeedbackEngine = {
   id: 'local',
   generate: async (mode, snapshot) => localFeedback(mode, snapshot),
-}
-
-/** 서버 함수(api/feedback.ts)에 묻는다 */
-export function serverEngine(url = DEFAULT_SERVER_URL): FeedbackEngine {
-  return {
-    id: 'server',
-    async generate(mode, snapshot, signal) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ mode, snapshot }),
-        signal,
-      })
-      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string }
-      if (!res.ok || !data.text) throw new FeedbackError(data.error ?? '서버에서 답을 받지 못했어요')
-      return data.text
-    },
-  }
-}
-
-/** 사용자 키로 이 기기에서 바로 묻는다. SDK는 처음 쓸 때만 불러온다 */
-export function keyEngine(apiKey: string): FeedbackEngine {
-  return {
-    id: 'key',
-    async generate(mode, snapshot, signal) {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk')
-      // 키가 이 기기 밖(브라우저)에 있다는 걸 알고 쓰는 방식이라 브라우저 사용을 허용한다
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 1 })
-      return askClaude(client, mode, snapshot, signal)
-    },
-  }
 }
 
 /** 무료 Gemini 키로 이 기기에서 바로 묻는다 */
@@ -130,8 +91,6 @@ export function effectiveAi(settings: AiSettings): AiSettings {
 
 function primaryFor(settings: AiSettings): FeedbackEngine | null {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) return geminiEngine(settings.geminiKey.trim())
-  if (settings.engine === 'server') return serverEngine(settings.serverUrl?.trim() || DEFAULT_SERVER_URL)
-  if (settings.engine === 'key' && settings.apiKey?.trim()) return keyEngine(settings.apiKey.trim())
   return null
 }
 
