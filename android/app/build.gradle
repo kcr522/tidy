@@ -7,8 +7,10 @@ android {
         applicationId "com.kcr522.tidy"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // 앱을 새로 만들 때마다 번호가 1씩 올라가야 폰이 "업데이트"로 알아본다 (GitHub Actions 실행 번호를 쓴다)
+        def buildNumber = (System.getenv("TIDY_BUILD_NUMBER") ?: "1") as Integer
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,7 +18,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 언제 만들어도 같은 열쇠로 서명해야 폰이 지우지 않고 덮어 깔 수 있다 (열쇠가 바뀌면 "충돌" 오류가 나고 지워야 해서 기록이 사라진다)
+    signingConfigs {
+        debug {
+            storeFile file("tidy-debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -36,6 +50,10 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // 구글 캘린더 보내기: 구글 계정 권한 받기 (GoogleAuthPlugin)
+    implementation "com.google.android.gms:play-services-auth:21.3.0"
+    // 앱 잠금 지문으로 풀기 (BiometricPlugin)
+    implementation "androidx.biometric:biometric:1.1.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

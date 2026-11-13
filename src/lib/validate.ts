@@ -57,6 +57,17 @@ export function normalizeUrl(input: string): Result<string> {
   return { ok: true, value: url.href }
 }
 
+/** http/https 주소인지만 본다 (javascript: 같은 위험한 주소 막기) */
+export function isWebUrl(raw: unknown): raw is string {
+  if (typeof raw !== 'string') return false
+  try {
+    const u = new URL(raw)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 /** URL에서 도메인만 (www. 제거): 제목이 비었을 때 사용 */
 export function domainOf(url: string): string {
   try {

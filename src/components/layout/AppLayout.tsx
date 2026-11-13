@@ -1,8 +1,20 @@
-import { useEffect } from 'react'
-import { Settings } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Suspense, useEffect } from 'react'
+import { Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
+import { prefetchPages } from '../../lib/lazyPage'
+import { useWidgetSync } from '../../hooks/useWidgetSync'
+import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
+import { useAutoBackup } from '../../hooks/useAutoBackup'
+import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
+import { useGooglePush } from '../../hooks/useGooglePush'
+import { syncAlarms } from '../../platform/alarms'
+import { syncTodoAlarms } from '../../platform/todoAlarms'
+import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
+import { savingsRepo } from '../../repositories/savingsRepo'
+import { todoRepo } from '../../repositories/todoRepo'
 import ColorModeButton from '../common/ColorModeButton'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
@@ -25,7 +37,46 @@ export default function AppLayout() {
       .runDue(today)
       .then((n) => n > 0 && toast(`정기 내역 ${n}건을 가계부에 기록했어요`))
       .catch(() => toast('정기 내역을 기록하지 못했어요', 'error'))
+    // 자동이체 적금도 넣는 날 가계부에 기록한다
+    savingsRepo
+      .runDue(today)
+      .then((n) => n > 0 && toast(`적금 납입 ${n}건을 가계부에 기록했어요`))
+      .catch(() => toast('적금 납입을 기록하지 못했어요', 'error'))
   }, [today, toast])
+
+  // 적금 알림: 적금이나 오늘 체크가 바뀌면 다시 맞춘다
+  const plans = useLiveQuery(() => savingsRepo.list(), [])
+  const todayChecks = useLiveQuery(async () => (await habitRepo.allChecks()).filter((c) => c.date === today).map((c) => c.habitId).join(','), [today])
+  useEffect(() => {
+    if (!plans || todayChecks === undefined) return
+    const done = new Set(todayChecks.split(',').filter(Boolean).map(Number))
+    return syncAlarms(plans, (p) => p.habitId != null && done.has(p.habitId), (text) => toast(text))
+  }, [plans, todayChecks, today, toast])
+
+  // 할 일 알림: 할 일이 바뀌면(추가, 시간 변경, 완료) 다시 맞춘다
+  const todos = useLiveQuery(() => todoRepo.listAll(), [])
+  useEffect(() => {
+    if (!todos) return
+    return syncTodoAlarms(todos, (text) => toast(text))
+  }, [todos, today, toast])
+
+  // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
+  useWidgetSync(todos, today)
+
+  // 이번 달 예산의 80%를 쓰거나 넘으면 알려 준다
+  useBudgetAlerts(today, toast)
+
+  // 자동 백업 (폰 앱: 때가 되면 조용히 파일로 저장)
+  useAutoBackup(today)
+
+  // 구글 캘린더를 연결했으면 가끔 새로 가져온다
+  useGoogleCalendarSync(today)
+
+  // 구글 계정을 연결했으면 Tidy 일정과 할 일이 바뀔 때마다 구글 캘린더에 보낸다
+  useGooglePush()
+
+  // 첫 화면이 뜬 뒤 쉬는 틈에 다른 화면들을 미리 읽어 둔다
+  useEffect(() => prefetchPages(), [])
   return (
     <div className={`flex h-full ${theme}`}>
       <SideNav />
@@ -33,6 +84,9 @@ export default function AppLayout() {
         <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md md:hidden">
           <Logo />
           <div className="flex items-center gap-1">
+            <Link to="/search" className="tap rounded-full p-1.5 text-slate-500" aria-label="검색">
+              <Search className="size-[22px]" aria-hidden />
+            </Link>
             <ColorModeButton />
             <Link to="/settings" className="tap rounded-full p-1.5 text-slate-500" aria-label="설정">
               <Settings className="size-[22px]" aria-hidden />
@@ -40,7 +94,9 @@ export default function AppLayout() {
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 md:px-10 md:pt-10 md:pb-10">
-          <Outlet />
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <BottomTabBar />
@@ -59,6 +115,11 @@ function SideNav() {
         <Logo />
         <ColorModeButton className="bg-slate-100 hover:bg-slate-200" />
       </div>
+      {/* 전체 검색: 가계부·할 일·일기·스크랩에서 찾기 */}
+      <Link to="/search" className="mb-4 flex items-center gap-2 rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-200">
+        <Search className="size-4" aria-hidden />
+        검색
+      </Link>
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -111,5 +172,14 @@ function BottomTabBar() {
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+/** 화면 조각을 처음 읽는 잠깐 동안 (보통 눈에 안 띌 만큼 짧다) */
+function PageLoading() {
+  return (
+    <div className="flex justify-center pt-24" role="status" aria-label="불러오는 중">
+      <span className="size-6 animate-spin rounded-full border-2 border-slate-300 border-t-transparent" />
+    </div>
   )
 }

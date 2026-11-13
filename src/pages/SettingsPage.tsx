@@ -2,14 +2,24 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
+import AccountCard from '../components/settings/AccountCard'
+import AppLockCard from '../components/settings/AppLockCard'
+import AppUpdateCard from '../components/settings/AppUpdateCard'
+import AutoBackupCard from '../components/settings/AutoBackupCard'
+import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
+import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
+import WidgetCard from '../components/settings/WidgetCard'
 import { inputClass } from '../components/common/formStyles'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import AiSettingsSection from '../components/settings/AiSettingsSection'
+import ScrapSettingsSection from '../components/settings/ScrapSettingsSection'
 import { db } from '../db/database'
+import { useAccount } from '../hooks/useAccount'
 import { todayKey } from '../lib/date'
+import { jsonPieces } from '../lib/jsonChunks'
 import { pickTextFile, saveTextFile } from '../platform/saveFile'
 import { InvalidBackupError, backupFileName, backupRepo } from '../repositories/backupRepo'
 import { merchantAliasRepo } from '../repositories/merchantAliasRepo'
@@ -19,6 +29,7 @@ const DELETE_WORD = '삭제'
 /** 설정: 데이터 백업, 가져오기, 전체 삭제, 앱 정보 (spec US7, FR-060~063) */
 export default function SettingsPage() {
   const toast = useToast()
+  const account = useAccount()
   const [importing, setImporting] = useState<{ name: string; text: string } | null>(null)
   const [clearing, setClearing] = useState(false)
   const [word, setWord] = useState('')
@@ -35,7 +46,8 @@ export default function SettingsPage() {
     setBusy(true)
     try {
       const backup = await backupRepo.exportAll()
-      await saveTextFile(backupFileName(todayKey()), JSON.stringify(backup, null, 2))
+      await saveTextFile(backupFileName(todayKey()), jsonPieces(backup))
+      markBackedUp()
       toast('백업 파일을 저장했어요')
     } catch {
       toast('내보내지 못했어요. 다시 시도해 주세요', 'error')
@@ -86,7 +98,9 @@ export default function SettingsPage() {
       <div className="space-y-4">
         <section className="flex items-start gap-3 rounded-3xl bg-brand-50 p-5 text-sm text-brand-700">
           <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <p className="break-keep">데이터는 이 기기에만 저장돼요. 기기를 바꾸기 전에 꼭 백업하세요.</p>
+          <p className="break-keep">
+            {account.user ? '구글 계정에 로그인돼 있어서 기록이 클라우드에도 저장되고, 같은 계정의 다른 기기와 맞춰져요.' : '데이터는 이 기기에만 저장돼요. 기기를 바꾸기 전에 꼭 백업하거나 구글로 로그인하세요.'}
+          </p>
         </section>
 
         <section className="card p-5">
@@ -98,7 +112,19 @@ export default function SettingsPage() {
           </dl>
         </section>
 
+        <AccountCard />
+
+        <AppLockCard />
+
+        <WidgetCard />
+
         <CustomizeCard />
+
+        <GoogleCalendarCard />
+
+        <AutoBackupCard />
+
+        <AppUpdateCard />
 
         <section className="card divide-y divide-slate-100 overflow-hidden">
           <h2 className="px-5 pt-5 pb-3 font-bold">백업</h2>
@@ -136,6 +162,8 @@ export default function SettingsPage() {
 
         <AiSettingsSection />
 
+        <ScrapSettingsSection />
+
         {aliases && aliases.length > 0 && (
           <section className="card overflow-hidden">
             <h2 className="px-5 pt-5 pb-1 font-bold">알려 준 가게 이름</h2>
@@ -168,7 +196,7 @@ export default function SettingsPage() {
       <Modal open={importing !== null} title="데이터 가져오기" onClose={() => setImporting(null)}>
         <p className="mb-2 text-sm break-all text-slate-500">{importing?.name}</p>
         <p className="mb-6 text-sm break-keep text-slate-700">
-          지금 있는 데이터가 모두 지워지고 이 백업 내용으로 바뀌어요. 덮어쓸까요?
+          지금 있는 데이터가 모두 지워지고 이 백업 내용으로 바뀌어요.{account.user ? ' 같은 계정의 다른 기기도 이 내용으로 바뀌어요.' : ''} 덮어쓸까요?
         </p>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setImporting(null)}>
@@ -189,7 +217,7 @@ export default function SettingsPage() {
         }}
       >
         <p className="mb-4 text-sm break-keep text-slate-700">
-          정말 지우려면 아래 칸에 <b className="text-expense">{DELETE_WORD}</b>라고 입력해 주세요. 지운 데이터는 되돌릴 수 없어요.
+          {account.user && <>로그인돼 있어서 <b>클라우드와 다른 기기에서도</b> 지워져요. </>}정말 지우려면 아래 칸에 <b className="text-expense">{DELETE_WORD}</b>라고 입력해 주세요. 지운 데이터는 되돌릴 수 없어요.
         </p>
         <label className="mb-6 block">
           <span className="sr-only">확인 문구</span>

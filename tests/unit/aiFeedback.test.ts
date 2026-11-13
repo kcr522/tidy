@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Transaction } from '../../src/db/types'
 import { engineFor, localEngine } from '../../src/lib/ai/engines'
 import { localFeedback } from '../../src/lib/ai/localEngine'
-import { askClaude, FEEDBACK_MODES, sanitizeSnapshot, systemPrompt, userPrompt, type FeedbackMode } from '../../src/lib/ai/prompts'
+import { FEEDBACK_MODES, sanitizeSnapshot, systemPrompt, userPrompt, type FeedbackMode } from '../../src/lib/ai/prompts'
 import { buildSnapshot, snapshotKey } from '../../src/lib/ai/snapshot'
 
 const t = (type: Transaction['type'], amount: number, date: string, memo = '', category = '식비', time?: string): Transaction => ({
@@ -106,65 +106,8 @@ describe('localFeedback', () => {
 
 describe('engineFor', () => {
   it('키가 없으면 기본으로 돌아간다', () => {
-    expect(engineFor({ engine: 'key' })).toBe(localEngine)
-    expect(engineFor({ engine: 'local' })).toBe(localEngine)
-    expect(engineFor({ engine: 'server' }).id).toBe('server')
-    expect(engineFor({ engine: 'key', apiKey: 'sk-ant-x' }).id).toBe('key')
-  })
-})
-
-describe('askClaude', () => {
-  const s = buildSnapshot(month, today)
-  const fake = (res: object) => {
-    const create = vi.fn().mockResolvedValue(res)
-    return { client: { beta: { messages: { create } } } as never, create }
-  }
-
-  it('모델, 말투, 내역을 담아 묻고 글만 돌려준다', async () => {
-    const { client, create } = fake({ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: ' 잘했어! ' }] })
-    await expect(askClaude(client, 'cheer', s)).resolves.toBe('잘했어!')
-    const req = create.mock.calls[0][0]
-    expect(req.model).toBe('claude-opus-5-5')
-    expect(req.fallbacks).toBe('default')
-    expect(req.system).toContain('무조건 칭찬')
-    expect(req.messages[0].content).toContain('올리브영')
-  })
-
-  it('거절되면 오류', async () => {
-    const { client } = fake({ stop_reason: 'refusal', content: [] })
-    await expect(askClaude(client, 'feedback', s)).rejects.toThrow('답하지 않았어요')
-  })
-})
-
-describe('Gemini', () => {
-  const s = buildSnapshot(month, today)
-  const mockFetch = (status: number, body: object) => {
-    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }))
-    vi.stubGlobal('fetch', f)
-    return f
-  }
-
-  it('키가 있으면 Gemini로 묻고, 키를 헤더에 넣는다', async () => {
-    const f = mockFetch(200, { candidates: [{ content: { parts: [{ text: '생각', thought: true }, { text: '오늘 잘 썼어! ' }] } }] })
-    const engine = engineFor({ engine: 'gemini', geminiKey: 'AIza-test' })
-    expect(engine.id).toBe('gemini')
-    await expect(engine.generate('saver', s)).resolves.toBe('오늘 잘 썼어!')
-    const [url, init] = f.mock.calls[0]
-    expect(url).toContain('gemini-flash-latest:generateContent')
-    expect(init.headers['x-goog-api-key']).toBe('AIza-test')
-    const body = JSON.parse(init.body)
-    expect(body.systemInstruction.parts[0].text).toContain('절약 잔소리')
-    expect(body.contents[0].parts[0].text).toContain('올리브영')
-    vi.unstubAllGlobals()
-  })
-
-  it('무료 사용량을 다 쓰면 알려 준다', async () => {
-    mockFetch(429, { error: { message: 'quota' } })
-    await expect(engineFor({ engine: 'gemini', geminiKey: 'k' }).generate('cheer', s)).rejects.toThrow('무료 사용량')
-    vi.unstubAllGlobals()
-  })
-
-  it('키가 없으면 기본으로', () => {
     expect(engineFor({ engine: 'gemini' })).toBe(localEngine)
+    expect(engineFor({ engine: 'local' })).toBe(localEngine)
+    expect(engineFor({ engine: 'tidy' }).id).toBe('tidy')
   })
 })

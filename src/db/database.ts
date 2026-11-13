@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Bookmark, CalendarEvent, Diary, MerchantAlias, Recurring, Todo, Transaction } from './types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -12,8 +12,16 @@ export class TidyDB extends Dexie {
   bookmarks!: Table<Bookmark, number>
   recurring!: Table<Recurring, number>
   merchantAliases!: Table<MerchantAlias, string>
+  scrapCategories!: Table<ScrapCategory, number>
+  scrapMedia!: Table<ScrapMedia, number>
   events!: Table<CalendarEvent, number>
   diaries!: Table<Diary, string>
+  habits!: Table<Habit, number>
+  habitChecks!: Table<HabitCheck, [number, string]>
+  savings!: Table<SavingsPlan, number>
+  todoCategories!: Table<TodoCategory, number>
+  budgets!: Table<Budget, string>
+  stickers!: Table<DaySticker, string>
 
   constructor(name = 'tidy') {
     super(name)
@@ -36,7 +44,49 @@ export class TidyDB extends Dexie {
       events: '++id, startDate, endDate',
       diaries: '&date',
     })
+    // 2차: 스크랩 카테고리, 미리보기 썸네일, 캡처 사진·영상
+    // (4번은 할 일 캘린더 PR이 쓴다. 두 PR을 순서대로 합치면 4 → 5로 올라간다)
+    this.version(5)
+      .stores({
+        bookmarks: '++id, url, isRead, createdAt, categoryId',
+        scrapCategories: '++id, &name, order',
+        scrapMedia: '++id, bookmarkId, [bookmarkId+kind]',
+      })
+      .upgrade((tx) => seedCategories(tx.table('scrapCategories')))
+    this.on('populate', (tx) => seedCategories(tx.table('scrapCategories')))
+    // 2차: 습관 트래커 (습관 + 날짜별 체크 기록)
+    this.version(6).stores({
+      habits: '++id, order',
+      habitChecks: '[habitId+date], habitId, date',
+    })
+    // 2차: 적금 (+ 적금으로 기록된 내역을 찾기 위한 인덱스)
+    this.version(7).stores({
+      savings: '++id',
+      transactions: '++id, date, [type+date], category, savingsId',
+    })
+    // 2차: 할 일 카테고리 (할 일 캘린더 아래에 묶어서 보여 준다)
+    this.version(8).stores({
+      todoCategories: '++id, order',
+      todos: '++id, dueDate, isCompleted, &bookmarkId, categoryId',
+    })
+    // 2차: 한 달 예산 (전체 + 카테고리별)
+    this.version(9).stores({
+      budgets: '&category',
+    })
+    // 2차: 달력 날짜 칸 이모티콘 스티커
+    this.version(10).stores({
+      stickers: '&date',
+    })
   }
+}
+
+/** 처음 쓸 때 넣어 두는 카테고리 (이름은 나중에 바꾸거나 지울 수 있다) */
+export const DEFAULT_SCRAP_CATEGORIES = ['맛집·카페', '여행', '쇼핑', '공부', '꿀팁']
+
+export async function seedCategories(table: Table<ScrapCategory, number>) {
+  if ((await table.count()) > 0) return
+  const now = new Date().toISOString()
+  await table.bulkAdd(DEFAULT_SCRAP_CATEGORIES.map((name, order) => ({ name, order, createdAt: now })))
 }
 
 export const db = new TidyDB()

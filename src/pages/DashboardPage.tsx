@@ -1,31 +1,39 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import BookmarkForm from '../components/bookmarks/BookmarkForm'
+import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import AssistantButton from '../components/assistant/AssistantButton'
 import AiFeedbackCard from '../components/dashboard/AiFeedbackCard'
+import HabitCard from '../components/dashboard/HabitCard'
 import MoneyCard from '../components/dashboard/MoneyCard'
+import BackupReminder from '../components/dashboard/BackupReminder'
+import ReportTeaser from '../components/dashboard/ReportTeaser'
 import PaydayCard from '../components/dashboard/PaydayCard'
 import TodayTodoCard from '../components/dashboard/TodayTodoCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
+import HabitForm from '../components/habits/HabitForm'
 import TodoForm from '../components/todos/TodoForm'
 import RecurringManager from '../components/transactions/RecurringManager'
 import TransactionForm from '../components/transactions/TransactionForm'
-import type { Bookmark, Todo } from '../db/types'
+import type { Bookmark, Habit, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
 import { openUrl } from '../platform/openUrl'
-import { bookmarkRepo, type BookmarkInput } from '../repositories/bookmarkRepo'
+import { bookmarkRepo } from '../repositories/bookmarkRepo'
+import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
+import { scrapMediaRepo } from '../repositories/scrapMediaRepo'
+import { groupChecks, habitRepo, type HabitInput } from '../repositories/habitRepo'
 import { recurringRepo } from '../repositories/recurringRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Sheet = { kind: 'money' } | { kind: 'todo'; item?: Todo } | { kind: 'scrap' } | { kind: 'payday'; fresh: boolean } | null
+type Sheet = { kind: 'money' } | { kind: 'todo'; item?: Todo } | { kind: 'scrap' } | { kind: 'payday'; fresh: boolean } | { kind: 'habit' } | null
 
-const SHEET_TITLE = { money: '수입/지출 추가', todo: '할 일 추가', scrap: '링크 저장', payday: '정기 내역' } as const
+const SHEET_TITLE = { money: '수입/지출 추가', todo: '할 일 추가', scrap: '링크 저장', payday: '정기 내역', habit: '습관 추가' } as const
 
 /** 대시보드: 앱의 첫 화면 (spec US4, FR-050~055) */
 export default function DashboardPage() {
@@ -41,6 +49,9 @@ export default function DashboardPage() {
   const todos = useLiveQuery(() => todoRepo.listAll(), [])
   const unread = useLiveQuery(() => bookmarkRepo.list('unread'), [])
   const linked = useLiveQuery(() => todoRepo.linkedBookmarks(), [])
+  const habits = useLiveQuery(() => habitRepo.list(), [])
+  const checkRows = useLiveQuery(() => habitRepo.allChecks(), [])
+  const checks = useMemo(() => groupChecks(checkRows ?? []), [checkRows])
   const incomes = useLiveQuery(async () => (await recurringRepo.list()).filter((r) => r.type === 'INCOME' && r.isActive === 1), [])
 
   async function run(action: () => Promise<unknown>, done: string) {
@@ -54,7 +65,12 @@ export default function DashboardPage() {
   }
 
   const saveMoney = (input: TransactionInput) => run(() => transactionRepo.add(input), '저장했어요')
-  const saveScrap = (input: BookmarkInput) => run(() => bookmarkRepo.add(input), '저장했어요')
+  const scrapCategories = useLiveQuery(() => scrapCategoryRepo.list(), []) ?? []
+  const saveScrap = ({ input, thumb }: BookmarkFormValue) =>
+    run(async () => {
+      const id = await bookmarkRepo.add(input)
+      if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
+    }, '저장했어요')
   const saveTodo = (input: TodoInput) =>
     sheet?.kind === 'todo' && sheet.item?.id != null
       ? run(() => todoRepo.update(sheet.item!.id!, input), '수정했어요')
@@ -63,7 +79,19 @@ export default function DashboardPage() {
   async function toggle(todo: Todo) {
     if (todo.id == null) return
     try {
-      await todoRepo.toggleComplete(todo.id)
+      const next = await todoRepo.toggleComplete(todo.id)
+      if (next) toast(`다음 할 일을 ${formatDateLabel(next)}에 만들었어요`)
+    } catch {
+      toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
+    }
+  }
+
+  const saveHabit = (input: HabitInput) => run(() => habitRepo.add(input), '습관을 만들었어요')
+
+  async function toggleHabit(habit: Habit) {
+    if (habit.id == null) return
+    try {
+      await habitRepo.toggle(habit.id, today)
     } catch {
       toast('바꾸지 못했어요. 다시 시도해 주세요', 'error')
     }
@@ -81,9 +109,12 @@ export default function DashboardPage() {
     <>
       <PageHeader title="대시보드" action={<span className="text-sm text-slate-500">{formatDateLabel(today)}</span>} />
 
+      {!loading && <BackupReminder hasData={(transactions?.length ?? 0) + (todos?.length ?? 0) > 0} />}
+      {!loading && <ReportTeaser today={today} />}
+
       {!loading && (
-        // 폰: 세로 3단, 컴퓨터: 가로 3칸 (FR-050)
-        <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+        // 폰: 세로로 쌓기, 컴퓨터: 2~3칸이고 모든 칸 높이를 같게 (FR-050)
+        <div className="grid items-start gap-4 md:auto-rows-fr md:grid-cols-2 md:items-stretch lg:grid-cols-3">
           <MoneyCard month={month} items={transactions} today={today} onAdd={() => setSheet({ kind: 'money' })} />
           <AiFeedbackCard items={transactions} today={today} />
           <PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />
@@ -94,6 +125,7 @@ export default function DashboardPage() {
             onToggle={toggle}
             onSelect={(item) => setSheet({ kind: 'todo', item })}
           />
+          <HabitCard habits={habits ?? []} checks={checks} today={today} onAdd={() => setSheet({ kind: 'habit' })} onToggle={toggleHabit} />
           <UnreadScrapCard
             unread={unread}
             linked={linked ?? new Map()}
@@ -115,10 +147,12 @@ export default function DashboardPage() {
         {sheet?.kind === 'payday' && (
           <RecurringManager today={today} preset={sheet.fresh ? { type: 'INCOME', category: '월급', memo: '월급' } : undefined} />
         )}
-        {sheet?.kind === 'scrap' && <BookmarkForm isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
+        {sheet?.kind === 'habit' && <HabitForm onSubmit={saveHabit} />}
+        {sheet?.kind === 'scrap' && <BookmarkForm categories={scrapCategories} defaultCategoryId={null} isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
       </Modal>
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />
+      <AssistantButton />
     </>
   )
 }

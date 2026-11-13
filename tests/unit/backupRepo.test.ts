@@ -33,7 +33,7 @@ describe('백업 (US7)', () => {
     const a = freshDb('backup-a')
     await seed(a)
     const backup = await createBackupRepo(a, '0.1.0').exportAll()
-    expect(backup).toMatchObject({ app: 'tidy', appVersion: '0.1.0', schemaVersion: 4 })
+    expect(backup).toMatchObject({ app: 'tidy', appVersion: '0.1.0', schemaVersion: a.verno })
     expect(backup.transactions).toHaveLength(2)
 
     const b = freshDb('backup-b')

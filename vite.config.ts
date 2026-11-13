@@ -1,9 +1,59 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
+import { handleAiProxy, proxyEnvFrom } from './src/lib/ai/proxyServer.ts'
+import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
+import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
+
+/** 개발 중(npm run dev)에도 링크 미리보기가 되도록: 배포 때 api/preview.ts 가 하는 일을 똑같이 한다 */
+function devPreviewApi(): Plugin {
+  return {
+    name: 'tidy-dev-preview-api',
+    configureServer(server) {
+      server.middlewares.use('/api/preview', async (req, res) => {
+        const url = new URL(req.url ?? '', 'http://localhost').searchParams.get('url') ?? ''
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        try {
+          res.end(JSON.stringify(await buildPreview(url, fetch, AbortSignal.timeout(9000))))
+        } catch (err) {
+          res.statusCode = err instanceof PreviewError ? err.status : 502
+          res.end(JSON.stringify({ error: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' }))
+        }
+      })
+      // Tidy AI (배포 때는 api/ai.ts). 키는 개발할 때 GEMINI_API_KEY=… npm run dev 로 넣는다
+      server.middlewares.use('/api/ai', async (req, res) => {
+        const chunks: Buffer[] = []
+        for await (const c of req) chunks.push(c as Buffer)
+        let body: unknown = null
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null')
+        } catch {
+          body = null
+        }
+        const r = await handleAiProxy({ method: req.method ?? 'GET', authorization: req.headers.authorization, body }, proxyEnvFrom(process.env))
+        res.statusCode = r.status
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        res.end(JSON.stringify(r.body))
+      })
+      // 구글 캘린더 불러오기 (배포 때는 api/ical.ts)
+      server.middlewares.use('/api/ical', async (req, res) => {
+        const url = new URL(req.url ?? '', 'http://localhost').searchParams.get('url') ?? ''
+        try {
+          const text = await fetchIcal(url, fetch, AbortSignal.timeout(15000))
+          res.setHeader('content-type', 'text/calendar; charset=utf-8')
+          res.end(text)
+        } catch (err) {
+          res.statusCode = err instanceof IcalProxyError ? err.status : 502
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ error: err instanceof Error ? err.message : '가져오지 못했어요' }))
+        }
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,14 +61,30 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    devPreviewApi(),
     react(),
     tailwindcss(),
     // PWA: 오프라인 동작 + 폰 홈 화면/컴퓨터 "앱 설치" 지원
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
+        navigateFallbackDenylist: [/^\/api\//, /^\/privacy/],
+        // 글자 인식 파일(16MB)은 처음 설치 때 받지 않고, 캡처 인식을 처음 쓸 때 받아 둔다
+        // HEIC 사진 변환 도구(3MB)도 HEIC 사진을 처음 고를 때 받아 둔다
+        globIgnores: ['ocr/**', '**/heic-to-*.js'],
         // 글씨체(Pretendard) 조각 파일은 처음 쓸 때 받아 두고, 그 뒤로는 오프라인에서도 쓴다
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/heic-to-[\w-]+\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-heic', expiration: { maxEntries: 2 }, cacheableResponse: { statuses: [200] } },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/ocr/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-ocr', expiration: { maxEntries: 10 }, cacheableResponse: { statuses: [200] } },
+          },
           {
             urlPattern: ({ request }) => request.destination === 'font',
             handler: 'CacheFirst',
@@ -46,6 +112,12 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#f2f4f6',
         theme_color: '#f2f4f6',
+        // 다른 앱(인스타그램, 네이버, X …)에서 "공유" → Tidy 를 고르면 /share 로 열린다 (안드로이드 크롬에 설치한 앱)
+        share_target: {
+          action: '/share',
+          method: 'GET',
+          params: { title: 'title', text: 'text', url: 'url' },
+        },
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

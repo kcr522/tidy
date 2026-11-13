@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Transaction } from '../../db/types'
-import { dailyTotals, dayTitle, monthGrid, shortWon } from '../../lib/calendar'
+import { cellWon, dailyTotals, dayTitle, monthGrid } from '../../lib/calendar'
 
 interface Props {
   /** YYYY-MM */
@@ -37,6 +37,7 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
           return (
             <button
               key={d}
+              title={t ? `${t.income ? `수입 ${t.income.toLocaleString('ko-KR')}원 ` : ''}${t.expense ? `지출 ${t.expense.toLocaleString('ko-KR')}원` : ''}`.trim() : undefined}
               type="button"
               role="gridcell"
               aria-selected={isSel}
@@ -44,7 +45,7 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
               aria-label={`${dayTitle(d)}${t?.income ? `, 수입 ${t.income}원` : ''}${t?.expense ? `, 지출 ${t.expense}원` : ''}`}
               onClick={() => onSelect(d)}
               onDoubleClick={() => onAdd(d)}
-              className={`flex h-[68px] flex-col items-stretch rounded-xl px-1 pt-1 text-right sm:h-20 ${
+              className={`flex h-[68px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl px-0.5 pt-1 sm:px-1 text-right sm:h-20 ${
                 !inMonth ? 'opacity-0' : isSel ? 'bg-brand-50 ring-2 ring-brand-500/60 ring-inset' : 'bg-slate-50'
               }`}
             >
@@ -55,9 +56,10 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
               >
                 {Number(d.slice(8))}
               </span>
-              <span className="mt-auto mb-1 flex flex-col text-[10.5px] leading-tight font-semibold tabular-nums sm:text-xs">
-                {t?.income ? <span className="truncate text-income">{shortWon(t.income)}</span> : null}
-                {t?.expense ? <span className="truncate text-expense">{shortWon(t.expense)}</span> : null}
+              {/* 칸이 좁아도 넘치지 않게 짧은 금액 (정확한 금액은 아래 목록) */}
+              <span className="mt-auto mb-1 flex min-w-0 flex-col text-[10px] leading-tight font-semibold tracking-tighter tabular-nums whitespace-nowrap sm:text-xs">
+                {t?.income ? <span className="overflow-hidden text-income">+{cellWon(t.income)}</span> : null}
+                {t?.expense ? <span className="overflow-hidden text-expense">-{cellWon(t.expense)}</span> : null}
               </span>
             </button>
           )

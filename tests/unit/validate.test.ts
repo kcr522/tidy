@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { domainOf, normalizeUrl, parseAmount, validateMemo, validateTitle } from '../../src/lib/validate'
+import { domainOf, isWebUrl, normalizeUrl, parseAmount, validateMemo, validateTitle } from '../../src/lib/validate'
 import { isValidCategory } from '../../src/lib/categories'
 
 describe('parseAmount (FR-011)', () => {
@@ -62,5 +62,17 @@ describe('categories (FR-013)', () => {
     expect(isValidCategory('EXPENSE', '식비')).toBe(true)
     expect(isValidCategory('INCOME', '식비')).toBe(false)
     expect(isValidCategory('INCOME', '월급')).toBe(true)
+  })
+})
+
+describe('isWebUrl (보안: 위험한 주소 막기)', () => {
+  it('http/https 만 통과', () => {
+    expect(isWebUrl('https://naver.com')).toBe(true)
+    expect(isWebUrl('http://a.kr/x')).toBe(true)
+    expect(isWebUrl('javascript:alert(1)')).toBe(false)
+    expect(isWebUrl('data:text/html,<script>')).toBe(false)
+    expect(isWebUrl('file:///etc/passwd')).toBe(false)
+    expect(isWebUrl('nope')).toBe(false)
+    expect(isWebUrl(3)).toBe(false)
   })
 })

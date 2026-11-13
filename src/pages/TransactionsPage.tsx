@@ -1,18 +1,23 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, List, Menu, Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { CalendarDays, Camera, List, Menu, PiggyBank, Plus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import BankCapture from '../components/transactions/BankCapture'
+import MealCapture from '../components/transactions/MealCapture'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
+import SavingsManager from '../components/transactions/SavingsManager'
 import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
-import MoneyMenu from '../components/transactions/insights/MoneyMenu'
+import MoneyMenu, { type MenuView } from '../components/transactions/insights/MoneyMenu'
+import BudgetStrip from '../components/budget/BudgetStrip'
 import type { Transaction } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
@@ -22,7 +27,7 @@ import { formatWon } from '../lib/format'
 import { accountTotals, categoriesUsed, filterByAccount, filterByCategory, monthSummary } from '../lib/summary'
 import { transactionRepo, type TransactionInput } from '../repositories/transactionRepo'
 
-type Editor = { mode: 'add'; date?: string } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
+type Editor = { mode: 'add'; date?: string; draft?: TransactionInput } | { mode: 'view'; item: Transaction } | { mode: 'edit'; item: Transaction } | null
 type FilterBy = 'category' | 'account'
 type View = 'list' | 'calendar'
 const VIEW_KEY = 'tidy:money-view'
@@ -41,16 +46,53 @@ export default function TransactionsPage() {
   const today = useToday()
   const [thisYear, thisMonthNum] = today.split('-').map(Number)
   const thisMonth = useMemo(() => ({ year: thisYear, month: thisMonthNum }), [thisYear, thisMonthNum])
-  const [ym, setYm] = useState(thisMonth)
+  const location = useLocation()
+  // 캘린더의 "금액" 버튼: 이 화면의 금액 달력을 그 날짜로 연다
+  const jump = (location.state as { view?: string; date?: string } | null)?.view === 'calendar' ? ((location.state as { date?: string }).date ?? today) : null
+  const [ym, setYm] = useState(() => (jump ? { year: Number(jump.slice(0, 4)), month: Number(jump.slice(5, 7)) } : thisMonth))
   const [category, setCategory] = useState<string | null>(null)
   const [filterBy, setFilterBy] = useState<FilterBy>('category')
   const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
-  const [showMenu, setShowMenu] = useState(false)
+  const [showMenu, setShowMenu] = useState<MenuView | null>(null)
+  const [showMeal, setShowMeal] = useState(false)
+  // 📷: 무엇으로 기록할지 고르기 → 은행·카드 캡처 / 음식 사진
+  const [photoMenu, setPhotoMenu] = useState(false)
+  const [showBank, setShowBank] = useState(false)
+  const [showSavings, setShowSavings] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
-  const [view, setViewState] = useState<View>(loadView)
-  const [selected, setSelected] = useState(today)
+  const [view, setViewState] = useState<View>(() => (jump ? 'calendar' : loadView()))
+  const [selected, setSelected] = useState(jump ?? today)
   const toast = useToast()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (jump) navigate(location.pathname, { replace: true, state: null })
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // AI 대화창의 "내가 등록할게": 찾은 내역을 하나씩 채워서 추가 창을 연다
+  const [queue, setQueue] = useState<TransactionInput[]>(() => (location.state as { drafts?: TransactionInput[] } | null)?.drafts ?? [])
+  useEffect(() => {
+    if (!queue.length) return
+    navigate(location.pathname, { replace: true, state: null })
+    openDraft(queue[0])
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  function openDraft(d: TransactionInput) {
+    const [y, m] = d.date.split('-').map(Number)
+    setYm({ year: y, month: m })
+    setSelected(d.date)
+    setEditor({ mode: 'add', draft: d })
+  }
+  /** 추가 창을 닫거나 저장하면 다음 내역으로 */
+  function nextDraft() {
+    const rest = queue.slice(1)
+    setQueue(rest)
+    if (rest.length) openDraft(rest[0])
+    else setEditor(null)
+  }
+  const closeEditor = () => (editor?.mode === 'add' && editor.draft ? nextDraft() : setEditor(null))
 
   function setView(v: View) {
     setViewState(v)
@@ -91,6 +133,18 @@ export default function TransactionsPage() {
   const dayItems = useMemo(() => (filtered ?? []).filter((t) => t.date === selected), [filtered, selected])
   const isThisMonth = ym.year === thisMonth.year && ym.month === thisMonth.month
 
+  async function saveMeal(input: TransactionInput) {
+    try {
+      await transactionRepo.add(input)
+      toast('음식 사진으로 기록했어요')
+      setShowMeal(false)
+      const [y, m] = input.date.split('-').map(Number)
+      if (y !== ym.year || m !== ym.month) setYm({ year: y, month: m })
+    } catch {
+      toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
+    }
+  }
+
   async function save(input: TransactionInput) {
     try {
       if (editor?.mode === 'edit' && editor.item.id != null) {
@@ -100,7 +154,7 @@ export default function TransactionsPage() {
         await transactionRepo.add(input)
         toast('저장했어요')
       }
-      setEditor(null)
+      closeEditor()
       // 다른 달 날짜로 저장했으면 그 달로 이동해서 보여 준다
       const [y, m] = input.date.split('-').map(Number)
       if (y !== ym.year || m !== ym.month) setYm({ year: y, month: m })
@@ -138,11 +192,20 @@ export default function TransactionsPage() {
       <PageHeader
         title="가계부"
         action={
-          <div className="flex gap-2">
-            <Button variant="secondary" className="px-3.5" onClick={() => setShowMenu(true)} aria-label="차트, 통계, 고정 금액 메뉴" title="메뉴">
+          <div className="flex gap-1 sm:gap-2">
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setShowMenu('menu')} aria-label="예산, 차트, 통계, 고정 금액 메뉴" title="메뉴">
               <Menu className="size-5" aria-hidden />
             </Button>
-            <Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
+              <Camera className="size-5" aria-hidden />
+            </Button>
+            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+              <PiggyBank className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">적금</span>
+            </Button>
+            <Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
+              + <span className="hidden sm:inline">내역 </span>추가
+            </Button>
           </div>
         }
       />
@@ -162,6 +225,8 @@ export default function TransactionsPage() {
               }
         }
       />
+
+      <BudgetStrip year={ym.year} month={ym.month} today={today} onOpen={() => setShowMenu('budget')} />
 
       <div className="mb-4 flex justify-end">
         <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
@@ -272,7 +337,9 @@ export default function TransactionsPage() {
           icon="💳"
           title="첫 내역을 기록해 보세요"
           description="이 달에는 아직 기록이 없어요."
-          action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 내역 추가</Button>}
+          action={<Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
+              + <span className="hidden sm:inline">내역 </span>추가
+            </Button>}
         />
       ) : (
         filtered.length === 0 ? (
@@ -292,8 +359,16 @@ export default function TransactionsPage() {
 
       <Modal
         open={editor !== null}
-        title={editor?.mode === 'view' ? '내역 자세히' : editor?.mode === 'edit' ? '내역 수정' : '내역 추가'}
-        onClose={() => setEditor(null)}
+        title={
+          editor?.mode === 'view'
+            ? '내역 자세히'
+            : editor?.mode === 'edit'
+              ? '내역 수정'
+              : editor?.draft
+                ? `AI가 찾은 내역${queue.length > 1 ? ` (${queue.length}개 남음)` : ''}`
+                : '내역 추가'
+        }
+        onClose={closeEditor}
       >
         {editor?.mode === 'view' && (
           <TransactionDetail
@@ -305,8 +380,9 @@ export default function TransactionsPage() {
         )}
         {editor && editor.mode !== 'view' && (
           <TransactionForm
-            key={editor.mode === 'edit' ? editor.item.id : 'new'}
+            key={editor.mode === 'edit' ? editor.item.id : editor.draft ? `draft-${queue.length}` : 'new'}
             initial={editor.mode === 'edit' ? editor.item : undefined}
+            draft={editor.mode === 'add' ? editor.draft : undefined}
             defaultDate={editor.mode === 'add' ? editor.date : undefined}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
@@ -314,7 +390,56 @@ export default function TransactionsPage() {
         )}
       </Modal>
 
-      {showMenu && <MoneyMenu onClose={() => setShowMenu(false)} today={today} />}
+      <Modal open={photoMenu} title="사진으로 기록" onClose={() => setPhotoMenu(false)}>
+        <div className="grid gap-2.5">
+          {(
+            [
+              ['🧾', '은행·카드 앱 캡처', '거래 내역이나 결제 알림 캡처에서 날짜·금액·가게를 찾아 한 번에 기록해요', () => setShowBank(true)],
+              ['🍜', '음식 사진', '먹은 음식 사진으로 가게와 메뉴 가격을 찾아 기록해요', () => setShowMeal(true)],
+            ] as const
+          ).map(([icon, title, desc, open]) => (
+            <button
+              key={title}
+              type="button"
+              onClick={() => {
+                setPhotoMenu(false)
+                open()
+              }}
+              className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-left transition hover:bg-brand-50 active:scale-[0.99]"
+            >
+              <span className="bg-grad-soft flex size-12 shrink-0 items-center justify-center rounded-2xl text-2xl" aria-hidden>
+                {icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold text-slate-800">{title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal open={showBank} title="은행·카드 캡처로 기록" onClose={() => setShowBank(false)}>
+        {showBank && (
+          <BankCapture
+            today={today}
+            onDone={(n) => {
+              setShowBank(false)
+              toast(n > 0 ? `캡처에서 ${n}건을 기록했어요` : '저장한 내역이 없어요')
+            }}
+          />
+        )}
+      </Modal>
+
+      <Modal open={showMeal} title="음식 사진으로 기록" onClose={() => setShowMeal(false)}>
+        {showMeal && <MealCapture onSave={saveMeal} />}
+      </Modal>
+
+      {showMenu && <MoneyMenu onClose={() => setShowMenu(null)} today={today} initialView={showMenu} />}
+
+      <Modal open={showSavings} title="적금" onClose={() => setShowSavings(false)}>
+        {showSavings && <SavingsManager today={today} />}
+      </Modal>
 
       <ConfirmDialog
         open={deleting !== null}

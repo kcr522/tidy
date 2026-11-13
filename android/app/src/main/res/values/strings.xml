@@ -4,4 +4,6 @@
     <string name="title_activity_main">Tidy</string>
     <string name="package_name">com.kcr522.tidy</string>
     <string name="custom_url_scheme">com.kcr522.tidy</string>
+    <string name="widget_description">오늘 할 일과 지출을 홈 화면에서 봐요</string>
+    <string name="widget_loading">Tidy</string>
 </resources>

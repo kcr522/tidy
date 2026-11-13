@@ -1,11 +1,13 @@
-import { CalendarRange, Check, ListChecks } from 'lucide-react'
+import { CalendarRange, ListChecks } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import type { CalendarEvent, EventColor } from '../../db/types'
+import type { Attachment, CalendarEvent, EventColor } from '../../db/types'
 import { dayTitle } from '../../lib/calendar'
-import { EVENT_COLORS, eventDays } from '../../lib/eventLayout'
+import { eventDays } from '../../lib/eventLayout'
+import EventColorPicker from './EventColorPicker'
 import { MAX_TITLE_LENGTH, validateMemo, validateTitle } from '../../lib/validate'
 import type { EventInput } from '../../repositories/eventRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
+import AttachmentField from '../common/AttachmentField'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
@@ -20,19 +22,25 @@ interface Props {
   today: string
   /** 수정할 일정 (있으면 일정 수정 모드) */
   initial?: CalendarEvent
+  /** 새 일정에 채워 둘 값 (AI 대화창의 "내가 등록할게") */
+  draft?: EventInput
+  /** 캘린더 화면에 끌어다 놓은 파일 (새 일정에 붙여 둔다) */
+  initialFiles?: Attachment[]
   onSaveEvent: (input: EventInput) => Promise<void>
   onSaveTodo: (input: TodoInput) => Promise<void>
   onDelete?: () => void
 }
 
 /** 캘린더에서 "추가": 일정(기간)과 할 일을 한 곳에서 쓴다 */
-export default function CalendarAddForm({ date, today, initial, onSaveEvent, onSaveTodo, onDelete }: Props) {
+export default function CalendarAddForm({ date, today, initial, draft, initialFiles, onSaveEvent, onSaveTodo, onDelete }: Props) {
   const [kind, setKind] = useState<Kind>('event')
-  const [title, setTitle] = useState(initial?.title ?? '')
-  const [start, setStart] = useState(initial?.startDate ?? date)
-  const [end, setEnd] = useState(initial?.endDate ?? date)
-  const [color, setColor] = useState<EventColor>(initial?.color ?? 'pink')
-  const [memo, setMemo] = useState(initial?.memo ?? '')
+  const base = initial ?? draft
+  const [title, setTitle] = useState(base?.title ?? '')
+  const [start, setStart] = useState(base?.startDate ?? date)
+  const [end, setEnd] = useState(base?.endDate ?? date)
+  const [color, setColor] = useState<EventColor>(base?.color ?? 'pink')
+  const [memo, setMemo] = useState(base?.memo ?? '')
+  const [files, setFiles] = useState<Attachment[]>(base?.attachments ?? initialFiles ?? [])
   const [when, setWhen] = useState<When>(date > today ? 'day' : 'today')
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
@@ -51,7 +59,7 @@ export default function CalendarAddForm({ date, today, initial, onSaveEvent, onS
         if (!start || !end) return setError('날짜를 골라 주세요')
         if (end < start) return setError('끝나는 날이 시작하는 날보다 앞이에요')
         const m = validateMemo(memo)
-        await onSaveEvent({ title: t.value, startDate: start, endDate: end, color, memo: m.ok ? m.value : '' })
+        await onSaveEvent({ title: t.value, startDate: start, endDate: end, color, memo: m.ok ? m.value : '', attachments: files })
       } else {
         const dueDate = when === 'today' ? today : when === 'day' ? date : null
         await onSaveTodo({ title: t.value, dueDate, priority: 'MEDIUM' })
@@ -63,7 +71,7 @@ export default function CalendarAddForm({ date, today, initial, onSaveEvent, onS
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      {!initial && (
+      {!initial && !draft && (
         <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="무엇을 추가할까요">
           {(
             [
@@ -125,27 +133,13 @@ export default function CalendarAddForm({ date, today, initial, onSaveEvent, onS
 
           <div>
             <span className="mb-1.5 block text-sm font-medium text-slate-600">색</span>
-            <div className="flex gap-2.5" role="radiogroup" aria-label="일정 색">
-              {(Object.keys(EVENT_COLORS) as EventColor[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={color === c}
-                  aria-label={EVENT_COLORS[c].label}
-                  onClick={() => setColor(c)}
-                  className={`flex size-9 items-center justify-center rounded-full transition ${color === c ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
-                  style={{ background: EVENT_COLORS[c].bg }}
-                >
-                  {color === c && <Check className="size-4 text-white" strokeWidth={3} aria-hidden />}
-                </button>
-              ))}
-            </div>
+            <EventColorPicker value={color} onChange={setColor} label="일정 색" />
           </div>
 
           <Field label="메모 (선택)">
             <input value={memo} maxLength={200} onChange={(e) => setMemo(e.target.value)} placeholder="장소나 준비물" className={inputClass()} />
           </Field>
+          <AttachmentField value={files} onChange={setFiles} acceptDrop />
         </>
       ) : (
         <div>

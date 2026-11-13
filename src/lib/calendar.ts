@@ -86,8 +86,53 @@ export function shortWon(amount: number): string {
   return amount.toLocaleString('ko-KR')
 }
 
+/**
+ * 달력 칸에 들어가는 짧은 금액 (부호 빼고 5글자 안쪽): 9,800 · 4.5만 · 27만 · 1235만 · 1.2억
+ * 칸이 좁은 폰에서도 글씨가 칸 밖으로 나가지 않게 한다. 정확한 금액은 날짜를 누르면 아래 목록에 나온다.
+ */
+export function cellWon(amount: number): string {
+  const n = Math.abs(Math.round(amount))
+  const trim = (v: number) => String(v).replace(/\.0$/, '')
+  if (n < 10_000) return n.toLocaleString('ko-KR')
+  if (n < 100_000) return `${trim(Math.round(n / 1000) / 10)}만`
+  const man = Math.round(n / 10_000)
+  if (man < 10_000) return `${man}만`
+  const eok = n / 100_000_000
+  return `${eok < 10 ? trim(Math.round(eok * 10) / 10) : Math.round(eok)}억`
+}
+
 /** "11월 15일 (토)" */
 export function dayTitle(dateKey: string): string {
   const d = parseDateKey(dateKey)
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`
+}
+
+/** 할 일 캘린더 칸: 그날 마감인 할 일 중 몇 개를 끝냈는지 */
+export interface DayProgress {
+  total: number
+  done: number
+}
+
+export function dayProgress(todos: Todo[]): Map<string, DayProgress> {
+  const map = new Map<string, DayProgress>()
+  for (const t of todos) {
+    if (!t.dueDate) continue
+    const p = map.get(t.dueDate) ?? { total: 0, done: 0 }
+    p.total += 1
+    if (t.isCompleted === 1) p.done += 1
+    map.set(t.dueDate, p)
+  }
+  return map
+}
+
+/**
+ * 그날 할 일을 카테고리별로 묶는다.
+ * 카테고리 순서대로, 없는(또는 지워진) 카테고리의 할 일은 맨 앞 '기본'(id 없음)에 모은다.
+ * 비어 있는 카테고리도 넣어서 바로 + 로 추가할 수 있게 한다. '기본'은 할 일이 있거나 카테고리가 하나도 없을 때만.
+ */
+export function groupByCategory<C extends { id?: number }>(todos: Todo[], categories: C[]): { category: C | null; todos: Todo[] }[] {
+  const known = new Set(categories.map((c) => c.id))
+  const base = todos.filter((t) => t.categoryId == null || !known.has(t.categoryId))
+  const groups = categories.map((c) => ({ category: c as C | null, todos: todos.filter((t) => t.categoryId === c.id) }))
+  return base.length > 0 || categories.length === 0 ? [{ category: null, todos: base }, ...groups] : groups
 }
