@@ -11,4 +11,4 @@ export function greeting(now: Date = new Date(), random: () => number = Math.ran
   return list[Math.floor(random() * list.length) % list.length]
 }
 
-export const HELP = '포스터·공지 사진은 캘린더에, 결제 내역 캡처는 가계부에 넣어 드려요. 오늘 있었던 일을 말해 주시면 일기로 남겨 드릴게요.'
+export const HELP = '포스터·공지 사진은 캘린더에, 결제 내역 캡처는 가계부에 넣어 드려요. 오늘 있었던 일을 말해 주시면 일기로 남겨 드릴게요. "오늘 일정 뭐야?", "이번 달 얼마 썼어?"처럼 물어보면 내 기록에서 바로 찾아 드려요.'
