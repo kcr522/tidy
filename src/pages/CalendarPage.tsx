@@ -193,7 +193,8 @@ export default function CalendarPage() {
     <>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
         <section
-          className="card overflow-hidden p-2 sm:p-4"
+          // 달력이 한 화면을 꽉 채우게: 위 머리 줄과 아래 추가 버튼·메뉴를 뺀 높이 (사용자 요청 2026-11-13)
+          className="card flex min-h-[calc(100dvh-15.5rem-env(safe-area-inset-bottom))] flex-col -mx-3 overflow-hidden px-1 pt-2 pb-1 sm:mx-0 sm:p-4 md:min-h-[calc(100dvh-10rem)]"
           aria-label={`${y}년 ${m}월 캘린더`}
           onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
           onTouchEnd={onTouchEnd}
@@ -250,13 +251,13 @@ export default function CalendarPage() {
           </div>
 
           {diaryView && <DiaryMonth grid={grid} month={month} today={today} selected={selected} diaries={diaries} onPick={pick} onOpen={setViewing} />}
-          <div role="grid" className={`flex flex-col gap-1 ${diaryView ? 'hidden' : ''}`}>
+          <div role="grid" className={`flex flex-1 flex-col gap-[3px] ${diaryView ? 'hidden' : ''}`}>
             {weeks.map((week) => (
               <div
                 key={week.days[0]}
                 role="row"
                 // 줄마다 높이가 글자 길이에 맞게 늘어난다 (일정 이름이 세 줄까지 보이게, 사용자 요청 2026-11-13)
-                className="grid min-h-[108px] grid-cols-7 gap-x-1 sm:min-h-[120px]"
+                className="grid min-h-[96px] flex-[1_0_auto] grid-cols-7 gap-x-[3px] sm:min-h-[110px]"
                 style={{ gridTemplateRows: `28px repeat(${week.lanes}, auto) minmax(26px, 1fr)` }}
               >
                 {week.days.map((d, c) => {
@@ -281,7 +282,7 @@ export default function CalendarPage() {
                         setEditor({ mode: 'add' })
                       }}
                       style={{ gridColumn: c + 1, gridRow: '1 / -1' }}
-                      className={`relative flex cursor-pointer flex-col items-center overflow-hidden rounded-xl pt-1 transition-colors select-none ${
+                      className={`relative flex cursor-pointer flex-col items-center overflow-hidden rounded-md pt-1 transition-colors select-none ${
                         isSel ? 'bg-brand-50 ring-2 ring-brand-500/60 ring-inset' : inMonth ? 'bg-slate-50' : ''
                       }`}
                     >
@@ -535,13 +536,13 @@ function readDiaryView(): boolean {
 /** 막대 하나. 날짜 숫자 아래 줄(lane)에 놓이고, 이름이 길면 세 줄까지 줄바꿈한다 */
 function BarView({ bar, dim }: { bar: Bar; dim: boolean }) {
   const style = { gridColumn: `${bar.col + 1} / span ${bar.span}`, gridRow: bar.lane + 2 }
-  const round = `${bar.fromPrev ? 'rounded-l-none' : 'rounded-l-[5px]'} ${bar.toNext ? 'rounded-r-none' : 'rounded-r-[5px]'}`
+  const round = `${bar.fromPrev ? 'rounded-l-none' : 'rounded-l-[3px]'} ${bar.toNext ? 'rounded-r-none' : 'rounded-r-[3px]'}`
   const text = 'line-clamp-3 break-all text-[11px] leading-[13px] sm:text-xs sm:leading-[15px]'
   if (bar.kind === 'todo') {
     const done = bar.todo?.isCompleted === 1
     return (
       <div
-        className={`pointer-events-none relative mx-0.5 mb-[2px] flex items-start gap-0.5 overflow-hidden rounded-[5px] bg-white py-[2px] pr-0.5 pl-[3px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_var(--color-slate-200)] ${dim ? 'opacity-50' : ''}`}
+        className={`pointer-events-none relative mx-0.5 mb-[2px] flex items-start gap-0.5 overflow-hidden rounded-[3px] bg-white py-[2px] pr-0.5 pl-[3px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_var(--color-slate-200)] ${dim ? 'opacity-50' : ''}`}
         style={style}
         aria-hidden
       >
