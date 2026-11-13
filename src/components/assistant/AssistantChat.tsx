@@ -6,6 +6,7 @@ import { askAssistant } from '../../lib/ai/assistantEngines'
 import { ENGINE_LABEL } from '../../lib/ai/engines'
 import { useAiSettings } from '../../lib/ai/settings'
 import { buildContext, refineEvents, refinePayments } from '../../lib/assistant/learn'
+import { quickReply } from '../../lib/assistant/quickData'
 import { dayTitle } from '../../lib/calendar'
 import { diaryPhotos, nowTime } from '../../lib/diaryPhotos'
 import { categoryEmoji } from '../../lib/categories'
@@ -76,6 +77,13 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
     abort.current = ctrl
     try {
       const today = todayKey()
+      // 일정·지출·예산·적금처럼 기록으로 답할 수 있는 질문은 AI 없이 바로 답한다 (AI 횟수를 아낀다)
+      const quick = said && !image ? await quickReply(said, today) : null
+      if (ctrl.signal.aborted) return
+      if (quick) {
+        add({ id: id(), from: 'ai', text: quick, quick: true })
+        return
+      }
       const [transactions, aliases] = await Promise.all([transactionRepo.listAll(), merchantAliasRepo.list()])
       const res = await askAssistant(settings, { today, ...(said ? { text: said } : {}), ...(image ? { image } : {}), context: buildContext(transactions, aliases) }, ctrl.signal)
       if (ctrl.signal.aborted) return
@@ -184,6 +192,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
               <div key={m.id} className="flex max-w-[88%] flex-col items-start gap-2">
                 <p className="rounded-2xl rounded-bl-md bg-white px-3.5 py-2.5 text-[15px] whitespace-pre-wrap text-slate-800 shadow-card">{m.text}</p>
                 {'proposal' in m && <ProposalCard msg={m} onChoose={(c) => choose(m, c)} />}
+                {'quick' in m && m.quick && <span className="pl-1 text-[11px] text-slate-400">📒 내 기록에서 바로 찾았어요 · AI 횟수 안 씀</span>}
                 {'sources' in m && m.sources && (
                   <div className="flex flex-wrap gap-1.5 pl-1">
                     {m.sources.filter((src) => isWebUrl(src.url)).map((src) => (

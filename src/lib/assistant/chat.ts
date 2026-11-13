@@ -10,7 +10,7 @@ export type Proposal =
 export type Choice = 'yes' | 'no' | 'self'
 
 export type ChatMessage =
-  | { id: number; from: 'ai'; text: string; sources?: { title: string; url: string }[] }
+  | { id: number; from: 'ai'; text: string; sources?: { title: string; url: string }[]; quick?: boolean }
   | { id: number; from: 'me'; text?: string; photo?: string }
   | { id: number; from: 'ai'; text: string; proposal: Proposal; choice?: Choice }
 
