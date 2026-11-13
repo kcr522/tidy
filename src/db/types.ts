@@ -163,7 +163,12 @@ export interface ScrapMedia {
 }
 
 /** 일정 색 (캘린더 막대 색) */
-export type EventColor = 'pink' | 'orange' | 'blue' | 'green' | 'purple' | 'red'
+/** 일정 색 이름 (처음 6개는 원래 있던 색) */
+export type PresetEventColor =
+  | 'pink' | 'orange' | 'blue' | 'green' | 'purple' | 'red'
+  | 'coral' | 'yellow' | 'lime' | 'mint' | 'teal' | 'sky' | 'navy' | 'indigo' | 'lavender' | 'magenta' | 'rose' | 'brown' | 'olive' | 'gray' | 'black'
+/** 일정 색: 이름이 있는 색이거나, 직접 고른 색 (#rrggbb) */
+export type EventColor = PresetEventColor | `#${string}`
 
 /** 캘린더 일정: 하루짜리도, 여러 날에 걸친 기간도 된다 (2차) */
 export interface CalendarEvent {
@@ -298,5 +303,13 @@ export interface SavingsPlan {
   lastDate: string | null
   memo: string
   createdAt: string
+  updatedAt: string
+}
+
+/** 달력 날짜 칸에 붙이는 이모티콘 스티커 (스키마 10부터, 하루에 하나) */
+export interface DaySticker {
+  /** YYYY-MM-DD */
+  date: string
+  emoji: string
   updatedAt: string
 }

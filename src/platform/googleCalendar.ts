@@ -3,7 +3,7 @@ import { addMonths } from 'date-fns'
 import { db } from '../db/database'
 import type { CalendarEvent, EventColor } from '../db/types'
 import { nowIso } from '../lib/date'
-import { EVENT_COLORS } from '../lib/eventLayout'
+import { PRESET_EVENT_COLORS, isEventColor } from '../lib/eventLayout'
 import { parseIcs } from '../lib/ical'
 import { isNativeApp } from './native'
 
@@ -27,10 +27,10 @@ const EVENT = 'tidy:google-cal'
 export const REFRESH_MS = 6 * 60 * 60 * 1000
 /** 연결할 수 있는 캘린더 수 */
 export const MAX_CALS = 5
-const COLORS = Object.keys(EVENT_COLORS) as EventColor[]
+const COLORS: EventColor[] = ['pink', 'orange', 'green', 'purple', 'red', ...PRESET_EVENT_COLORS.filter((c) => !['blue', 'pink', 'orange', 'green', 'purple', 'red'].includes(c))]
 
 function isColor(v: unknown): v is EventColor {
-  return typeof v === 'string' && v in EVENT_COLORS
+  return isEventColor(v)
 }
 
 function clean(v: Partial<GoogleCal> | null | undefined, i: number): GoogleCal | null {
