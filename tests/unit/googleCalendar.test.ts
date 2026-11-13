@@ -60,7 +60,8 @@ describe('구글 캘린더 여러 개', () => {
   it('새 캘린더 색은 아직 안 쓴 색부터', () => {
     expect(nextColor([])).toBe('blue')
     expect(nextColor(['blue'])).toBe('pink')
-    expect(nextColor(['blue', 'pink', 'orange', 'green', 'purple', 'red'])).toBe('blue')
+    // 색이 21가지로 늘어서, 원래 6색을 다 써도 다음 색(코랄)을 준다
+    expect(nextColor(['blue', 'pink', 'orange', 'green', 'purple', 'red'])).toBe('coral')
   })
 
   it('캘린더마다 고른 색으로 가져오고, 다시 가져와도 다른 캘린더 일정은 그대로', async () => {

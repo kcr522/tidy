@@ -1,8 +1,9 @@
-import { CalendarRange, Check, ListChecks } from 'lucide-react'
+import { CalendarRange, ListChecks } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Attachment, CalendarEvent, EventColor } from '../../db/types'
 import { dayTitle } from '../../lib/calendar'
-import { EVENT_COLORS, eventDays } from '../../lib/eventLayout'
+import { eventDays } from '../../lib/eventLayout'
+import EventColorPicker from './EventColorPicker'
 import { MAX_TITLE_LENGTH, validateMemo, validateTitle } from '../../lib/validate'
 import type { EventInput } from '../../repositories/eventRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
@@ -132,22 +133,7 @@ export default function CalendarAddForm({ date, today, initial, draft, initialFi
 
           <div>
             <span className="mb-1.5 block text-sm font-medium text-slate-600">색</span>
-            <div className="flex gap-2.5" role="radiogroup" aria-label="일정 색">
-              {(Object.keys(EVENT_COLORS) as EventColor[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={color === c}
-                  aria-label={EVENT_COLORS[c].label}
-                  onClick={() => setColor(c)}
-                  className={`flex size-9 items-center justify-center rounded-full transition ${color === c ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
-                  style={{ background: EVENT_COLORS[c].bg }}
-                >
-                  {color === c && <Check className="size-4 text-white" strokeWidth={3} aria-hidden />}
-                </button>
-              ))}
-            </div>
+            <EventColorPicker value={color} onChange={setColor} label="일정 색" />
           </div>
 
           <Field label="메모 (선택)">

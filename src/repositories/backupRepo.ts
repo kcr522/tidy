@@ -1,5 +1,6 @@
+import { isEventColor } from '../lib/eventLayout'
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Budget, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isTodoRepeat } from '../lib/todoRepeat'
 import { isAttachmentList } from '../lib/attachments'
@@ -36,6 +37,7 @@ export interface Backup {
   todoCategories?: TodoCategory[]
   /** 한 달 예산 (스키마 9부터) */
   budgets?: Budget[]
+  stickers?: DaySticker[]
 }
 
 export interface BackupMedia {
@@ -92,6 +94,10 @@ function isTodoCategory(v: unknown): v is TodoCategory {
   return isObj(v) && isCategory(v) && isStr((v as unknown as Record<string, unknown>).color)
 }
 
+function isSticker(v: unknown): v is DaySticker {
+  return isObj(v) && isStr(v.date) && isStr(v.emoji) && isStr(v.updatedAt)
+}
+
 function isBudget(v: unknown): v is Budget {
   return isObj(v) && isStr(v.category) && isNum(v.amount) && (v.amount as number) > 0 && isStr(v.updatedAt)
 }
@@ -133,10 +139,9 @@ function isAlias(v: unknown): v is MerchantAlias {
   return isObj(v) && isStr(v.raw) && isStr(v.original) && isStr(v.name) && isStr(v.createdAt)
 }
 
-const COLORS = ['pink', 'orange', 'blue', 'green', 'purple', 'red']
 function isEvent(v: unknown): v is CalendarEvent {
   return (
-    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && COLORS.includes(v.color as string) &&
+    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && isEventColor(v.color) &&
     isStr(v.memo) && (v.source === undefined || v.source === 'google') && isOptStr(v.uid) && isAttachmentList(v.attachments) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
@@ -199,12 +204,14 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const media = data.scrapMedia ?? []
   const todoCategories = data.todoCategories ?? []
   const budgets = data.budgets ?? []
-  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories) || !Array.isArray(budgets)) throw new InvalidBackupError()
+  const stickers = data.stickers ?? []
+  if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories) || !Array.isArray(budgets) || !Array.isArray(stickers)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
     !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings) ||
     !todoCategories.every(isTodoCategory) ||
-    !budgets.every(isBudget)
+    !budgets.every(isBudget) ||
+    !stickers.every(isSticker)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -216,7 +223,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets, d.stickers]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -239,6 +246,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         scrapCategories: await database.scrapCategories.toArray(),
         todoCategories: await database.todoCategories.toArray(),
         budgets: await database.budgets.toArray(),
+        stickers: await database.stickers.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
         ...rest,
@@ -271,6 +279,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.savings.bulkAdd(backup.savings ?? [])
         await database.todoCategories.bulkAdd(backup.todoCategories ?? [])
         await database.budgets.bulkAdd(backup.budgets ?? [])
+        await database.stickers.bulkAdd(backup.stickers ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)

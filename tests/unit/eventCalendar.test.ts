@@ -127,3 +127,44 @@ describe('가계부 달력', () => {
     for (const n of [1, 9999, 99999, 999999, 9_999_999, 99_999_999, 999_999_999]) expect(cellWon(n).length).toBeLessThanOrEqual(5)
   })
 })
+
+describe('공휴일과 색', () => {
+  it('공휴일은 그날 맨 위 줄에 들어가고, 일정은 그 아래로', async () => {
+    const { holidaysBetween } = await import('../../src/lib/holidays')
+    const g = monthGrid('2026-10')
+    const weeks = layoutWeeks(g, [ev(1, '2026-10-03', '2026-10-04')], [], 4, holidaysBetween(g[0], g[g.length - 1]))
+    const first = weeks[0].bars
+    expect(first.find((b) => b.kind === 'holiday')).toMatchObject({ title: '개천절', lane: 0, col: 6 })
+    expect(first.find((b) => b.kind === 'event')).toMatchObject({ lane: 1 })
+    expect(weeks[0].lanes).toBe(2)
+  })
+
+  it('색: 이름 있는 색과 직접 고른 색, 밝은 색은 진한 글씨', async () => {
+    const { eventBg, eventFg, isEventColor } = await import('../../src/lib/eventLayout')
+    expect(isEventColor('mint')).toBe(true)
+    expect(isEventColor('#12ab34')).toBe(true)
+    expect(isEventColor('#12ab3')).toBe(false)
+    expect(eventBg('#12ab34')).toBe('#12ab34')
+    expect(eventFg('yellow')).toBe('#191f28')
+    expect(eventFg('navy')).toBe('#ffffff')
+  })
+})
+
+describe('스티커', () => {
+  it('하루에 하나, 바꾸고 떼고, 백업에도 들어간다', async () => {
+    const { createStickerRepo } = await import('../../src/repositories/stickerRepo')
+    const d = new TidyDB('sticker-a')
+    dbs.push(d)
+    const repo = createStickerRepo(d)
+    await repo.set('2026-10-14', '🔥')
+    await repo.set('2026-10-14', '⭐')
+    await repo.set('2026-10-20', '🎂')
+    expect((await repo.listBetween('2026-10-01', '2026-10-31')).map((s) => s.emoji)).toEqual(['⭐', '🎂'])
+    await repo.set('2026-10-20', null)
+    const backup = await createBackupRepo(d, '0.1.0').exportAll()
+    const b = new TidyDB('sticker-b')
+    dbs.push(b)
+    await createBackupRepo(b, '0.1.0').importAll(JSON.stringify(backup))
+    expect(await b.stickers.toArray()).toMatchObject([{ date: '2026-10-14', emoji: '⭐' }])
+  })
+})

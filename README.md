@@ -224,6 +224,10 @@
 
 <img src="docs/screenshots/ai-11-gemini-chat.png" width="240"> <img src="docs/screenshots/ai-10-gemini-settings.png" width="240"> <img src="docs/screenshots/ai-groq-backup.png" width="240"> <img src="docs/screenshots/ai-feedback.png" width="240">
 
+**2차 · 캘린더 (일정 이름 줄바꿈, 누르면 바로 보기, 공휴일, 색 21가지, 스티커)**
+
+<img src="docs/screenshots/cal-1-month.png" width="240"> <img src="docs/screenshots/cal-5-popup.png" width="240"> <img src="docs/screenshots/cal-3-sticker-panel.png" width="240"> <img src="docs/screenshots/cal-6-colors.png" width="240">
+
 **2차 · 꾸미기 사진 여러 장, 사진 맞춤**
 
 <img src="docs/screenshots/customize-multi-photos.png" width="240"> <img src="docs/screenshots/customize-fit.png" width="240"> <img src="docs/screenshots/customize-fit-dashboard.png" width="240">

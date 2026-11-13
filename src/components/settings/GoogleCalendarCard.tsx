@@ -1,9 +1,10 @@
-import { CalendarArrowDown, CalendarDays, Check, Link2Off, Plus, RefreshCw } from 'lucide-react'
+import { CalendarArrowDown, CalendarDays, Link2Off, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { db } from '../../db/database'
 import type { EventColor } from '../../db/types'
 import { agoLabel } from '../../lib/autoBackup'
-import { EVENT_COLORS } from '../../lib/eventLayout'
+import { eventBg } from '../../lib/eventLayout'
+import EventColorPicker from '../calendar/EventColorPicker'
 import { buildIcs } from '../../lib/ical'
 import {
   addGoogleCalendar,
@@ -114,7 +115,7 @@ export default function GoogleCalendarCard() {
               {cals.map((c) => (
                 <li key={c.id} className="rounded-xl bg-white p-3 shadow-sm">
                   <div className="flex items-center gap-2">
-                    <span className="size-3 shrink-0 rounded-full" style={{ background: EVENT_COLORS[c.color].bg }} aria-hidden />
+                    <span className="size-3 shrink-0 rounded-full" style={{ background: eventBg(c.color) }} aria-hidden />
                     <input
                       defaultValue={c.name}
                       maxLength={20}
@@ -212,21 +213,8 @@ export default function GoogleCalendarCard() {
 
 function ColorPicker({ value, onChange, label }: { value: EventColor; onChange: (c: EventColor) => void; label: string }) {
   return (
-    <div className="mt-2 flex gap-2 pl-5" role="radiogroup" aria-label={label}>
-      {(Object.keys(EVENT_COLORS) as EventColor[]).map((c) => (
-        <button
-          key={c}
-          type="button"
-          role="radio"
-          aria-checked={value === c}
-          aria-label={EVENT_COLORS[c].label}
-          onClick={() => onChange(c)}
-          className={`flex size-7 items-center justify-center rounded-full transition ${value === c ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
-          style={{ background: EVENT_COLORS[c].bg }}
-        >
-          {value === c && <Check className="size-3.5 text-white" strokeWidth={3} aria-hidden />}
-        </button>
-      ))}
+    <div className="mt-2 pl-5">
+      <EventColorPicker value={value} onChange={onChange} label={label} small />
     </div>
   )
 }
