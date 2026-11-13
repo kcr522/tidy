@@ -20,7 +20,7 @@ function devPreviewApi(): Plugin {
         const mode = params.get('mode')
         res.setHeader('content-type', 'application/json; charset=utf-8')
         try {
-          if (mode === 'content') res.end(JSON.stringify(await readPageContent(url, fetch, AbortSignal.timeout(15000))))
+          if (mode === 'content') res.end(JSON.stringify(await readPageContent(url, fetch, AbortSignal.timeout(15000), params.get('images') !== '0')))
           else if (mode === 'shot') res.end(JSON.stringify({ imageData: await captureSite(url, fetch, AbortSignal.timeout(40000)) }))
           else res.end(JSON.stringify(await buildPreview(url, fetch, AbortSignal.timeout(9000))))
         } catch (err) {

@@ -7,8 +7,8 @@ import { blobToBase64, dataUrlToBlob, shrinkImage } from './image'
 const SITE = (import.meta.env.VITE_TIDY_SERVER as string | undefined) || 'https://tidy-gules.vercel.app'
 const base = () => `${isNativeApp() ? SITE : ''}/api/preview`
 
-async function ask<T>(url: string, mode: 'content' | 'shot', signal?: AbortSignal): Promise<T> {
-  const res = await appFetch()(`${base()}?mode=${mode}&url=${encodeURIComponent(url)}`, { signal })
+async function ask<T>(url: string, mode: 'content' | 'shot', signal?: AbortSignal, extra = ''): Promise<T> {
+  const res = await appFetch()(`${base()}?mode=${mode}${extra}&url=${encodeURIComponent(url)}`, { signal })
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null
   if (!res.ok || !data) throw new Error(data?.error ?? '사이트를 읽지 못했어요')
   return data
@@ -39,4 +39,10 @@ export async function fetchSiteShot(url: string, signal?: AbortSignal): Promise<
   const data = await ask<{ imageData?: string }>(url, 'shot', signal)
   if (!data.imageData) throw new Error('사이트 화면을 캡처하지 못했어요')
   return shrinkImage(await dataUrlToBlob(data.imageData), 1600, 0.85)
+}
+
+/** 링크의 본문 글과 캡션만 (사진 없이). 저장할 때 동영상 캡션·글을 같이 남기려고 */
+export async function fetchPageText(url: string, signal?: AbortSignal): Promise<{ text: string; caption: string }> {
+  const data = await ask<{ text?: string; caption?: string }>(url, 'content', signal, '&images=0')
+  return { text: (data.text ?? '').trim(), caption: (data.caption ?? '').trim() }
 }

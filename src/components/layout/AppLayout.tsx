@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Suspense, useEffect } from 'react'
 import { Search, Settings } from 'lucide-react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { prefetchPages } from '../../lib/lazyPage'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
@@ -10,6 +10,7 @@ import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
 import { useGooglePush } from '../../hooks/useGooglePush'
 import { syncAlarms } from '../../platform/alarms'
+import { listenForShares } from '../../platform/shareIntent'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
@@ -30,6 +31,10 @@ export default function AppLayout() {
   const theme = themeFor(useLocation().pathname)
   const today = useToday()
   const toast = useToast()
+  const navigate = useNavigate()
+
+  // 안드로이드 앱: 인스타그램·X 에서 "공유 → Tidy" 로 들어온 링크를 스크랩 저장 창으로
+  useEffect(() => listenForShares((path) => navigate(path)), [navigate])
 
   // 앱을 켜거나 날짜가 바뀌면 오늘까지의 정기 내역을 가계부에 기록한다
   useEffect(() => {

@@ -6,4 +6,5 @@
     <string name="custom_url_scheme">com.kcr522.tidy</string>
     <string name="widget_description">오늘 할 일과 지출을 홈 화면에서 봐요</string>
     <string name="widget_loading">Tidy</string>
+    <string name="share_label">Tidy에 스크랩</string>
 </resources>

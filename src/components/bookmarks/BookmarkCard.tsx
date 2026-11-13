@@ -71,6 +71,8 @@ export default function BookmarkCard({ bookmark, cover, captures, categoryName, 
           <h3 className="line-clamp-2 text-[16px] font-bold text-slate-900 hover:text-brand-600">{bookmark.title}</h3>
         </button>
         {bookmark.memo && <p className="mb-2 line-clamp-2 pl-1 text-sm text-slate-600">{bookmark.memo}</p>}
+        {/* AI 정리 전에는 서버가 읽어 온 게시글 본문(캡션)을 두 줄만 */}
+        {!bookmark.summary && bookmark.description && <p className="mb-2 line-clamp-2 pl-1 text-[13px] break-keep whitespace-pre-line text-slate-500">{bookmark.description}</p>}
 
         {bookmark.summary && (
           <div className="mb-3 rounded-2xl bg-grad-soft px-3.5 py-3 text-[13px] leading-relaxed text-slate-700">

@@ -18,6 +18,8 @@ export interface PageContent {
   text: string
   /** 본문 사진 (data:image/...;base64,...), 대표 사진이 먼저 */
   images: string[]
+  /** 인스타그램 캡션 · X 글 본문 (작성자 이름 없이). 제목을 만들 때 쓴다 */
+  caption?: string
 }
 
 /** HTML → 읽을 수 있는 글. 스크립트·메뉴·꼬리말은 뺀다 */
@@ -83,7 +85,8 @@ export function contentImageUrls(region: string, pageUrl: string): string[] {
 }
 
 /** 사진 주소 여러 개를 data URL로 (크기 한도 안에서) */
-async function downloadImages(urls: string[], f: Fetch, signal?: AbortSignal): Promise<string[]> {
+async function downloadImages(urls: string[], f: Fetch, signal?: AbortSignal, on = true): Promise<string[]> {
+  if (!on) return []
   const picked = Array.from(new Set(urls)).slice(0, MAX_IMAGES + 2)
   const got = await Promise.all(picked.map((u) => fetchImageData(u, f, signal, MAX_ONE_IMAGE)))
   const out: string[] = []
@@ -112,7 +115,7 @@ interface Tweet {
 }
 
 /** X 글: 로그인 없이 읽히는 공식 퍼가기 서버(syndication)에서 글과 사진을 받는다. 안 되면 oEmbed 글만 */
-async function readTweet(url: string, f: Fetch, signal?: AbortSignal): Promise<PageContent | null> {
+async function readTweet(url: string, f: Fetch, signal?: AbortSignal, withImages = true): Promise<PageContent | null> {
   const id = tweetId(url)
   if (!id) return null
   try {
@@ -124,7 +127,7 @@ async function readTweet(url: string, f: Fetch, signal?: AbortSignal): Promise<P
       const photos = [...(t.photos ?? []).map((p) => p.url), ...(t.mediaDetails ?? []).map((m) => m.media_url_https), t.video?.poster, ...(t.quoted_tweet?.photos ?? []).map((p) => p.url)].filter(
         (u): u is string => !!u,
       )
-      if (text.trim()) return { text: text.slice(0, MAX_PAGE_TEXT), images: await downloadImages(photos, f, signal) }
+      if (text.trim()) return { text: text.slice(0, MAX_PAGE_TEXT), images: await downloadImages(photos, f, signal, withImages), caption: (t.note_tweet?.text ?? t.text ?? '').slice(0, MAX_PAGE_TEXT) || undefined }
     }
   } catch {
     // oEmbed 로
@@ -134,14 +137,16 @@ async function readTweet(url: string, f: Fetch, signal?: AbortSignal): Promise<P
     if (!res.ok) return null
     const o = JSON.parse(new TextDecoder().decode(await readLimited(res, 500_000))) as { html?: string; author_name?: string }
     const text = htmlToText(o.html ?? '')
-    return text ? { text, images: [] } : null
+    // oEmbed 글 맨 끝의 "— 이름 (@아이디) 날짜" 줄은 본문이 아니다
+    const caption = text.split('\n').filter((l) => !/^[—-]\s/.test(l) && !/^pic\.twitter\.com/.test(l)).join('\n')
+    return text ? { text, images: [], caption: caption || undefined } : null
   } catch {
     return null
   }
 }
 
 /** 인스타그램: 공식 퍼가기(embed) 화면에 캡션 전체와 사진이 있다 */
-async function readInstagram(url: string, f: Fetch, signal?: AbortSignal): Promise<PageContent | null> {
+async function readInstagram(url: string, f: Fetch, signal?: AbortSignal, withImages = true): Promise<PageContent | null> {
   const embed = instagramEmbedUrl(url)
   const page = await fetchHtml(url, f, signal).catch(() => null)
   const meta = page ? parseLinkMeta(page.html, page.finalUrl) : {}
@@ -159,19 +164,19 @@ async function readInstagram(url: string, f: Fetch, signal?: AbortSignal): Promi
   }
   const text = [caption || meta.description, !caption && meta.title].filter(Boolean).join('\n')
   if (!text && !images.length) return null
-  return { text: text.slice(0, MAX_PAGE_TEXT), images: await downloadImages(images, f, signal) }
+  return { text: text.slice(0, MAX_PAGE_TEXT), images: await downloadImages(images, f, signal, withImages), caption: (caption || meta.description || '').slice(0, MAX_PAGE_TEXT) || undefined }
 }
 
-/** 링크 하나의 본문 글과 사진 */
-export async function readPageContent(url: string, f: Fetch = fetch, signal?: AbortSignal): Promise<PageContent> {
+/** 링크 하나의 본문 글과 사진. withImages=false 면 글만 */
+export async function readPageContent(url: string, f: Fetch = fetch, signal?: AbortSignal, withImages = true): Promise<PageContent> {
   if (!isPublicHttpUrl(url)) throw new PreviewError('열 수 없는 주소예요', 400)
   const source = detectSource(url)
   if (source === 'x') {
-    const t = await readTweet(url, f, signal)
+    const t = await readTweet(url, f, signal, withImages)
     if (t) return t
   }
   if (source === 'instagram') {
-    const i = await readInstagram(url, f, signal)
+    const i = await readInstagram(url, f, signal, withImages)
     if (i) return i
   }
   let { html, finalUrl } = await fetchHtml(url, f, signal)
@@ -186,7 +191,7 @@ export async function readPageContent(url: string, f: Fetch = fetch, signal?: Ab
   let text = htmlToText(region)
   if (meta.description && !text.includes(meta.description.slice(0, 30))) text = `${meta.description}\n${text}`.slice(0, MAX_PAGE_TEXT)
   const images = [...(meta.image ? [meta.image] : []), ...contentImageUrls(region, finalUrl)]
-  return { text, images: await downloadImages(images, f, signal) }
+  return { text, images: await downloadImages(images, f, signal, withImages) }
 }
 
 /** 캡처할 화면 주소: X·인스타그램은 로그인 화면 대신 공식 퍼가기 화면을 찍는다 */
