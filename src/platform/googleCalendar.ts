@@ -23,8 +23,8 @@ export interface GoogleCal {
 
 const KEY = 'tidy-google-cal'
 const EVENT = 'tidy:google-cal'
-/** 앱을 열 때 이만큼 지났으면 다시 가져온다 */
-export const REFRESH_MS = 6 * 60 * 60 * 1000
+/** 앱을 열거나 다시 볼 때 이만큼 지났으면 다시 가져온다 (구글 쪽에서 고친 게 빨리 보이게 짧게 둔다) */
+export const REFRESH_MS = 10 * 60 * 1000
 /** 연결할 수 있는 캘린더 수 */
 export const MAX_CALS = 5
 const COLORS: EventColor[] = ['pink', 'orange', 'green', 'purple', 'red', ...PRESET_EVENT_COLORS.filter((c) => !['blue', 'pink', 'orange', 'green', 'purple', 'red'].includes(c))]
