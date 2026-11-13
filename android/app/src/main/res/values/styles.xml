@@ -16,7 +16,11 @@
     </style>
 
 
+    <!-- 앱을 켤 때 화면: 앱 아이콘 없이 그라데이션 바탕만 (그다음 Tidy 시작 화면이 뜬다) -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">@drawable/splash_plain</item>
+        <item name="windowSplashScreenBackground">#8B7CFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

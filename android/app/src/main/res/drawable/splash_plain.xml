@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱을 켤 때 잠깐 보이는 바탕: 로고(아이콘) 없이 Tidy 그라데이션만 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="#4FD1FF"
+        android:centerColor="#8B7CFF"
+        android:endColor="#FF7EB3"
+        android:type="linear" />
+</shape>
