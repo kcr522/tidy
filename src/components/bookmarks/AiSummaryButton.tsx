@@ -5,13 +5,25 @@ import { summarizeScrap } from '../../lib/ai/scrapEngines'
 import { localSummary, SummaryError, type ScrapSummaryInput } from '../../lib/ai/scrapSummary'
 import { loadAiSettings } from '../../lib/ai/settings'
 import { blobToBase64, shrinkImage } from '../../lib/scrap/image'
+import { fetchPageForAi } from '../../lib/scrap/pageApi'
 import { bookmarkRepo } from '../../repositories/bookmarkRepo'
 import { scrapMediaRepo } from '../../repositories/scrapMediaRepo'
 import { useToast } from '../common/Toast'
 
-/** 스크랩 하나를 요약할 정보 모으기. AI에 연결돼 있으면 첫 캡처 사진도 작게 줄여 같이 보낸다 */
+/**
+ * 스크랩 하나를 요약할 정보 모으기
+ * - 사이트를 직접 열어 본문 글과 사진을 읽는다 (제목·메모만 보고 정리하지 않게)
+ * - AI에 연결돼 있으면 사진들과 첫 캡처도 작게 줄여 같이 보낸다
+ */
 async function buildInput(b: Bookmark, categoryName: string | undefined, withImage: boolean): Promise<ScrapSummaryInput> {
   const input: ScrapSummaryInput = { url: b.url, title: b.title, description: b.description, siteName: b.siteName, memo: b.memo || undefined, category: categoryName }
+  try {
+    const page = await fetchPageForAi(b.url, AbortSignal.timeout(25000))
+    if (page.text) input.pageText = page.text
+    if (withImage && page.images.length) input.pageImages = page.images
+  } catch {
+    // 사이트를 못 읽으면 (지워진 글, 막힌 사이트) 저장해 둔 정보와 캡처로
+  }
   if (withImage && b.id != null) {
     const photo = (await scrapMediaRepo.captures(b.id)).find((m) => m.blob.type.startsWith('image/'))
     if (photo) {

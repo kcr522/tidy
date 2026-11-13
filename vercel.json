@@ -9,6 +9,9 @@
     },
     "api/ai.ts": {
       "maxDuration": 60
+    },
+    "api/preview.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

@@ -108,7 +108,7 @@ export function tidyDescription(desc: string | undefined): string | undefined {
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" }
 
-function decodeEntities(s: string): string {
+export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (all, e: string) => {
     if (e[0] === '#') {
       const code = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)
@@ -118,7 +118,7 @@ function decodeEntities(s: string): string {
   })
 }
 
-function attr(tag: string, name: string): string | undefined {
+export function attr(tag: string, name: string): string | undefined {
   const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'))
   return m ? (m[2] ?? m[3] ?? m[4]) : undefined
 }

@@ -12,6 +12,10 @@ export interface ScrapSummaryInput {
   category?: string
   /** 같이 저장한 캡처 (작게 줄인 JPEG, base64). 글이 지워져도 캡처로 요약할 수 있다 */
   image?: { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string }
+  /** 사이트에서 직접 읽은 본문 글 (서버가 페이지를 열어 읽은 것) */
+  pageText?: string
+  /** 사이트 본문 사진 (작게 줄인 JPEG, base64) */
+  pageImages?: string[]
 }
 
 export class SummaryError extends Error {}
@@ -27,7 +31,8 @@ export const SUMMARY_SYSTEM = `너는 "Tidy" 앱의 스크랩 정리 도우미�
 - 마지막 줄: "#키워드" 2~4개를 띄어쓰기로
 
 지켜야 할 것:
-- 주어진 제목, 설명, 메모, 캡처 사진에 실제로 있는 내용만 써. 모르는 건 지어내지 마.
+- "사이트 본문"과 사이트 사진이 있으면 그걸 가장 중요하게 보고 정리해. 제목과 메모는 사용자가 붙인 이름일 뿐이야.
+- 주어진 본문, 설명, 사진, 캡처에 실제로 있는 내용만 써. 모르는 건 지어내지 마.
 - 정보가 거의 없으면 짧게 쓰고, 어떤 글인지 추측이라고 밝혀.
 - 마크다운 제목이나 굵은 글씨 없이 위 형식의 글만 써.`
 
@@ -39,7 +44,9 @@ export function summaryPrompt(i: ScrapSummaryInput): string {
     i.category && `사용자가 고른 카테고리: ${i.category}`,
     i.description && `미리보기 설명:\n${i.description}`,
     i.memo && `사용자 메모: ${i.memo}`,
-    i.image && '같이 저장한 캡처 사진을 첨부했어. 사진 속 글자도 읽어서 정리해 줘.',
+    i.pageText && `사이트 본문 (사이트에서 직접 읽은 글):\n${i.pageText}`,
+    i.pageImages?.length && `사이트 본문에 있는 사진 ${i.pageImages.length}장을 첨부했어. 사진 속 글자와 내용도 보고 정리해 줘.`,
+    i.image && '사용자가 같이 저장한 캡처 사진을 첨부했어. 사진 속 글자도 읽어서 정리해 줘.',
   ].filter(Boolean)
   return `${lines.join('\n')}\n\n이 스크랩을 정리해 줘.`
 }
@@ -82,7 +89,7 @@ function sentences(s: string): string[] {
  */
 export function localSummary(i: ScrapSummaryInput): string {
   // 인스타그램 설명 앞에 붙는 "좋아요 12개, 댓글 3개 - 아이디님, 날짜: " 부분은 뺀다
-  const desc = (i.description ?? '')
+  const desc = (i.pageText && i.pageText.length > (i.description?.length ?? 0) ? i.pageText.split('\n').filter((l) => l.length > 8).join(' ') : (i.description ?? ''))
     .replace(/^[\d,.\s]*(likes?|좋아요)[^:]*:\s*/i, '')
     .replace(/^["“]|["”]\.?$/g, '')
     .trim()

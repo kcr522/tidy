@@ -18,7 +18,6 @@ interface BookmarkCardProps {
   categoryName?: string
   onOpen: () => void
   onDetail: () => void
-  onToggleRead: () => void
   onEdit: () => void
   /** 이 스크랩으로 만든 할 일이 있는가 (FR-041) */
   converted: boolean
@@ -27,7 +26,7 @@ interface BookmarkCardProps {
 }
 
 /** 스크랩 카드 (FR-034~036): 썸네일, 출처, 카테고리, AI 요약 */
-export default function BookmarkCard({ bookmark, cover, captures, categoryName, onOpen, onDetail, onToggleRead, onEdit, converted, onConvert, onViewTodo }: BookmarkCardProps) {
+export default function BookmarkCard({ bookmark, cover, captures, categoryName, onOpen, onDetail, onEdit, converted, onConvert, onViewTodo }: BookmarkCardProps) {
   const read = bookmark.isRead === 1
   const coverUrl = useBlobUrl(cover)
   const [expanded, setExpanded] = useState(false)
@@ -37,7 +36,7 @@ export default function BookmarkCard({ bookmark, cover, captures, categoryName, 
     <article className={`relative flex flex-col overflow-hidden card ${read ? 'opacity-75' : ''}`}>
       {coverUrl ? (
         <button type="button" onClick={onDetail} className="tap relative block aspect-[16/9] w-full overflow-hidden bg-slate-100" aria-label={`${bookmark.title} 자세히 보기`}>
-          <img src={coverUrl} alt="" className="size-full object-cover" loading="lazy" />
+          <img src={coverUrl} alt="" className="size-full object-cover object-top" loading="lazy" />
           <span className="absolute top-2.5 left-2.5">
             <SourceBadge source={source} />
           </span>
@@ -106,17 +105,9 @@ export default function BookmarkCard({ bookmark, cover, captures, categoryName, 
 
         <div className="mt-auto flex items-center gap-2 pl-1 text-xs">
           <AiSummaryButton bookmark={bookmark} categoryName={categoryName} onDone={() => setExpanded(true)} />
-          <span className="text-slate-400">{formatDateLabel(toDateKey(new Date(bookmark.createdAt)))}</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={read}
-            onClick={onToggleRead}
-            className={`tap ml-auto rounded-full px-3 py-1.5 font-bold ${read ? 'bg-slate-100 text-slate-500' : 'bg-brand-50 text-brand-600'}`}
-          >
-            {read ? '읽음' : '안 읽음'}
-          </button>
-          <button type="button" onClick={onOpen} className="tap inline-flex items-center gap-1 rounded-full bg-grad on-grad px-3.5 py-1.5 font-bold">
+          <span className="min-w-0 truncate whitespace-nowrap text-slate-400">{formatDateLabel(toDateKey(new Date(bookmark.createdAt)))}</span>
+          {/* 읽음 표시는 '열기'를 누르면 저절로 바뀐다 (따로 누르는 버튼은 없앴다) */}
+          <button type="button" onClick={onOpen} className="tap ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-grad on-grad px-3.5 py-1.5 font-bold whitespace-nowrap">
             열기
             <ExternalLink className="size-3.5" strokeWidth={2.5} aria-hidden />
           </button>

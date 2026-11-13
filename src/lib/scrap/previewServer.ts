@@ -15,9 +15,9 @@ export class PreviewError extends Error {
   }
 }
 
-type Fetch = typeof fetch
+export type Fetch = typeof fetch
 
-async function readLimited(res: Response, max: number): Promise<Uint8Array> {
+export async function readLimited(res: Response, max: number): Promise<Uint8Array> {
   const reader = res.body?.getReader()
   if (!reader) return new Uint8Array(await res.arrayBuffer()).slice(0, max)
   const chunks: Uint8Array[] = []
@@ -42,12 +42,12 @@ async function readLimited(res: Response, max: number): Promise<Uint8Array> {
   return out
 }
 
-async function get(url: string, f: Fetch, signal?: AbortSignal): Promise<Response> {
+export async function get(url: string, f: Fetch, signal?: AbortSignal, headers: Record<string, string> = {}): Promise<Response> {
   // 리다이렉트를 직접 따라가며 매번 사설망 주소인지 확인한다
   let current = url
   for (let i = 0; i < 5; i++) {
     if (!isPublicHttpUrl(current)) throw new PreviewError('열 수 없는 주소예요', 400)
-    const res = await f(current, { headers: { 'user-agent': BOT_UA, accept: 'text/html,application/xhtml+xml,image/*;q=0.8,*/*;q=0.5', 'accept-language': 'ko,en;q=0.8' }, redirect: 'manual', signal })
+    const res = await f(current, { headers: { 'user-agent': BOT_UA, accept: 'text/html,application/xhtml+xml,image/*;q=0.8,*/*;q=0.5', 'accept-language': 'ko,en;q=0.8', ...headers }, redirect: 'manual', signal })
     const loc = res.headers.get('location')
     if (res.status >= 300 && res.status < 400 && loc) {
       current = new URL(loc, current).href
@@ -58,7 +58,7 @@ async function get(url: string, f: Fetch, signal?: AbortSignal): Promise<Respons
   throw new PreviewError('주소가 너무 여러 번 넘어가요')
 }
 
-async function fetchHtml(url: string, f: Fetch, signal?: AbortSignal): Promise<{ html: string; finalUrl: string }> {
+export async function fetchHtml(url: string, f: Fetch, signal?: AbortSignal): Promise<{ html: string; finalUrl: string }> {
   const res = await get(url, f, signal)
   if (!res.ok) throw new PreviewError(`사이트가 응답하지 않아요 (${res.status})`)
   const type = res.headers.get('content-type') ?? ''
@@ -74,22 +74,22 @@ async function fetchHtml(url: string, f: Fetch, signal?: AbortSignal): Promise<{
   return { html, finalUrl: res.url || url }
 }
 
-function toBase64(bytes: Uint8Array): string {
+export function toBase64(bytes: Uint8Array): string {
   let s = ''
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
   return btoa(s)
 }
 
 /** 썸네일 이미지를 받아 data URL로. 실패해도 미리보기는 보여 준다 */
-async function fetchImageData(url: string, f: Fetch, signal?: AbortSignal): Promise<string | undefined> {
+export async function fetchImageData(url: string, f: Fetch, signal?: AbortSignal, max = MAX_IMAGE): Promise<string | undefined> {
   try {
     const res = await get(url, f, signal)
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim()
     if (!res.ok || !/^image\/(jpeg|png|webp|gif|avif)$/i.test(type)) return undefined
     const len = Number(res.headers.get('content-length') ?? 0)
-    if (len > MAX_IMAGE) return undefined
-    const bytes = await readLimited(res, MAX_IMAGE + 1)
-    if (bytes.length > MAX_IMAGE) return undefined
+    if (len > max) return undefined
+    const bytes = await readLimited(res, max + 1)
+    if (bytes.length > max) return undefined
     return `data:${type};base64,${toBase64(bytes)}`
   } catch {
     return undefined
