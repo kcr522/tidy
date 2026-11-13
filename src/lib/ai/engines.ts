@@ -73,7 +73,14 @@ function withBackup(primary: FeedbackEngine, backup: FeedbackEngine): FeedbackEn
         return await primary.generate(mode, snapshot, signal)
       } catch (err) {
         if (signal?.aborted) throw err
-        return backup.generate(mode, snapshot, signal)
+        try {
+          return await backup.generate(mode, snapshot, signal)
+        } catch (err2) {
+          if (signal?.aborted) throw err2
+          // 예비까지 안 되면 둘 다 왜 안 됐는지 보여 준다 (예비 이유만 보이면 원래 무엇이 막혔는지 알 수 없다)
+          const why = (e: unknown) => (e instanceof Error && e.message ? e.message : '알 수 없는 오류')
+          throw new FeedbackError(`${why(err)} · 예비 AI(Groq)도 안 됐어요: ${why(err2)}`)
+        }
       }
     },
   }
