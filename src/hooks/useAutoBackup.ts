@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isDue, loadAutoBackup, onAutoBackupChange, saveAutoBackup, type AutoBackupSettings, type BackupEvery } from '../lib/autoBackup'
 import { nowIso, todayKey } from '../lib/date'
+import { jsonPieces } from '../lib/jsonChunks'
 import { writeAutoBackup } from '../platform/autoBackup'
 import { isNativeApp } from '../platform/native'
 import { backupRepo } from '../repositories/backupRepo'
@@ -16,8 +17,8 @@ export function useAutoBackupSettings(): AutoBackupSettings {
 
 /** 지금 백업: 폰 앱은 파일로 저장, 마지막 백업 시각을 남긴다 */
 export async function backupNow(): Promise<{ publicCopy: boolean }> {
-  const text = JSON.stringify(await backupRepo.exportAll())
-  const r = await writeAutoBackup(todayKey(), text)
+  const backup = await backupRepo.exportAll()
+  const r = await writeAutoBackup(todayKey(), () => jsonPieces(backup))
   markBackedUp()
   return r
 }

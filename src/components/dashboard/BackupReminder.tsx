@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { markBackedUp, useBackupReminder, useAutoBackupSettings } from '../../hooks/useAutoBackup'
 import { agoLabel } from '../../lib/autoBackup'
 import { todayKey } from '../../lib/date'
+import { errorHint, jsonPieces } from '../../lib/jsonChunks'
 import { saveTextFile } from '../../platform/saveFile'
 import { backupFileName, backupRepo } from '../../repositories/backupRepo'
 import { useToast } from '../common/Toast'
@@ -17,11 +18,11 @@ export default function BackupReminder({ hasData }: { hasData: boolean }) {
 
   async function backup() {
     try {
-      await saveTextFile(backupFileName(todayKey()), JSON.stringify(await backupRepo.exportAll(), null, 2))
+      await saveTextFile(backupFileName(todayKey()), jsonPieces(await backupRepo.exportAll()))
       markBackedUp()
       toast('백업 파일을 저장했어요')
-    } catch {
-      toast('백업하지 못했어요. 다시 시도해 주세요', 'error')
+    } catch (err) {
+      toast(`백업하지 못했어요. 다시 시도해 주세요${errorHint(err)}`, 'error')
     }
   }
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { backupNow, markBackedUp, useAutoBackupSettings } from '../../hooks/useAutoBackup'
 import { agoLabel, KEEP, saveAutoBackup, type BackupEvery } from '../../lib/autoBackup'
 import { todayKey } from '../../lib/date'
+import { errorHint, jsonPieces } from '../../lib/jsonChunks'
 import { formatDateLabel } from '../../lib/format'
 import { listAutoBackups, readAutoBackup, shareAutoBackup, type SavedBackup } from '../../platform/autoBackup'
 import { isNativeApp } from '../../platform/native'
@@ -34,12 +35,12 @@ export default function AutoBackupCard() {
         toast(r.publicCopy ? '백업했어요. 폰의 문서/Tidy 폴더에도 넣었어요' : '백업했어요')
         refresh()
       } else {
-        await saveTextFile(backupFileName(todayKey()), JSON.stringify(await backupRepo.exportAll(), null, 2))
+        await saveTextFile(backupFileName(todayKey()), jsonPieces(await backupRepo.exportAll()))
         markBackedUp()
         toast('백업 파일을 저장했어요')
       }
-    } catch {
-      toast('백업하지 못했어요. 다시 시도해 주세요', 'error')
+    } catch (err) {
+      toast(`백업하지 못했어요. 다시 시도해 주세요${errorHint(err)}`, 'error')
     } finally {
       setBusy(false)
     }
