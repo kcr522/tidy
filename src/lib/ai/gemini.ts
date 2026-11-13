@@ -5,6 +5,7 @@
 /** 쓰는 모델. 무료 등급은 Flash 만 되고, 별칭이라 새 Flash 가 나오면 따라간다 (사진도 읽는다) */
 export const GEMINI_MODEL = 'gemini-flash-latest'
 
+import { SERVER_KEY, ServerAiError, serverAiFetch } from './serverAi'
 import { AiTimeoutError, deadline } from './timeout'
 
 const ENDPOINT = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
@@ -99,6 +100,8 @@ export async function callGemini(apiKey: string, req: GeminiRequest, fetcher: ty
 
 /** Gemini 에게 묻고 글 답과, 검색했다면 출처까지 돌려준다 */
 export async function callGeminiWithSources(apiKey: string, req: GeminiRequest, fetcher: typeof fetch = fetch): Promise<{ text: string; sources: GeminiSource[] }> {
+  // 키 대신 SERVER_KEY 면 Tidy 서버가 서버의 키로 대신 묻는다
+  if (apiKey === SERVER_KEY) fetcher = serverAiFetch(fetcher === fetch ? undefined : fetcher)
   const makeBody = (thinking: boolean) =>
     JSON.stringify({
       systemInstruction: { parts: [{ text: req.system }] },
@@ -126,6 +129,7 @@ export async function callGeminiWithSources(apiKey: string, req: GeminiRequest, 
     } catch (err) {
       if (req.signal?.aborted) throw err
       if (limit.timedOut()) throw tooSlow()
+      if (err instanceof ServerAiError) throw err
       throw new Error('Gemini에 연결하지 못했어요. 인터넷을 확인해 주세요')
     }
     // 생각 설정을 모르는 모델이면 빼고 한 번 더

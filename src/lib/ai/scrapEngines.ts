@@ -1,4 +1,4 @@
-import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
+import { DEFAULT_SERVER_URL, effectiveAi, type AiSettings, type EngineId } from './engines'
 import { callGemini } from './gemini'
 import { callGroq } from './groq'
 import { askClaudeSummary, localSummary, summaryPrompt, SummaryError, SUMMARY_SYSTEM, type ScrapSummaryInput } from './scrapSummary'
@@ -27,7 +27,12 @@ export interface SummaryResult {
  * - Gemini (무료): 내 Gemini 키로 글과 캡처 사진을 읽어 정리한다. 사용량을 다 쓰면 기본 요약으로
  * - 서버 / 내 키: Claude가 정리한다
  */
-export async function summarizeScrap(settings: AiSettings, input: ScrapSummaryInput, signal?: AbortSignal): Promise<SummaryResult> {
+export async function summarizeScrap(chosen: AiSettings, input: ScrapSummaryInput, signal?: AbortSignal): Promise<SummaryResult> {
+  const r = await summarizeWith(effectiveAi(chosen), input, signal)
+  return chosen.engine === 'tidy' && r.engine === 'gemini' ? { ...r, engine: 'tidy' } : r
+}
+
+async function summarizeWith(settings: AiSettings, input: ScrapSummaryInput, signal?: AbortSignal): Promise<SummaryResult> {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) {
     const parts = [...(input.image ? [{ inlineData: { mimeType: input.image.mediaType, data: input.image.data } }] : []), { text: summaryPrompt(input) }]
     try {

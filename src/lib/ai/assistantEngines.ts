@@ -3,7 +3,7 @@ import { ADVISOR_SYSTEM, advisorPrompt, askAdvisor } from './advisor'
 import { callGroq } from './groq'
 import { callGemini, type GeminiSource } from './gemini'
 import { localAssistant } from './assistantLocal'
-import { DEFAULT_SERVER_URL, type AiSettings, type EngineId } from './engines'
+import { DEFAULT_SERVER_URL, effectiveAi, type AiSettings, type EngineId } from './engines'
 
 export const DEFAULT_ASSISTANT_URL = '/api/assistant'
 
@@ -30,7 +30,13 @@ export interface AssistantResult extends AssistantReply {
  * - Gemini (무료): 내 Gemini 키로 사진과 글을 읽는다
  * - 서버 / 내 키: Claude가 사진과 글을 읽는다
  */
-export async function askAssistant(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+export async function askAssistant(chosen: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  const r = await askWith(effectiveAi(chosen), req, signal)
+  // Tidy AI 를 골랐으면 서버의 Gemini 가 답한 걸 'Tidy AI' 로 보여 준다
+  return chosen.engine === 'tidy' && r.engine === 'gemini' ? { ...r, engine: 'tidy' } : r
+}
+
+async function askWith(settings: AiSettings, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
   try {
     const ai = await askAi(settings, req, signal)
     if (ai?.kind === 'question') return await answerQuestion(settings, req, ai, signal)

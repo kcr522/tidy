@@ -1,12 +1,15 @@
 import { Check, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DEFAULT_SERVER_URL, ENGINE_LABEL, type EngineId } from '../../lib/ai/engines'
+import type { AiServerStatus } from '../../lib/ai/proxyServer'
+import { fetchAiServerStatus } from '../../lib/ai/serverAi'
 import { useAiSettings } from '../../lib/ai/settings'
+import { useLastAiUsage } from '../../lib/ai/usage'
 import Button from '../common/Button'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 
-const ORDER: EngineId[] = ['gemini', 'local', 'server', 'key']
+const ORDER: EngineId[] = ['tidy', 'gemini', 'local', 'server', 'key']
 
 /** 설정 > AI 연결: 한마디를 어디서 받아 올지 고른다 */
 export default function AiSettingsSection() {
@@ -45,7 +48,7 @@ export default function AiSettingsSection() {
         <Sparkles className="size-[18px] text-brand-600" aria-hidden />
         AI 연결
       </h2>
-      <p className="px-5 pb-3 text-sm break-keep text-slate-500">'AI 소비 한마디', 'AI 비서' 대화창, '음식 사진으로 기록'에 쓸 AI를 골라요.</p>
+      <p className="px-5 pb-3 text-sm break-keep text-slate-500">'AI 소비 한마디', 'AI 비서' 대화창, '스크랩 요약', '음식 사진으로 기록'에 쓸 AI를 골라요.</p>
 
       <div role="radiogroup" aria-label="AI 연결 방법" className="space-y-2 px-5">
         {ORDER.map((id) => {
@@ -70,7 +73,7 @@ export default function AiSettingsSection() {
               <span className="min-w-0">
                 <span className="block font-semibold text-slate-800">
                   {ENGINE_LABEL[id].title}
-                  {id === 'gemini' && <span className="ml-1.5 rounded-full bg-brand-500 px-2 py-0.5 align-middle text-[11px] font-bold text-white">추천</span>}
+                  {id === 'tidy' && <span className="ml-1.5 rounded-full bg-brand-500 px-2 py-0.5 align-middle text-[11px] font-bold text-white">추천</span>}
                 </span>
                 <span className="block text-sm break-keep text-slate-500">{ENGINE_LABEL[id].desc}</span>
               </span>
@@ -78,6 +81,8 @@ export default function AiSettingsSection() {
           )
         })}
       </div>
+
+      {engine === 'tidy' && <TidyAiStatus />}
 
       {engine === 'gemini' && (
         <div className="px-5 pt-4">
@@ -192,5 +197,51 @@ export default function AiSettingsSection() {
         </Button>
       </div>
     </section>
+  )
+}
+
+/** Tidy AI 를 골랐을 때: 서버에 키가 있는지, 오늘 몇 번 남았는지 */
+function TidyAiStatus() {
+  const [status, setStatus] = useState<AiServerStatus | null | undefined>(undefined)
+  const last = useLastAiUsage()
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    void fetchAiServerStatus(ctrl.signal).then((s) => {
+      if (!ctrl.signal.aborted) setStatus(s)
+    })
+    return () => ctrl.abort()
+  }, [last])
+
+  let body
+  if (status === undefined) body = <p className="text-slate-400">오늘 사용량을 불러오는 중…</p>
+  else if (status === null) body = <p>지금은 Tidy 서버에 연결하지 못했어요. 인터넷을 확인해 주세요.</p>
+  else if (!status.gemini) body = <p>서버에 AI 키가 아직 들어 있지 않아요. 그동안은 기본(AI 없이)으로 답해요.</p>
+  else if (!status.today) body = <p>구글로 로그인하면 키 없이 바로 쓸 수 있어요. 로그인하지 않으면 기본(AI 없이)으로 답해요.</p>
+  else {
+    const { used, remaining, tokens } = status.today
+    const pct = Math.min(100, Math.round((used / status.limit) * 100))
+    body = (
+      <>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="font-semibold text-slate-700">
+            오늘 <b className="text-brand-600">{remaining}번</b> 남았어요
+          </span>
+          <span className="text-xs text-slate-400">하루 {status.limit}번</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden>
+          <div className={`h-full rounded-full ${remaining <= 3 ? 'bg-expense' : 'bg-brand-500'}`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          오늘 {used}번 썼어요 · 토큰 {tokens.toLocaleString('ko-KR')}개{status.groq ? ' · 예비 AI(Groq) 준비됨' : ''}
+        </p>
+      </>
+    )
+  }
+  return (
+    <div className="mx-5 mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm break-keep text-slate-500" aria-live="polite">
+      {body}
+      <p className="mt-2 text-xs text-slate-400">AI를 쓸 때마다 화면 위에 남은 횟수와 쓴 토큰이 잠깐 나와요. 자정(한국 시간)에 다시 채워져요.</p>
+    </div>
   )
 }

@@ -6,6 +6,9 @@
   "functions": {
     "api/meal.ts": {
       "maxDuration": 120
+    },
+    "api/ai.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

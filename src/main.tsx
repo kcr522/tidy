@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { ToastProvider } from './components/common/Toast.tsx'
+import AiUsageNotice from './components/common/AiUsageNotice.tsx'
 import './index.css'
 import { db } from './db/database'
 import { initColorMode, isDark, onDarkChange } from './lib/colorMode'
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ToastProvider>
         <App />
+        <AiUsageNotice />
       </ToastProvider>
     </BrowserRouter>
   </StrictMode>,

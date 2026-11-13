@@ -6,6 +6,7 @@
  */
 
 import { appFetch } from '../../platform/nativeFetch'
+import { SERVER_KEY, ServerAiError, serverAiFetch } from './serverAi'
 import { AiTimeoutError, deadline } from './timeout'
 
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
@@ -25,6 +26,8 @@ export interface GroqRequest {
 
 /** Groq 에게 묻고 글 답과 쓴 모델을 돌려준다 */
 export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof fetch = appFetch(), models = GROQ_MODELS): Promise<{ text: string; model: string }> {
+  // 키 대신 SERVER_KEY 면 Tidy 서버가 서버의 키로 대신 묻는다
+  if (apiKey === SERVER_KEY) fetcher = serverAiFetch(fetcher)
   let last = 'Groq에서 답을 받지 못했어요'
   for (const model of models) {
     let res: Response
@@ -49,6 +52,7 @@ export async function callGroq(apiKey: string, req: GroqRequest, fetcher: typeof
       limit.done()
       if (req.signal?.aborted) throw err
       if (limit.timedOut()) throw new AiTimeoutError('Groq 답이 너무 오래 걸려서 멈췄어요')
+      if (err instanceof ServerAiError) throw err
       const why = err instanceof Error && err.message ? ` (${err.message.slice(0, 120)})` : ''
       throw new Error(`Groq에 연결하지 못했어요. 인터넷을 확인해 주세요${why}`)
     }

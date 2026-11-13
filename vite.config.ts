@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
+import { handleAiProxy, proxyEnvFrom } from './src/lib/ai/proxyServer.ts'
 import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
 import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
 
@@ -21,6 +22,21 @@ function devPreviewApi(): Plugin {
           res.statusCode = err instanceof PreviewError ? err.status : 502
           res.end(JSON.stringify({ error: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' }))
         }
+      })
+      // Tidy AI (배포 때는 api/ai.ts). 키는 개발할 때 GEMINI_API_KEY=… npm run dev 로 넣는다
+      server.middlewares.use('/api/ai', async (req, res) => {
+        const chunks: Buffer[] = []
+        for await (const c of req) chunks.push(c as Buffer)
+        let body: unknown = null
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null')
+        } catch {
+          body = null
+        }
+        const r = await handleAiProxy({ method: req.method ?? 'GET', authorization: req.headers.authorization, body }, proxyEnvFrom(process.env))
+        res.statusCode = r.status
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        res.end(JSON.stringify(r.body))
       })
       // 구글 캘린더 불러오기 (배포 때는 api/ical.ts)
       server.middlewares.use('/api/ical', async (req, res) => {
