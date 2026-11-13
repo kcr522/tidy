@@ -87,6 +87,12 @@
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/login-1-login.png" width="200"> | <img src="docs/screenshots/login-2-settings-account.png" width="200"> | <img src="docs/screenshots/login-6-choose.png" width="200"> | <img src="docs/screenshots/login-7-diary-photo-synced.png" width="200"> |
 
+**Tidy AI** (키 없이 바로 쓰는 AI): 서버에 미리 넣어 둔 무료 Gemini 키로 묻고, 쓸 때마다 오늘 남은 횟수와 토큰을 보여 줘요. 켜는 방법: [docs/Tidy-AI-설정.md](docs/Tidy-AI-설정.md)
+
+| 쓸 때마다 남은 횟수 | AI 비서 | 설정 → AI 연결 |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/tidy-ai-1-dashboard.png" width="200"> | <img src="docs/screenshots/tidy-ai-2-assistant.png" width="200"> | <img src="docs/screenshots/tidy-ai-3-settings.png" width="200"> |
+
 **앱 잠금** (설정): 숫자 4자리 또는 8자리 이상 비밀번호 중에 고르고, 안드로이드 앱에서는 지문으로도 풀기
 
 | 잠금 방식 고르기 | 비밀번호 정하기 | 비밀번호 잠금 화면 | 지문으로 풀기 |

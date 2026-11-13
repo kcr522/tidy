@@ -1,5 +1,5 @@
 import type { AiSettings } from './engines'
-import { DEFAULT_SERVER_URL } from './engines'
+import { DEFAULT_SERVER_URL, effectiveAi } from './engines'
 import { callGemini, GeminiKeyError, GeminiLimitError } from './gemini'
 import { askClaudeMeal, guessFromText, MealError, mealPrompt, SYSTEM_JSON, type MealGuess, type MealRequest, type NearbyPlace } from './meal'
 
@@ -75,7 +75,8 @@ export function geminiMealEngine(apiKey: string, fetcher: typeof fetch = fetch):
   }
 }
 
-export function mealEngineFor(settings: AiSettings): MealEngine | null {
+export function mealEngineFor(chosen: AiSettings): MealEngine | null {
+  const settings = effectiveAi(chosen)
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) return geminiMealEngine(settings.geminiKey.trim())
   if (settings.engine === 'server') return serverMealEngine(mealUrlFrom(settings.serverUrl))
   if (settings.engine === 'key' && settings.apiKey?.trim()) return keyMealEngine(settings.apiKey.trim())

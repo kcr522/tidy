@@ -1,6 +1,7 @@
 import { callGemini } from './gemini'
 import { callGroq } from './groq'
 import { localFeedback } from './localEngine'
+import { SERVER_KEY } from './serverAi'
 import { askClaude, FeedbackError, systemPrompt, userPrompt, type FeedbackMode, type SpendingSnapshot } from './prompts'
 
 /**
@@ -12,7 +13,7 @@ export interface FeedbackEngine {
   generate(mode: FeedbackMode, snapshot: SpendingSnapshot, signal?: AbortSignal): Promise<string>
 }
 
-export type EngineId = 'local' | 'gemini' | 'groq' | 'server' | 'key'
+export type EngineId = 'tidy' | 'local' | 'gemini' | 'groq' | 'server' | 'key'
 
 export interface AiSettings {
   engine: EngineId
@@ -29,9 +30,10 @@ export interface AiSettings {
 export const DEFAULT_SERVER_URL = '/api/feedback'
 
 export const ENGINE_LABEL: Record<EngineId, { title: string; desc: string }> = {
+  tidy: { title: 'Tidy AI (자동, 무료)', desc: '키를 넣지 않아도 돼요. Tidy 서버에 미리 넣어 둔 무료 AI가 답해요. 구글 로그인하면 쓸 수 있고, 하루 횟수 제한이 있어요.' },
   local: { title: '기본 (AI 없이)', desc: '인터넷 없이 앱이 정해진 문장으로 말해 줘요. 무료예요.' },
   groq: { title: 'Groq (무료, 예비)', desc: 'Gemini 한도를 다 쓰면 대신 답해요.' },
-  gemini: { title: 'Gemini (무료)', desc: '구글 Gemini 무료 키로 이 기기에서 바로 물어봐요. 하루 사용 횟수 제한이 있어요.' },
+  gemini: { title: 'Gemini (내 무료 키)', desc: '내가 만든 구글 Gemini 무료 키로 이 기기에서 바로 물어봐요. 하루 사용 횟수 제한이 있어요.' },
   server: { title: 'Claude (Tidy 서버)', desc: '배포한 서버가 Claude에게 물어봐요. 키는 서버에만 있어요.' },
   key: { title: 'Claude (내 API 키)', desc: '이 기기에서 바로 Claude에게 물어봐요. 키는 이 기기에만 저장돼요.' },
 }
@@ -116,6 +118,16 @@ function withBackup(primary: FeedbackEngine, backup: FeedbackEngine): FeedbackEn
   }
 }
 
+/**
+ * 실제로 쓸 설정: Tidy AI 를 골랐으면 키 자리에 SERVER_KEY 를 넣어 Gemini 처럼 쓴다 (서버의 키로 묻는다).
+ * 내 Gemini 키를 넣었는데 예비 Groq 키가 없으면, 예비는 서버의 Groq 를 쓴다.
+ */
+export function effectiveAi(settings: AiSettings): AiSettings {
+  if (settings.engine === 'tidy') return { ...settings, engine: 'gemini', geminiKey: SERVER_KEY, groqKey: settings.groqKey?.trim() || SERVER_KEY }
+  if (settings.engine === 'gemini' && settings.geminiKey?.trim() && !settings.groqKey?.trim()) return { ...settings, groqKey: SERVER_KEY }
+  return settings
+}
+
 function primaryFor(settings: AiSettings): FeedbackEngine | null {
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) return geminiEngine(settings.geminiKey.trim())
   if (settings.engine === 'server') return serverEngine(settings.serverUrl?.trim() || DEFAULT_SERVER_URL)
@@ -123,9 +135,12 @@ function primaryFor(settings: AiSettings): FeedbackEngine | null {
   return null
 }
 
-export function engineFor(settings: AiSettings): FeedbackEngine {
+export function engineFor(chosen: AiSettings): FeedbackEngine {
+  const settings = effectiveAi(chosen)
   const primary = primaryFor(settings)
   const groq = settings.groqKey?.trim()
-  if (primary && groq) return withBackup(primary, groqEngine(groq))
-  return primary ?? localEngine
+  const engine = primary && groq ? withBackup(primary, groqEngine(groq)) : primary
+  if (!engine) return localEngine
+  // Tidy AI 는 화면에 'Tidy AI' 로 보여 준다
+  return chosen.engine === 'tidy' ? { ...engine, id: 'tidy' } : engine
 }
