@@ -38,3 +38,12 @@ describe('agoLabel', () => {
     expect(agoLabel(new Date(2026, 10, 4, 12, 0).toISOString(), now)).toBe('7일 전')
   })
 })
+
+describe('열 때마다', () => {
+  it('30분이 지나면 다시 한다', () => {
+    const last = '2026-11-13T10:00:00+09:00'
+    expect(isDue({ every: 'open' }, Date.now())).toBe(true)
+    expect(isDue({ every: 'open', last }, at(last) + 29 * 60 * 1000)).toBe(false)
+    expect(isDue({ every: 'open', last }, at(last) + 30 * 60 * 1000)).toBe(true)
+  })
+})

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { backupNow, markBackedUp, useAutoBackupSettings } from '../../hooks/useAutoBackup'
 import { agoLabel, KEEP, saveAutoBackup, type BackupEvery } from '../../lib/autoBackup'
 import { todayKey } from '../../lib/date'
+import { errorHint, jsonPieces } from '../../lib/jsonChunks'
 import { formatDateLabel } from '../../lib/format'
 import { listAutoBackups, readAutoBackup, shareAutoBackup, type SavedBackup } from '../../platform/autoBackup'
 import { isNativeApp } from '../../platform/native'
@@ -12,7 +13,7 @@ import Button from '../common/Button'
 import Modal from '../common/Modal'
 import { useToast } from '../common/Toast'
 
-const EVERY_LABEL: Record<BackupEvery, string> = { off: '끄기', day: '매일', week: '매주' }
+const EVERY_LABEL: Record<BackupEvery, string> = { off: '끄기', open: '열 때마다', day: '매일', week: '매주' }
 
 /** 설정 > 자동 백업: 폰 앱은 정해진 때에 파일로 저장(최근 7개), 웹은 때가 되면 알려 준다 */
 export default function AutoBackupCard() {
@@ -34,12 +35,12 @@ export default function AutoBackupCard() {
         toast(r.publicCopy ? '백업했어요. 폰의 문서/Tidy 폴더에도 넣었어요' : '백업했어요')
         refresh()
       } else {
-        await saveTextFile(backupFileName(todayKey()), JSON.stringify(await backupRepo.exportAll(), null, 2))
+        await saveTextFile(backupFileName(todayKey()), jsonPieces(await backupRepo.exportAll()))
         markBackedUp()
         toast('백업 파일을 저장했어요')
       }
-    } catch {
-      toast('백업하지 못했어요. 다시 시도해 주세요', 'error')
+    } catch (err) {
+      toast(`백업하지 못했어요. 다시 시도해 주세요${errorHint(err)}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -67,12 +68,12 @@ export default function AutoBackupCard() {
       </div>
       <p className="mb-3 text-sm break-keep text-slate-500">
         {native
-          ? `정한 때가 되면 앱을 열 때 저절로 백업해요. 최근 ${KEEP}개를 남겨 두고, 되는 폰이면 문서/Tidy 폴더에도 넣어요 (앱을 지워도 남아요).`
+          ? `정한 때가 되면 앱을 열 때 저절로 백업해요. "열 때마다"는 앱을 열 때마다 (30분에 한 번까지) 해요. 최근 ${KEEP}개를 남겨 두고, 되는 폰이면 문서/Tidy 폴더에도 넣어요 (앱을 지워도 남아요).`
           : '웹에서는 파일을 저절로 저장할 수 없어서, 때가 되면 대시보드에서 백업하라고 알려 드려요.'}
       </p>
 
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="자동 백업 주기">
-        {(['off', 'day', 'week'] as const).map((e) => (
+      <div className={`grid ${native ? 'grid-cols-4' : 'grid-cols-3'} gap-1 rounded-2xl bg-slate-100 p-1`} role="radiogroup" aria-label="자동 백업 주기">
+        {(native ? (['off', 'open', 'day', 'week'] as const) : (['off', 'day', 'week'] as const)).map((e) => (
           <button
             key={e}
             type="button"

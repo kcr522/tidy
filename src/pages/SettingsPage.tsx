@@ -19,6 +19,7 @@ import ScrapSettingsSection from '../components/settings/ScrapSettingsSection'
 import { db } from '../db/database'
 import { useAccount } from '../hooks/useAccount'
 import { todayKey } from '../lib/date'
+import { jsonPieces } from '../lib/jsonChunks'
 import { pickTextFile, saveTextFile } from '../platform/saveFile'
 import { InvalidBackupError, backupFileName, backupRepo } from '../repositories/backupRepo'
 import { merchantAliasRepo } from '../repositories/merchantAliasRepo'
@@ -45,7 +46,7 @@ export default function SettingsPage() {
     setBusy(true)
     try {
       const backup = await backupRepo.exportAll()
-      await saveTextFile(backupFileName(todayKey()), JSON.stringify(backup, null, 2))
+      await saveTextFile(backupFileName(todayKey()), jsonPieces(backup))
       markBackedUp()
       toast('백업 파일을 저장했어요')
     } catch {

@@ -1,5 +1,6 @@
 /** 자동 백업 설정 (이 기기에만, localStorage) */
-export type BackupEvery = 'off' | 'day' | 'week'
+/** open: 폰 앱을 열 때마다 (너무 자주 쓰지 않게 30분에 한 번까지) */
+export type BackupEvery = 'off' | 'open' | 'day' | 'week'
 
 export interface AutoBackupSettings {
   every: BackupEvery
@@ -14,12 +15,13 @@ export const KEEP = 7
 export const AUTO_PREFIX = 'tidy-auto-'
 
 const DAY = 24 * 60 * 60 * 1000
-const GAP: Record<Exclude<BackupEvery, 'off'>, number> = { day: DAY, week: 7 * DAY }
+const OPEN_GAP = 30 * 60 * 1000
+const GAP: Record<Exclude<BackupEvery, 'off' | 'open'>, number> = { day: DAY, week: 7 * DAY }
 
 export function loadAutoBackup(defaultEvery: BackupEvery): AutoBackupSettings {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<AutoBackupSettings> | null
-    const every = v?.every === 'off' || v?.every === 'day' || v?.every === 'week' ? v.every : defaultEvery
+    const every = v?.every === 'off' || v?.every === 'open' || v?.every === 'day' || v?.every === 'week' ? v.every : defaultEvery
     return { every, ...(typeof v?.last === 'string' && { last: v.last }) }
   } catch {
     return { every: defaultEvery }
@@ -46,6 +48,7 @@ export function isDue(s: AutoBackupSettings, now: number): boolean {
   if (!s.last) return true
   const last = Date.parse(s.last)
   if (!Number.isFinite(last)) return true
+  if (s.every === 'open') return now - last >= OPEN_GAP
   return now - last >= GAP[s.every] - 2 * 60 * 60 * 1000
 }
 
