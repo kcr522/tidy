@@ -45,4 +45,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 적금 알림: 정해진 시각에 정확히 울리게 (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 앱 안에서 새 버전 APK 를 받아 설치 화면 띄우기 (처음 한 번 "이 출처 허용"을 물어본다) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

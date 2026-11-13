@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
 import AccountCard from '../components/settings/AccountCard'
 import AppLockCard from '../components/settings/AppLockCard'
+import AppUpdateCard from '../components/settings/AppUpdateCard'
 import AutoBackupCard from '../components/settings/AutoBackupCard'
 import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
 import { markBackedUp } from '../hooks/useAutoBackup'
@@ -121,6 +122,8 @@ export default function SettingsPage() {
         <GoogleCalendarCard />
 
         <AutoBackupCard />
+
+        <AppUpdateCard />
 
         <section className="card divide-y divide-slate-100 overflow-hidden">
           <h2 className="px-5 pt-5 pb-3 font-bold">백업</h2>

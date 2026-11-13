@@ -15,6 +15,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(GoogleAuthPlugin.class);
         // 앱 잠금을 지문으로 풀기 (BiometricPlugin)
         registerPlugin(BiometricPlugin.class);
+        // 앱 안에서 새 버전 내려받아 설치하기 (AppUpdatePlugin)
+        registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
