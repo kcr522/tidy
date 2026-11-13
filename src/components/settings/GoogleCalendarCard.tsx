@@ -110,7 +110,7 @@ export default function GoogleCalendarCard() {
         </p>
         {cals.length > 0 && (
           <>
-            <p className="mt-0.5 text-xs text-slate-400">앱을 열 때 6시간마다 저절로 새로 가져와요. 캘린더마다 색을 고를 수 있어요.</p>
+            <p className="mt-0.5 text-xs text-slate-400">앱을 열 때마다(10분 지났으면) 저절로 새로 가져와요. 캘린더마다 색을 고를 수 있어요.</p>
             <ul className="mt-3 space-y-2.5">
               {cals.map((c) => (
                 <li key={c.id} className="rounded-xl bg-white p-3 shadow-sm">
