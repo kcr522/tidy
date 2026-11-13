@@ -67,6 +67,8 @@ export default defineConfig({
     // PWA: 오프라인 동작 + 폰 홈 화면/컴퓨터 "앱 설치" 지원
     VitePWA({
       registerType: 'autoUpdate',
+      // 등록은 main.tsx 에서 직접 한다 (폰 앱에서는 서비스 워커를 쓰지 않는다)
+      injectRegister: false,
       workbox: {
         // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
         navigateFallbackDenylist: [/^\/api\//, /^\/privacy/],
