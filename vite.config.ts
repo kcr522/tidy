@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
 import { handleAiProxy, proxyEnvFrom } from './src/lib/ai/proxyServer.ts'
 import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
+import { captureSite, readPageContent } from './src/lib/scrap/pageContent.ts'
 import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
 
 /** 개발 중(npm run dev)에도 링크 미리보기가 되도록: 배포 때 api/preview.ts 가 하는 일을 똑같이 한다 */
@@ -14,10 +15,14 @@ function devPreviewApi(): Plugin {
     name: 'tidy-dev-preview-api',
     configureServer(server) {
       server.middlewares.use('/api/preview', async (req, res) => {
-        const url = new URL(req.url ?? '', 'http://localhost').searchParams.get('url') ?? ''
+        const params = new URL(req.url ?? '', 'http://localhost').searchParams
+        const url = params.get('url') ?? ''
+        const mode = params.get('mode')
         res.setHeader('content-type', 'application/json; charset=utf-8')
         try {
-          res.end(JSON.stringify(await buildPreview(url, fetch, AbortSignal.timeout(9000))))
+          if (mode === 'content') res.end(JSON.stringify(await readPageContent(url, fetch, AbortSignal.timeout(15000))))
+          else if (mode === 'shot') res.end(JSON.stringify({ imageData: await captureSite(url, fetch, AbortSignal.timeout(40000)) }))
+          else res.end(JSON.stringify(await buildPreview(url, fetch, AbortSignal.timeout(9000))))
         } catch (err) {
           res.statusCode = err instanceof PreviewError ? err.status : 502
           res.end(JSON.stringify({ error: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' }))

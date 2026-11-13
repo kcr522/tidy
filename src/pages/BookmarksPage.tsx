@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
 import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
+import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
 import CategoryManager from '../components/bookmarks/CategoryManager'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
@@ -16,7 +17,7 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
 import { detectSource } from '../lib/scrap/link'
-import { askCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
+import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter } from '../repositories/bookmarkRepo'
 import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
@@ -43,6 +44,7 @@ export default function BookmarksPage() {
   const [converting, setConverting] = useState<Bookmark | null>(null)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
+  const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
@@ -101,8 +103,10 @@ export default function BookmarksPage() {
       if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
       if (input.source) rememberCategory(input.source, input.categoryId ?? null)
       setEditor(null)
-      // 새 링크면 "캡처본도 같이 저장할까요?" (설정에서 끌 수 있다)
-      if (isNew && askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
+      if (!isNew) return
+      // 새 링크면 서버가 사이트 화면을 자동으로 찍고 → 보여 주면서 "편집" / "그냥 올리기". 끄면 예전처럼 "캡처본도 같이 저장할까요?"
+      if (autoCaptureEnabled()) setAutoShot({ id, url: input.url })
+      else if (askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
     } catch {
       toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
     }
@@ -195,7 +199,6 @@ export default function BookmarksPage() {
                 categoryName={catName(b.categoryId)}
                 onOpen={() => open(b)}
                 onDetail={() => setDetailId(b.id ?? null)}
-                onToggleRead={() => b.id != null && bookmarkRepo.toggleRead(b.id)}
                 onEdit={() => setEditor({ mode: 'edit', item: b })}
                 converted={b.id != null && !!linked?.has(b.id)}
                 onConvert={() => setConverting(b)}
@@ -231,6 +234,8 @@ export default function BookmarksPage() {
           setEditor({ mode: 'edit', item: b })
         }}
       />
+
+      <AutoShotDialog bookmarkId={autoShot?.id ?? null} url={autoShot?.url} onClose={() => setAutoShot(null)} />
 
       <CaptureAskDialog bookmarkId={askCapture?.id ?? null} url={askCapture?.url} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
 

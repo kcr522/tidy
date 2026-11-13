@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ExternalLink, ImagePlus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
+import { Camera, ExternalLink, ImagePlus, Pencil, RotateCcw, ScanLine, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Bookmark, ScrapMedia } from '../../db/types'
 import { useBlobUrl } from '../../hooks/useBlobUrl'
@@ -12,6 +12,7 @@ import ConfirmDialog from '../common/ConfirmDialog'
 import Modal from '../common/Modal'
 import { useToast } from '../common/Toast'
 import AiSummaryButton from './AiSummaryButton'
+import AutoShotDialog from './AutoShotDialog'
 import PhotoEditor from './PhotoEditor'
 import { useSiteCapture } from './useSiteCapture'
 import SourceBadge from './SourceBadge'
@@ -44,6 +45,7 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
   const [deleting, setDeleting] = useState<ScrapMedia | null>(null)
   const toast = useToast()
   const site = useSiteCapture(id)
+  const [shooting, setShooting] = useState(false)
 
   const source = bookmark.source ?? detectSource(bookmark.url)
   const isYoutube = source === 'youtube'
@@ -106,27 +108,35 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
           <p className="text-sm font-extrabold text-slate-800">AI 정리</p>
         </div>
         <p className="text-sm leading-relaxed whitespace-pre-line break-keep text-slate-700">
-          {bookmark.summary ?? '동그란 AI 버튼을 누르면 이 링크가 무슨 내용인지 정리해 줘요. 캡처가 있으면 캡처 속 글자도 읽어요.'}
+          {bookmark.summary ?? '동그란 AI 버튼을 누르면 사이트 글과 사진을 직접 읽고 무슨 내용인지 정리해 줘요. 캡처가 있으면 캡처 속 글자도 읽어요.'}
         </p>
       </section>
 
       <section aria-label="캡처">
-        <div className="mb-2 flex items-center">
-          <h4 className="flex-1 text-sm font-extrabold text-slate-800">캡처 · 화면 녹화 {media?.length ? media.length : ''}</h4>
+        <h4 className="mb-2 text-sm font-extrabold text-slate-800">캡처 · 화면 녹화 {media?.length ? media.length : ''}</h4>
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShooting(true)}
+            className="tap inline-flex items-center gap-1 rounded-full bg-grad on-grad px-3 py-1.5 text-xs font-bold"
+          >
+            <ScanLine className="size-3.5" aria-hidden />
+            자동 캡처
+          </button>
           {site.available && (
             <button
               type="button"
               onClick={() => site.start(bookmark.url)}
               disabled={site.busy}
-              className="tap mr-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
+              className="tap inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
             >
               <Camera className="size-3.5" aria-hidden />
-              사이트에서 캡처
+              직접 캡처
             </button>
           )}
           <button type="button" onClick={() => fileRef.current?.click()} className="tap inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
             <ImagePlus className="size-3.5" aria-hidden />
-            추가
+            사진 추가
           </button>
           <input ref={fileRef} type="file" accept={CAPTURE_ACCEPT} multiple hidden onChange={(e) => addFiles(e.target.files)} />
         </div>
@@ -169,6 +179,7 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
       )}
 
       {site.editor}
+      <AutoShotDialog bookmarkId={shooting ? id : null} url={bookmark.url} onClose={() => setShooting(false)} />
 
       {editing && (
         <PhotoEditor
