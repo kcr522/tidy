@@ -5,7 +5,7 @@ import { detectSource, isNameOnlySocialTitle, simpleTitle, socialCaptionFromTitl
 import { fetchPageText } from './pageApi'
 
 /** 저장할 설명 길이 */
-const MAX_DESC = 1500
+const MAX_DESC = 10000
 
 /** 자동으로 붙은 제목인가 (사용자가 직접 쓴 제목은 건드리지 않는다) */
 export function isAutoSocialTitle(title: string, source: LinkSource): boolean {
