@@ -203,7 +203,7 @@ export function parseLinkMeta(html: string, pageUrl: string): LinkMeta {
   }
   const type = meta['og:type']?.toLowerCase() ?? ''
   const rawTitle = clean(meta['og:title'] ?? meta['twitter:title'] ?? titleTag, 200)
-  const description = tidyDescription(clean(meta['og:description'] ?? meta['twitter:description'] ?? meta['description'], 1000))
+  const description = tidyDescription(clean(meta['og:description'] ?? meta['twitter:description'] ?? meta['description'], 3000))
   return {
     title: tidyTitle(rawTitle, description, detectSource(pageUrl)),
     description,

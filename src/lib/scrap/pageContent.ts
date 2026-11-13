@@ -5,7 +5,7 @@ import { attr, decodeEntities, detectSource, instagramEmbedUrl, isPublicHttpUrl,
 import { fetchHtml, fetchImageData, get, PreviewError, readLimited, toBase64, type Fetch } from './previewServer.js'
 
 /** 본문 글자 수 한도 (AI에 보낼 만큼만) */
-export const MAX_PAGE_TEXT = 6000
+export const MAX_PAGE_TEXT = 10000
 /** 본문 사진 개수 / 한 장 크기 / 합계 (Vercel 응답 4.5MB 안으로) */
 const MAX_IMAGES = 4
 const MAX_ONE_IMAGE = 1_200_000

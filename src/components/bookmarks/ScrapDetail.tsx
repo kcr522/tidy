@@ -43,6 +43,7 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
   const [viewing, setViewing] = useState<ScrapMedia | null>(null)
   const [editing, setEditing] = useState<ScrapMedia | null>(null)
   const [deleting, setDeleting] = useState<ScrapMedia | null>(null)
+  const [fullDesc, setFullDesc] = useState(false)
   const toast = useToast()
   const site = useSiteCapture(id)
   const [shooting, setShooting] = useState(false)
@@ -98,7 +99,16 @@ function DetailBody({ bookmark, categoryName, onOpen, onEdit }: Omit<Props, 'boo
           <span className="truncate text-slate-400">{bookmark.siteName ?? domainOf(bookmark.url)}</span>
         </div>
         <h3 className="text-lg leading-snug font-extrabold text-slate-900">{bookmark.title}</h3>
-        {bookmark.description && <p className="mt-1 line-clamp-4 text-sm whitespace-pre-line text-slate-500">{bookmark.description}</p>}
+        {bookmark.description && (
+          <>
+            <p className={`mt-1 text-sm break-keep whitespace-pre-line text-slate-600 ${fullDesc ? '' : 'line-clamp-8'}`}>{bookmark.description}</p>
+            {(bookmark.description.length > 240 || bookmark.description.split('\n').length > 8) && (
+              <button type="button" onClick={() => setFullDesc((v) => !v)} className="mt-1 text-xs font-bold text-brand-600">
+                {fullDesc ? '접기' : '글 전체 보기'}
+              </button>
+            )}
+          </>
+        )}
         {bookmark.memo && <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">📝 {bookmark.memo}</p>}
       </div>
 
