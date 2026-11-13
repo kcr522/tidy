@@ -1,9 +1,9 @@
 import type { AiSettings } from './engines'
-import { DEFAULT_SERVER_URL, effectiveAi } from './engines'
+import { effectiveAi } from './engines'
+import { appFetch } from '../../platform/nativeFetch'
 import { callGemini, GeminiKeyError, GeminiLimitError } from './gemini'
-import { askClaudeMeal, guessFromText, MealError, mealPrompt, SYSTEM_JSON, type MealGuess, type MealRequest, type NearbyPlace } from './meal'
-
-export const DEFAULT_MEAL_URL = '/api/meal'
+import { aiServerUrl } from './serverAi'
+import { guessFromText, MealError, mealPrompt, SYSTEM_JSON, type MealGuess, type MealRequest, type NearbyPlace } from './meal'
 
 export interface MealResult {
   guess: MealGuess
@@ -13,33 +13,19 @@ export interface MealResult {
 /** 음식 사진을 어디에 물어볼지. null 이면 AI 없이 직접 입력 */
 export type MealEngine = (req: MealRequest, signal?: AbortSignal) => Promise<MealResult>
 
-/** 'AI 소비 한마디' 서버 주소가 .../api/feedback 이면 같은 서버의 .../api/meal 로 */
-export function mealUrlFrom(serverUrl?: string): string {
-  const url = serverUrl?.trim()
-  if (!url || url === DEFAULT_SERVER_URL) return DEFAULT_MEAL_URL
-  return url.replace(/\/api\/feedback\/?$/, '/api/meal')
-}
-
-export function serverMealEngine(url = DEFAULT_MEAL_URL): MealEngine {
-  return async (req, signal) => {
-    const res = await fetch(url, {
+/** 사진 찍은 곳 근처 식당 (Tidy 서버가 카카오 지도에서 찾는다. 서버에 카카오 키가 없거나 안 되면 빈 목록) */
+export async function fetchNearby(location: { lat: number; lng: number }, signal?: AbortSignal, fetcher: typeof fetch = appFetch()): Promise<NearbyPlace[]> {
+  try {
+    const res = await fetcher(aiServerUrl().replace(/\/api\/ai$/, '/api/meal'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(req),
+      body: JSON.stringify(location),
       signal,
     })
-    const data = (await res.json().catch(() => ({}))) as { guess?: MealGuess; nearby?: NearbyPlace[]; error?: string }
-    if (!res.ok || !data.guess) throw new MealError(data.error ?? '서버에서 답을 받지 못했어요')
-    return { guess: data.guess, nearby: data.nearby ?? [] }
-  }
-}
-
-/** 내 키로 바로 묻기: 근처 식당 지도 검색은 서버에서만 되니, AI가 좌표와 사진만 보고 찾는다 */
-export function keyMealEngine(apiKey: string): MealEngine {
-  return async (req, signal) => {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk')
-    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 1 })
-    return { guess: await askClaudeMeal(client, req, signal), nearby: [] }
+    const data = (await res.json().catch(() => ({}))) as { nearby?: NearbyPlace[] }
+    return Array.isArray(data.nearby) ? data.nearby.slice(0, 10) : []
+  } catch {
+    return []
   }
 }
 
@@ -50,7 +36,8 @@ export function keyMealEngine(apiKey: string): MealEngine {
  */
 export function geminiMealEngine(apiKey: string, fetcher: typeof fetch = fetch): MealEngine {
   return async (req, signal) => {
-    const parts = [{ inlineData: { mimeType: 'image/jpeg', data: req.image } }, { text: mealPrompt(req) }]
+    const nearby = req.location ? await fetchNearby(req.location, signal) : []
+    const parts = [{ inlineData: { mimeType: 'image/jpeg', data: req.image } }, { text: mealPrompt({ ...req, nearby }) }]
     const ask = async (search: boolean) => {
       const text = await callGemini(apiKey, { system: SYSTEM_JSON, parts, search, ...(search ? {} : { schema: {} }), maxTokens: 4096, signal }, fetcher)
       const guess = guessFromText(text)
@@ -66,7 +53,7 @@ export function geminiMealEngine(apiKey: string, fetcher: typeof fetch = fetch):
         // 검색 없이 한 번 더: 가격은 못 찾아도 음식과 가게는 알아본다
         guess = { ...(await ask(false)), price: null, priceUrl: null }
       }
-      return { guess, nearby: [] }
+      return { guess, nearby }
     } catch (err) {
       if (err instanceof MealError || signal?.aborted) throw err
       if (err instanceof GeminiLimitError) throw new MealError('오늘 Gemini 무료 사용량을 다 썼어요')
@@ -78,7 +65,5 @@ export function geminiMealEngine(apiKey: string, fetcher: typeof fetch = fetch):
 export function mealEngineFor(chosen: AiSettings): MealEngine | null {
   const settings = effectiveAi(chosen)
   if (settings.engine === 'gemini' && settings.geminiKey?.trim()) return geminiMealEngine(settings.geminiKey.trim())
-  if (settings.engine === 'server') return serverMealEngine(mealUrlFrom(settings.serverUrl))
-  if (settings.engine === 'key' && settings.apiKey?.trim()) return keyMealEngine(settings.apiKey.trim())
   return null
 }

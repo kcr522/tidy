@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { askClaudeMeal, MealError, mealPrompt, priceLine, sanitizeGuess, sanitizeMealRequest, type MealGuess } from '../../src/lib/ai/meal'
-import { geminiMealEngine, mealEngineFor, mealUrlFrom } from '../../src/lib/ai/mealEngines'
+import { MealError, mealPrompt, priceLine, sanitizeGuess, sanitizeMealRequest, type MealGuess } from '../../src/lib/ai/meal'
+import { geminiMealEngine, mealEngineFor } from '../../src/lib/ai/mealEngines'
 import { nearbyPlaces } from '../../src/lib/ai/places'
 import { readPhotoInfo, toDateTime, validLocation } from '../../src/lib/meal/photo'
 import { mealMemo, suggestedAmount } from '../../src/lib/meal/record'
@@ -87,37 +87,6 @@ describe('요청과 결과 다듬기', () => {
   })
 })
 
-describe('Claude 호출', () => {
-  const fakeClient = (...responses: unknown[]) => {
-    const create = vi.fn()
-    for (const r of responses) create.mockResolvedValueOnce(r)
-    return { client: { beta: { messages: { create } } } as never, create }
-  }
-
-  it('report_meal 도구 결과를 돌려준다', async () => {
-    const { client, create } = fakeClient({ stop_reason: 'tool_use', content: [{ type: 'tool_use', name: 'report_meal', input: guess }] })
-    await expect(askClaudeMeal(client, { image: 'QUJD', date: '2026-11-10' })).resolves.toEqual(guess)
-    const body = create.mock.calls[0][0]
-    expect(body.tools.map((t: { name: string }) => t.name)).toEqual(['web_search', 'report_meal'])
-    expect(body.messages[0].content[0]).toMatchObject({ type: 'image', source: { type: 'base64', data: 'QUJD' } })
-  })
-
-  it('검색 중 멈추면(pause_turn) 이어서 묻는다', async () => {
-    const paused = { stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', name: 'web_search', id: 's1', input: {} }] }
-    const { client, create } = fakeClient(paused, { stop_reason: 'tool_use', content: [{ type: 'tool_use', name: 'report_meal', input: guess }] })
-    await expect(askClaudeMeal(client, { image: 'QUJD', date: '2026-11-10' })).resolves.toEqual(guess)
-    expect(create).toHaveBeenCalledTimes(2)
-    expect(create.mock.calls[1][0].messages[1]).toEqual({ role: 'assistant', content: paused.content })
-  })
-
-  it('거절하거나 결과가 없으면 MealError', async () => {
-    await expect(askClaudeMeal(fakeClient({ stop_reason: 'refusal', content: [] }).client, { image: 'Q', date: '2026-11-10' })).rejects.toBeInstanceOf(MealError)
-    await expect(
-      askClaudeMeal(fakeClient({ stop_reason: 'end_turn', content: [{ type: 'text', text: '모르겠어요' }] }).client, { image: 'Q', date: '2026-11-10' }),
-    ).rejects.toBeInstanceOf(MealError)
-  })
-})
-
 describe('근처 가게 찾기 (카카오)', () => {
   it('음식점과 카페를 합쳐 가까운 순으로', async () => {
     const doc = (name: string, distance: string) => ({ place_name: name, category_name: '음식점', road_address_name: '', address_name: '역삼동', distance, place_url: '' })
@@ -135,16 +104,9 @@ describe('근처 가게 찾기 (카카오)', () => {
 describe('어느 AI에 물을지', () => {
   it('기본(AI 없이)이면 직접 입력', () => {
     expect(mealEngineFor({ engine: 'local' })).toBeNull()
-    expect(mealEngineFor({ engine: 'key' })).toBeNull()
-    expect(mealEngineFor({ engine: 'server' })).toBeTypeOf('function')
+    expect(mealEngineFor({ engine: 'tidy' })).toBeTypeOf('function')
     expect(mealEngineFor({ engine: 'gemini' })).toBeNull()
     expect(mealEngineFor({ engine: 'gemini', geminiKey: 'k' })).toBeTypeOf('function')
-  })
-
-  it('한마디 서버 주소에서 음식 사진 주소를 만든다', () => {
-    expect(mealUrlFrom()).toBe('/api/meal')
-    expect(mealUrlFrom('/api/feedback')).toBe('/api/meal')
-    expect(mealUrlFrom('https://tidy.vercel.app/api/feedback')).toBe('https://tidy.vercel.app/api/meal')
   })
 })
 

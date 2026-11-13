@@ -41,7 +41,9 @@ function parseSettings(raw: string | null): AiSettings {
     const v = JSON.parse(raw ?? 'null') as Partial<AiSettings> | null
     // 예전(Tidy AI 가 생기기 전)에 저장한 '기본'은 직접 고른 게 아니라 다른 게 없어서 그랬던 거라 Tidy AI 로 바꿔 준다
     if (v?.engine === 'local' && (v as { v?: number }).v !== 2) return { ...v, engine: 'tidy' }
-    if (v && (v.engine === 'tidy' || v.engine === 'local' || v.engine === 'gemini' || v.engine === 'server' || v.engine === 'key')) return { ...v, engine: v.engine }
+    // 예전 유료 Claude 선택(server, key)은 없어져서 Tidy AI 로
+    if ((v?.engine as string) === 'server' || (v?.engine as string) === 'key') return { engine: 'tidy', ...(v?.geminiKey ? { geminiKey: v.geminiKey } : {}), ...(v?.groqKey ? { groqKey: v.groqKey } : {}) }
+    if (v && (v.engine === 'tidy' || v.engine === 'local' || v.engine === 'gemini')) return { engine: v.engine, ...(v.geminiKey ? { geminiKey: v.geminiKey } : {}), ...(v.groqKey ? { groqKey: v.groqKey } : {}) }
   } catch {
     // 깨진 값이면 기본으로
   }

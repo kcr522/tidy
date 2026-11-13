@@ -1,6 +1,5 @@
-// 음식 사진으로 가계부 기록: 프롬프트, 주고받는 모양, Claude 호출
+// 음식 사진으로 가계부 기록: 프롬프트, 주고받는 모양
 // 이 파일은 앱과 서버(api/meal.ts) 둘 다 쓴다. 그래서 다른 파일을 import 하지 않는다 (타입만 예외).
-import type Anthropic from '@anthropic-ai/sdk'
 
 /** 사진을 찍은 곳 근처 식당 (서버가 카카오 지도에서 찾아 준다) */
 export interface NearbyPlace {
@@ -153,7 +152,7 @@ export function sanitizeGuess(raw: unknown): MealGuess | null {
   }
 }
 
-/** 글로 받은 JSON 답 (Gemini, 또는 Claude가 도구 대신 글로 썼을 때) */
+/** 글로 받은 JSON 답 (Gemini·Groq) */
 export function guessFromText(text: string): MealGuess | null {
   const m = text.match(/\{[\s\S]*\}/)
   if (!m) return null
@@ -165,67 +164,6 @@ export function guessFromText(text: string): MealGuess | null {
 }
 
 export class MealError extends Error {}
-
-/** 쓰는 모델 (AI 소비 한마디와 같은 모델) */
-export const MEAL_MODEL = 'claude-opus-5-5'
-
-/**
- * 사진을 Claude에게 보여 주고, 필요하면 인터넷에서 메뉴판 가격을 찾게 한다.
- * 앱(내 API 키)과 서버가 같은 함수를 쓴다.
- */
-export async function askClaudeMeal(client: Anthropic, req: MealRequest, signal?: AbortSignal): Promise<MealGuess> {
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
-    {
-      role: 'user',
-      content: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: req.image } },
-        { type: 'text', text: mealPrompt(req) },
-      ],
-    },
-  ]
-
-  // 검색이 길어지면 서버가 잠깐 멈추고(pause_turn) 이어서 하자고 한다. 몇 번까지만 이어 간다
-  for (let round = 0; round < 3; round++) {
-    const res = await client.beta.messages.create(
-      {
-        model: MEAL_MODEL,
-        max_tokens: 16000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        output_config: { effort: 'medium' },
-        system: SYSTEM,
-        tools: [
-          {
-            type: 'web_search_20260209',
-            name: 'web_search',
-            max_uses: 4,
-            user_location: { type: 'approximate', country: 'KR', timezone: 'Asia/Seoul' },
-          },
-          REPORT_TOOL,
-        ],
-        messages,
-      },
-      { signal },
-    )
-    if (res.stop_reason === 'refusal') throw new MealError('AI가 이 사진은 보지 않았어요')
-
-    for (const block of res.content) {
-      if (block.type === 'tool_use' && block.name === REPORT_TOOL.name) {
-        const guess = sanitizeGuess(block.input)
-        if (guess) return guess
-      }
-    }
-    if (res.stop_reason === 'pause_turn') {
-      messages.push({ role: 'assistant', content: res.content })
-      continue
-    }
-    const text = res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')
-    const fromText = guessFromText(text)
-    if (fromText) return fromText
-    break
-  }
-  throw new MealError('사진 속 음식을 알아내지 못했어요')
-}
 
 /** 확인 화면에 보일 가격 문장 */
 export function priceLine(g: MealGuess): string {

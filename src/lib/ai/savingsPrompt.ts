@@ -1,5 +1,3 @@
-import type Anthropic from '@anthropic-ai/sdk'
-
 type Freq = 'daily' | 'weekly' | 'monthly'
 type InterestType = 'simple' | 'compound'
 type TaxType = 'normal' | 'preferential' | 'free'
@@ -47,9 +45,6 @@ export function sanitizeDraft(raw: unknown): SavingsDraft {
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as SavingsDraft
 }
 
-/** 쓰는 모델. 바꾸려면 여기만 고치면 된다 */
-export const SAVINGS_MODEL = 'claude-opus-5-5'
-
 /** 앱 → AI 로 보내는 것: 붙여 넣은 글 또는 스크린샷 하나 */
 export interface SavingsAiInput {
   text?: string
@@ -60,7 +55,7 @@ export interface SavingsAiInput {
 
 export class SavingsAiError extends Error {}
 
-const SYSTEM = `너는 한국 은행 적금 상품 정보를 읽어 칸에 채워 주는 도우미야.
+export const SAVINGS_SYSTEM = `너는 한국 은행 적금 상품 정보를 읽어 칸에 채워 주는 도우미야.
 사용자가 은행 앱 화면 캡처, 가입 완료 문자, 상품 설명 글을 줄 거야. 거기서 적금 정보를 찾아 JSON으로만 답해.
 - 확실하지 않은 칸은 null 로 둬. 지어내지 마.
 - amount: 한 번에 넣는 돈(원, 정수). "월 30만원" → 300000
@@ -71,29 +66,6 @@ const SYSTEM = `너는 한국 은행 적금 상품 정보를 읽어 칸에 채�
 - day: 매달 넣는 날(1~31), weekday: 매주 넣는 요일(0=일요일 ~ 6=토요일)
 - startDate/endDate: YYYY-MM-DD. 만기일 대신 기간만 있으면 months 에 개월 수를 넣어.
 - name: 상품 이름, bank: 은행 이름`
-
-const nullable = (type: string, extra: Record<string, unknown> = {}) => ({ anyOf: [{ type, ...extra }, { type: 'null' }] })
-
-/** AI 답 모양 (structured outputs) */
-export const SAVINGS_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['name', 'bank', 'amount', 'startDate', 'endDate', 'months', 'rate', 'interestType', 'taxType', 'freq', 'day', 'weekday'],
-  properties: {
-    name: nullable('string'),
-    bank: nullable('string'),
-    amount: nullable('integer'),
-    startDate: nullable('string'),
-    endDate: nullable('string'),
-    months: nullable('integer'),
-    rate: nullable('number'),
-    interestType: nullable('string', { enum: ['simple', 'compound'] }),
-    taxType: nullable('string', { enum: ['normal', 'preferential', 'free'] }),
-    freq: nullable('string', { enum: ['daily', 'weekly', 'monthly'] }),
-    day: nullable('integer'),
-    weekday: nullable('integer'),
-  },
-} as const
 
 /** 서버로 들어온 값을 다듬는다 (글 8000자, 사진 6MB까지) */
 export function sanitizeInput(raw: unknown): SavingsAiInput | null {
@@ -111,30 +83,17 @@ export function sanitizeInput(raw: unknown): SavingsAiInput | null {
   return { today, ...(text?.trim() ? { text } : {}), ...(image ? { image } : {}) }
 }
 
-/** Claude에게 적금 정보를 읽어 달라고 한다. 앱(내 API 키)과 서버가 같은 함수를 쓴다 */
-export async function askClaudeSavings(client: Anthropic, input: SavingsAiInput, signal?: AbortSignal): Promise<SavingsDraft> {
-  const content: Anthropic.Beta.BetaContentBlockParam[] = []
-  if (input.image) content.push({ type: 'image', source: { type: 'base64', media_type: input.image.mediaType, data: input.image.data } })
-  content.push({
-    type: 'text',
-    text: `오늘은 ${input.today} 이야.\n${input.text ? `\n---\n${input.text}\n---\n` : '위 화면에서 '}적금 정보를 찾아 줘.`,
-  })
-  const res = await client.beta.messages.create(
-    {
-      model: SAVINGS_MODEL,
-      max_tokens: 4096,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: SAVINGS_SCHEMA } },
-      system: SYSTEM,
-      messages: [{ role: 'user', content }],
-    },
-    { signal },
-  )
-  if (res.stop_reason === 'refusal') throw new SavingsAiError('AI가 이번엔 읽지 않았어요')
-  const text = res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')
+/** AI에게 보낼 글 */
+export function savingsPrompt(input: SavingsAiInput): string {
+  return `오늘은 ${input.today} 이야.\n${input.text ? `\n---\n${input.text}\n---\n` : '위 화면에서 '}적금 정보를 찾아 줘. JSON 하나로만 답해: {"name","bank","amount","startDate","endDate","months","rate","interestType","taxType","freq","day","weekday"} (모르면 null)`
+}
+
+/** AI 답(글)에서 JSON 을 꺼내 다듬는다 */
+export function draftFromText(text: string): SavingsDraft {
+  const m = text.match(/\{[\s\S]*\}/)
+  if (!m) throw new SavingsAiError('AI 답을 읽지 못했어요')
   try {
-    return sanitizeDraft(JSON.parse(text))
+    return sanitizeDraft(JSON.parse(m[0]))
   } catch {
     throw new SavingsAiError('AI 답을 읽지 못했어요')
   }

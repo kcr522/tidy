@@ -1,6 +1,4 @@
 // AI 소비 한마디: 말투(모드), 프롬프트, 오늘 소비 요약
-// 이 파일은 앱과 서버(api/feedback.ts) 둘 다 쓴다. 그래서 다른 파일을 import 하지 않는다 (타입만 예외).
-import type Anthropic from '@anthropic-ai/sdk'
 
 export type FeedbackMode = 'feedback' | 'saver' | 'cheer'
 
@@ -107,34 +105,5 @@ export function sanitizeSnapshot(raw: unknown): SpendingSnapshot | null {
   }
 }
 
-/** 쓰는 모델. 바꾸려면 여기만 고치면 된다 */
-export const CLAUDE_MODEL = 'claude-opus-5-5'
-
 /** AI가 답을 거절하거나 빈 답을 줬을 때 */
 export class FeedbackError extends Error {}
-
-/**
- * Claude에게 한마디를 받아 온다. 앱(내 API 키)과 서버가 같은 함수를 쓴다.
- * 거절되면 다른 모델로 한 번 더 시도하도록 fallbacks 를 켜 둔다.
- */
-export async function askClaude(client: Anthropic, mode: FeedbackMode, snapshot: SpendingSnapshot, signal?: AbortSignal): Promise<string> {
-  const res = await client.beta.messages.create(
-    {
-      model: CLAUDE_MODEL,
-      max_tokens: 1024,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'low' },
-      system: systemPrompt(mode),
-      messages: [{ role: 'user', content: userPrompt(snapshot) }],
-    },
-    { signal },
-  )
-  if (res.stop_reason === 'refusal') throw new FeedbackError('AI가 이번엔 답하지 않았어요')
-  const text = res.content
-    .flatMap((b) => (b.type === 'text' ? [b.text] : []))
-    .join('')
-    .trim()
-  if (!text) throw new FeedbackError('AI가 빈 답을 줬어요')
-  return text
-}
