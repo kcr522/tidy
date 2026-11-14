@@ -23,8 +23,8 @@ export function createDiaryRepo(database: TidyDB = defaultDb, random: () => numb
       return database.diaries.get(date)
     },
 
-    /** 그날 일기를 쓰거나 고친다. 색은 처음 쓸 때 한 번 정하고 그대로 둔다 */
-    async save(date: string, input: DiaryInput): Promise<void> {
+    /** 그날 일기를 쓰거나 고친다. 색은 처음 쓸 때 한 번 정하고 그대로 둔다. 저장한 시각(updatedAt)을 돌려준다 */
+    async save(date: string, input: DiaryInput): Promise<string> {
       const now = nowIso()
       const old = await database.diaries.get(date)
       const entry: Diary = {
@@ -44,6 +44,7 @@ export function createDiaryRepo(database: TidyDB = defaultDb, random: () => numb
       const files = cleanAttachments(input.attachments)
       if (files.length) entry.attachments = files
       await database.diaries.put(entry)
+      return now
     },
 
     /** 일기 달력에 크게 보일 대표 사진을 바꾼다. 그 일기에 있는 사진만 고를 수 있다 */
