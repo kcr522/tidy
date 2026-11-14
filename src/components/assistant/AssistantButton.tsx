@@ -18,7 +18,7 @@ export default function AssistantButton() {
           if (!messages.length) setMessages(firstMessages())
           setOpen(true)
         }}
-        className="bg-grad on-grad fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex size-14 items-center justify-center rounded-full shadow-float transition active:scale-95 md:right-8 md:bottom-8"
+        className="bg-grad on-grad fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex size-14 items-center justify-center rounded-full shadow-float transition active:scale-95 short:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] short:size-12 md:right-8 md:bottom-8 short:md:bottom-4"
         aria-label="AI 비서 열기"
         title="AI 비서"
       >
