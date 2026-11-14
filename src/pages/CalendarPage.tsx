@@ -286,12 +286,8 @@ export default function CalendarPage() {
                         isSel ? 'bg-brand-50 ring-2 ring-brand-500/60 ring-inset' : inMonth ? 'bg-slate-50' : ''
                       }`}
                     >
-                      {diary?.photo && (
-                        // 사진 일기: 날짜 뒤에 사진을 흐리게
-                        <img src={diary.photo} alt="" className={`absolute inset-0 size-full object-cover ${inMonth ? 'opacity-40' : 'opacity-20'}`} aria-hidden />
-                      )}
+                      {/* 일정 달력에는 일기 사진·색을 깔지 않는다: 일정만 또렷하게 (사용자 요청 2026-11-14). 일기는 '일기' 달력에서 본다 */}
                       <span
-                        style={diary && !diary.photo && !isToday ? { background: diary.color } : undefined}
                         className={`relative flex size-6 items-center justify-center rounded-full text-[13px] font-bold ${
                           isToday
                             ? 'bg-grad on-grad'
