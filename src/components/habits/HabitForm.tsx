@@ -1,13 +1,23 @@
+import { Plus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Habit } from '../../db/types'
+import { loadRecentEmojis, pushRecentEmoji } from '../../lib/emojiCatalog'
 import { validateTitle } from '../../lib/validate'
 import type { HabitInput } from '../../repositories/habitRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
+import EmojiPicker from './EmojiPicker'
 
 const HABIT_EMOJIS = ['💧', '🏃', '📚', '🧘', '💊', '🥗', '😴', '✍️', '🦷', '💪', '🌱', '☀️']
 const MAX_HABIT_LENGTH = 30
+/** 바로 고를 수 있게 보여 주는 칸 수 ("+" 칸 빼고) */
+const QUICK_COUNT = 11
+
+/** 바로 고르는 줄: 지금 아이콘 → 최근에 고른 것 → 기본 아이콘 */
+function quickEmojis(current: string): string[] {
+  return [...new Set([current, ...loadRecentEmojis(), ...HABIT_EMOJIS])].slice(0, QUICK_COUNT)
+}
 
 interface HabitFormProps {
   initial?: Habit
@@ -21,6 +31,16 @@ export default function HabitForm({ initial, onSubmit, onDelete }: HabitFormProp
   const [emoji, setEmoji] = useState(initial?.emoji ?? HABIT_EMOJIS[0])
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
+  const [quick, setQuick] = useState(() => quickEmojis(initial?.emoji ?? HABIT_EMOJIS[0]))
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  function pickFromPicker(e: string) {
+    setEmoji(e)
+    pushRecentEmoji(e)
+    // 고른 아이콘이 줄에 없으면 맨 앞에 넣어 보이게 한다
+    setQuick((q) => (q.includes(e) ? q : [e, ...q].slice(0, QUICK_COUNT)))
+    setPickerOpen(false)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -31,6 +51,7 @@ export default function HabitForm({ initial, onSubmit, onDelete }: HabitFormProp
     setSaving(true)
     try {
       await onSubmit({ title: result.value, emoji })
+      pushRecentEmoji(emoji)
     } finally {
       setSaving(false)
     }
@@ -53,7 +74,7 @@ export default function HabitForm({ initial, onSubmit, onDelete }: HabitFormProp
       <div>
         <span className="mb-1 block text-sm font-medium text-slate-600">아이콘</span>
         <div className="grid grid-cols-6 gap-2" role="radiogroup" aria-label="아이콘">
-          {HABIT_EMOJIS.map((e) => (
+          {quick.map((e) => (
             <button
               key={e}
               type="button"
@@ -67,7 +88,19 @@ export default function HabitForm({ initial, onSubmit, onDelete }: HabitFormProp
               {e}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            aria-expanded={pickerOpen}
+            aria-label="아이콘 더 고르기"
+            className={`flex aspect-square items-center justify-center rounded-2xl border-2 border-dashed transition ${
+              pickerOpen ? 'border-brand-500 bg-brand-100 text-brand-600' : 'border-slate-300 text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <Plus className="size-6" strokeWidth={2.5} aria-hidden />
+          </button>
         </div>
+        {pickerOpen && <EmojiPicker current={emoji} onPick={pickFromPicker} onClose={() => setPickerOpen(false)} />}
       </div>
 
       <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500 break-keep">매일 체크하면 🔥 연속 기록이 쌓여요. 오늘 아직 안 했어도 어제까지 했으면 기록은 이어져요.</p>

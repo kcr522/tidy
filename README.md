@@ -348,6 +348,12 @@ npm run app:android  # 안드로이드 앱 (Android Studio)
 
 🔒 앱 잠금(지문 · 비밀번호) · 💰 월 예산 + 알림 · 🔁 반복 할 일 + 알림 · 🔎 전체 검색 · 📊 월말 리포트 · 📱 홈 화면 위젯 · ☁️ 자동 백업 · 🗓 구글 캘린더 연동 · 💳 잔액 캡처 확인 · 🍎 아이폰 공유로 스크랩
 
+**습관 아이콘 고르기**: 아이콘 줄 끝의 "+"를 누르면 주제별 이모티콘 200개 넘게 중에서 고르고, 없으면 키보드로 직접 넣어요. 고른 건 다음부터 앞줄에 나와요.
+
+| "+" 고르기 창 | 주제 바꾸기 | 고른 아이콘 | 분할 화면 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/habit-emoji-2-picker.png" width="200"> | <img src="docs/screenshots/habit-emoji-3-tab.png" width="200"> | <img src="docs/screenshots/habit-emoji-4-picked.png" width="200"> | <img src="docs/screenshots/habit-emoji-5-split.png" width="200"> |
+
 ---
 
 <div align="center">
