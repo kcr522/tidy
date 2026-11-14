@@ -167,7 +167,7 @@ export default function AssistantChat({ messages, setMessages, onClose }: Props)
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-end md:justify-end md:p-8" role="dialog" aria-modal="true" aria-label="AI 비서">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] md:bg-black/20" onClick={onClose} />
-      <div className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-slate-100 shadow-xl md:h-[min(720px,88vh)] md:max-w-[420px] md:rounded-3xl">
+      <div className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-slate-100 shadow-xl md:h-[min(720px,88dvh)] md:max-w-[420px] md:rounded-3xl">
         <header className="flex items-center gap-3 bg-white px-4 pt-4 pb-3">
           <span className="bg-grad on-grad flex size-10 items-center justify-center rounded-full">
             <Sparkles className="size-5" aria-hidden />
@@ -261,7 +261,7 @@ function ProposalCard({ msg, onChoose }: { msg: Extract<ChatMessage, { proposal:
   const question = fresh === 0 ? '이미 다 있어요. 그래도 볼까요?' : p.kind === 'diary' ? `${dayTitle(p.date).replace(/ \(.\)$/, '')} 일기에 등록할까요?` : `${PLACE[p.kind]}에 등록할까요?`
 
   return (
-    <div className="w-full min-w-64 overflow-hidden rounded-2xl bg-white shadow-card">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl bg-white shadow-card">
       <div className="flex items-center gap-2 px-3.5 pt-3 text-xs font-bold text-slate-500">
         <Icon className="size-4 text-brand-500" aria-hidden />
         {PLACE[p.kind]}

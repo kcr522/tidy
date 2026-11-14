@@ -27,9 +27,9 @@ export default function BackupReminder({ hasData }: { hasData: boolean }) {
   }
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-3xl bg-brand-50 p-4 text-brand-700">
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-3xl bg-brand-50 p-4 text-brand-700">
       <DatabaseBackup className="size-5 shrink-0" aria-hidden />
-      <p className="min-w-0 flex-1 text-sm break-keep">
+      <p className="min-w-40 flex-1 text-sm break-keep">
         <b>백업할 때예요.</b> 마지막 백업: {agoLabel(last, Date.now())}
       </p>
       <button type="button" onClick={backup} className="tap shrink-0 rounded-full bg-white px-3.5 py-2 text-sm font-bold text-brand-700 shadow-card">
