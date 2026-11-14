@@ -154,7 +154,7 @@ function scheduleAnswer(q: Extract<QuickIntent, { kind: 'schedule' }>, data: Qui
     for (const r of data.recurring ?? []) {
       if (!r.isActive || r.startDate > day) continue
       const d = parseDateKey(day)
-      if (dueDateIn(d.getFullYear(), d.getMonth() + 1, r.day) === day) part.push(`${r.type === 'INCOME' ? '💰' : '💸'} ${r.memo || r.category} ${r.type === 'INCOME' ? '들어오는 날' : '나가는 날'} (${won(r.amount)})`)
+      if (dueDateIn(d.getFullYear(), d.getMonth() + 1, r.day) === day) part.push(`${r.type === 'INCOME' ? '💰' : '💸'} ${r.memo || r.category} ${r.type === 'INCOME' ? '들어오는 날' : '나가는 날'}${r.askAmount === 1 ? '' : ` (${won(r.amount)})`}`)
     }
     for (const s of data.savings ?? []) if (day >= s.startDate && day < s.endDate && isDueOn(s.schedule, day)) part.push(`🐷 ${s.name} 넣는 날 (${won(s.amount)})`)
     count += part.length
@@ -227,7 +227,7 @@ function recurringAnswer(q: Extract<QuickIntent, { kind: 'recurring' }>, data: Q
   const rows = list
     .map((r) => ({ r, d: ddayFor(r.day, today) }))
     .sort((a, b) => a.d.daysLeft - b.d.daysLeft)
-    .map(({ r, d }) => `• ${r.memo || r.category} ${won(r.amount)}: ${d.daysLeft === 0 ? '오늘이에요!' : `${dayLabel(d.date)}, D-${d.daysLeft}`}`)
+    .map(({ r, d }) => `• ${r.memo || r.category}${r.askAmount === 1 ? '' : ` ${won(r.amount)}`}: ${d.daysLeft === 0 ? '오늘이에요!' : `${dayLabel(d.date)}, D-${d.daysLeft}`}`)
   return `${q.income ? '들어올 돈' : '나갈 돈'}이에요.\n${rows.join('\n')}`
 }
 

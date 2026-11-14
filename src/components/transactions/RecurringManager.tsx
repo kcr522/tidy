@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Pause, Play, Repeat, Trash2 } from 'lucide-react'
+import { Check, Pause, Play, Repeat, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Recurring, TransactionType } from '../../db/types'
 import { categoriesFor, categoryEmoji } from '../../lib/categories'
@@ -82,12 +82,18 @@ export default function RecurringManager({ today, preset }: Props) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-semibold text-slate-800">{m ? m.display : r.memo}</span>
                     <span className="block truncate text-xs text-slate-400">
-                      {dayLabel(r.day)} · {paused ? '멈춤' : d.daysLeft === 0 ? '오늘 기록돼요' : `다음 ${formatDateLabel(d.date)} (${ddayLabel(d.daysLeft)})`}
+                      {dayLabel(r.day)} · {paused ? '멈춤' : d.daysLeft === 0 ? (r.askAmount === 1 ? '오늘 금액을 물어봐요' : '오늘 기록돼요') : `다음 ${formatDateLabel(d.date)} (${ddayLabel(d.daysLeft)})`}
                     </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${r.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>
-                    {r.type === 'INCOME' ? '+' : '-'}
-                    {formatWon(r.amount)}
+                    {r.askAmount === 1 ? (
+                      <span className="text-xs font-semibold text-slate-400">그날 입력</span>
+                    ) : (
+                      <>
+                        {r.type === 'INCOME' ? '+' : '-'}
+                        {formatWon(r.amount)}
+                      </>
+                    )}
                   </span>
                 </button>
                 <button
@@ -123,7 +129,8 @@ interface FormProps {
 function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }: FormProps) {
   const [type, setType] = useState<TransactionType>(initial?.type ?? preset?.type ?? 'EXPENSE')
   const [memo, setMemo] = useState(initial?.memo ?? preset?.memo ?? '')
-  const [amountText, setAmountText] = useState(initial ? formatNumber(initial.amount) : '')
+  const [askAmount, setAskAmount] = useState(initial?.askAmount === 1)
+  const [amountText, setAmountText] = useState(initial && initial.askAmount !== 1 ? formatNumber(initial.amount) : '')
   const [category, setCategory] = useState(initial?.category ?? preset?.category ?? '')
   const [account, setAccount] = useState(initial?.account ?? '')
   const [day, setDay] = useState(initial?.day ?? Number(today.slice(8)))
@@ -144,14 +151,14 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const amount = parseAmount(amountText)
+    const amount = askAmount ? ({ ok: true, value: 0 } as const) : parseAmount(amountText)
     const next: typeof errors = {}
     if (!memo.trim()) next.memo = '이름을 적어 주세요 (예: 넷플릭스, 월급)'
     if (!amount.ok) next.amount = amount.error
     if (!category) next.category = '카테고리를 골라 주세요'
     setErrors(next)
     if (!amount.ok || Object.keys(next).length > 0) return
-    await onSubmit({ type, memo: memo.trim().slice(0, 50), amount: amount.value, category, account: account.trim() || undefined, day, startDate })
+    await onSubmit({ type, memo: memo.trim().slice(0, 50), amount: amount.value, askAmount: askAmount ? 1 : 0, category, account: account.trim() || undefined, day, startDate })
   }
 
   return (
@@ -177,21 +184,49 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
         <input value={memo} onChange={(e) => changeMemo(e.target.value)} placeholder={type === 'EXPENSE' ? '예: 넷플릭스, SKT 통신비' : '예: 월급, 용돈'} className={inputClass(!!errors.memo)} />
       </Field>
 
-      <Field label="금액" error={errors.amount}>
-        <div className="relative">
-          <input
-            inputMode="numeric"
-            value={amountText}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10)
-              setAmountText(digits ? formatNumber(Number(digits)) : '')
+      <div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span id="recurring-amount-label" className="text-sm font-medium text-slate-600">
+            금액
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={askAmount}
+            onClick={() => {
+              setAskAmount(!askAmount)
+              setErrors((e) => ({ ...e, amount: undefined }))
             }}
-            placeholder="0"
-            className={`${inputClass(!!errors.amount)} pr-10 text-right text-lg font-bold`}
-          />
-          <span className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500">원</span>
+            className={`tap flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+              askAmount ? 'bg-grad text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            {askAmount ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : null}
+            일정하지 않음
+          </button>
         </div>
-      </Field>
+        {askAmount ? (
+          <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
+            금액을 정해 두지 않아요. 매달 {day === 31 ? '말일' : `${day}일`}이 되면 <b>"{type === 'INCOME' ? '월급을' : '금액을'} 입력해주세요"</b> 창이 떠요. 적은 금액이 그날 가계부에 {type === 'INCOME' ? '수입' : '지출'}으로 기록돼요.
+          </p>
+        ) : (
+          <div className="relative">
+            <input
+              inputMode="numeric"
+              aria-labelledby="recurring-amount-label"
+              value={amountText}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10)
+                setAmountText(digits ? formatNumber(Number(digits)) : '')
+              }}
+              placeholder="0"
+              className={`${inputClass(!!errors.amount)} pr-10 text-right text-lg font-bold`}
+            />
+            <span className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500">원</span>
+          </div>
+        )}
+        {errors.amount && <span className="mt-1 block text-sm text-expense">{errors.amount}</span>}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="매달 며칠">

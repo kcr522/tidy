@@ -240,6 +240,10 @@
 
 <img src="docs/screenshots/dash-equal-desktop.png" width="420"> <img src="docs/screenshots/money-header-360.png" width="240">
 
+**3차 · 금액이 일정하지 않은 월급 (월급날마다 금액 입력)**
+
+<img src="docs/screenshots/irregular-pay-2-on.png" width="240"> <img src="docs/screenshots/irregular-pay-3-prompt.png" width="240"> <img src="docs/screenshots/irregular-pay-4-recorded.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">
