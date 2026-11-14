@@ -39,6 +39,8 @@ export interface Recurring {
   /** 목록에 보일 이름 (예: 넷플릭스, 월급) */
   memo: string
   account?: string
+  /** 1이면 금액이 매달 달라서 그날마다 물어본다 (amount는 0으로 둔다) */
+  askAmount?: Flag
   /** 매달 며칠 (1~31, 그 달에 없는 날이면 말일) */
   day: number
   /** 이날부터 기록 (YYYY-MM-DD) */

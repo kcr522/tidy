@@ -59,6 +59,28 @@ describe('recurringRepo', () => {
     expect(await db.transactions.count()).toBe(4)
   })
 
+  it('금액이 일정하지 않은 월급은 자동으로 적지 않고 그날 물어본다', async () => {
+    db = new TidyDB('rec-3')
+    const repo = createRecurringRepo(db)
+    const id = await repo.add({ type: 'INCOME', amount: 0, askAmount: 1, category: '월급', memo: '월급', account: '토스뱅크', day: 10, startDate: '2026-10-01' })
+    expect(await repo.runDue('2026-11-14')).toBe(0)
+    const asks = await repo.dueAsks('2026-11-14')
+    expect(asks.map((a) => a.date)).toEqual(['2026-10-10', '2026-11-10'])
+    // 10월은 안 받음, 11월은 입력
+    expect(await repo.recordAsked(id, '2026-10-10', null)).toBe(false)
+    expect(await repo.recordAsked(id, '2026-11-10', 2310000)).toBe(true)
+    expect(await repo.recordAsked(id, '2026-11-10', 2310000)).toBe(false)
+    expect(await repo.dueAsks('2026-11-14')).toEqual([])
+    const tx = await db.transactions.toArray()
+    expect(tx).toHaveLength(1)
+    expect(tx[0]).toMatchObject({ type: 'INCOME', amount: 2310000, date: '2026-11-10', memo: '월급', account: '토스뱅크', recurringId: id })
+    expect((await repo.dueAsks('2026-12-10')).map((a) => a.date)).toEqual(['2026-12-10'])
+    // 다시 정해진 금액으로 바꾸면 그 다음부터 자동으로 적는다
+    await repo.update(id, { type: 'INCOME', amount: 2500000, askAmount: 0, category: '월급', memo: '월급', day: 10, startDate: '2026-10-01' })
+    expect(await repo.dueAsks('2026-12-10')).toEqual([])
+    expect(await repo.runDue('2026-12-10')).toBe(1)
+  })
+
   it('백업에 규칙이 들어가고, 예전(스키마 1) 백업도 읽는다', async () => {
     db = new TidyDB('rec-2')
     await createRecurringRepo(db).add({ type: 'EXPENSE', amount: 55000, category: '주거/통신', memo: 'SKT', day: 20, startDate: '2026-11-10' })

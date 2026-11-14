@@ -50,7 +50,7 @@ export default function PaydayCard({ incomes, today, onAdd }: Props) {
               </div>
               <p className="mt-1.5 flex justify-between text-xs text-slate-400">
                 <span>{d.daysLeft === 0 ? '오늘 들어와요!' : `${formatDateLabel(d.date)}`}</span>
-                <span className="font-semibold text-income">+{formatWon(r.amount)}</span>
+                <span className="font-semibold text-income">{r.askAmount !== 1 ? `+${formatWon(r.amount)}` : r.lastDate === d.date ? '기록했어요' : '금액은 그날 입력'}</span>
               </p>
             </li>
           ))}

@@ -29,3 +29,10 @@ export function formatTimeLabel(time: string): string {
 export function formatMonthLabel(year: number, month: number): string {
   return `${year}년 ${month}월`
 }
+
+/** 받침이 있으면 '을', 없으면 '를' (월급을, 용돈을, 보너스를) */
+export function eulReul(word: string): string {
+  const code = word.trim().charCodeAt(word.trim().length - 1)
+  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 === 0 ? '를' : '을'
+  return '을(를)'
+}

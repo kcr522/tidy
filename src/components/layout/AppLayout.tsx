@@ -17,6 +17,7 @@ import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
 import { todoRepo } from '../../repositories/todoRepo'
 import ColorModeButton from '../common/ColorModeButton'
+import AskAmountPrompt from '../transactions/AskAmountPrompt'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
 import { themeFor } from './theme'
@@ -105,6 +106,8 @@ export default function AppLayout() {
         </main>
       </div>
       <BottomTabBar />
+      {/* 금액이 일정하지 않은 월급 등: 그날이 되면 "월급을 입력해주세요" */}
+      <AskAmountPrompt today={today} />
     </div>
   )
 }
