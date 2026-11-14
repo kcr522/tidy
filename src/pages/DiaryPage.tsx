@@ -305,7 +305,7 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
           </button>
           <h2 className="flex-1 text-center text-[17px] font-bold">
             {dayTitle(date)}
-            {date === today && <span className="ml-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">오늘</span>}
+            {date === today && <span className="ml-1.5 inline-block rounded-full whitespace-nowrap bg-brand-50 px-2 py-0.5 text-xs text-brand-700">오늘</span>}
           </h2>
           <button type="button" onClick={() => shift(1)} disabled={date >= today} className="tap rounded-full p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="다음날">
             <ChevronRight className="size-5" aria-hidden />

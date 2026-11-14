@@ -124,9 +124,10 @@ export default function MoneyCard({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-on-soft px-3 py-2.5">
+    <div className="@container min-w-0 rounded-2xl bg-on-soft px-3 py-2.5">
       <dt className="text-xs opacity-85">{label}</dt>
-      <dd className="mt-0.5 font-bold break-all">{value}</dd>
+      {/* 칸이 좁으면(분할 화면) 숫자가 두 줄로 쪼개지지 않게 글자를 줄인다 */}
+      <dd className="mt-0.5 truncate text-[min(1rem,15.5cqw)] font-bold">{value}</dd>
     </div>
   );
 }

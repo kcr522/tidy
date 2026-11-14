@@ -3,6 +3,9 @@
 /* 다크 모드: <html class="dark"> 일 때 (src/lib/colorMode.ts 가 붙인다) */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* 낮은 창: 분할 화면(위아래 반반), 가로로 눕힌 폰, 작은 팝업 창. 메뉴와 여백을 줄여 내용이 보이게 한다 */
+@custom-variant short (@media (max-height: 520px));
+
 /*
  * Tidy 디자인 토큰
  * - 회색: 토스 느낌의 따뜻한 회색 (slate 팔레트를 덮어쓴다)

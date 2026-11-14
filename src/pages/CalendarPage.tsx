@@ -411,11 +411,11 @@ export default function CalendarPage() {
       </div>
 
       {/* 아래에 떠 있는 추가 버튼 (스크린샷의 "8월 1일에 추가") */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-6 md:bottom-8 md:left-60">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-6 short:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-8 md:left-52 short:md:bottom-4 lg:left-60">
         <button
           type="button"
           onClick={() => setEditor({ mode: 'add' })}
-          className="bg-grad on-grad pointer-events-auto flex min-h-14 w-full max-w-sm items-center justify-between rounded-full pr-4 pl-6 text-[16px] font-bold shadow-float active:scale-[0.98]"
+          className="bg-grad on-grad pointer-events-auto flex min-h-14 w-full max-w-sm short:min-h-11 items-center justify-between rounded-full pr-4 pl-6 text-[16px] font-bold shadow-float active:scale-[0.98]"
         >
           {sm}월 {sd}일에 추가
           <Plus className="size-6" strokeWidth={2.6} aria-hidden />
