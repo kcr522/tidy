@@ -22,11 +22,24 @@ describe('꾸미기 (customize)', () => {
 
   it('고정한 구역만 고른 색으로 바뀌고 나머지는 랜덤 그대로', () => {
     const theme = pickTheme(() => 0.3)
-    const c = defaultCustomization()
+    const c = { ...defaultCustomization(), sameColor: false }
     c.sections.todo = { ...c.sections.todo, color: 'fixed', colors: ['#ff0000', '#00ff00', '#0000ff'] }
     const t = withFixedColors(theme, c)
     expect(t.sections.todo.colors).toEqual(['#ff0000', '#00ff00', '#0000ff'])
     expect(t.sections.money).toEqual(theme.sections.money)
+  })
+
+  it('모든 메뉴 같은 색(기본): 모든 구역이 대시보드 색을 따른다', () => {
+    const theme = pickTheme(() => 0.3)
+    const c = defaultCustomization()
+    expect(c.sameColor).toBe(true)
+    expect(parseCustomization({}).sameColor).toBe(true)
+    expect(parseCustomization({ sameColor: false }).sameColor).toBe(false)
+    const t = withFixedColors(theme, c)
+    for (const s of ['money', 'todo', 'scrap'] as const) expect(t.sections[s]).toEqual(theme.sections.main)
+    // 대시보드 색을 고정하면 그 색으로 모두 맞춘다
+    c.sections.main = { ...c.sections.main, color: 'fixed', colors: ['#ff0000', '#00ff00', '#0000ff'] }
+    expect(withFixedColors(theme, c).sections.scrap.colors).toEqual(['#ff0000', '#00ff00', '#0000ff'])
   })
 
   it('체크 표시 색: 기본은 구역 색, 고른 색은 #rrggbb 만', () => {
