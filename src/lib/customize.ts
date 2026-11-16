@@ -70,6 +70,8 @@ export interface Customization {
   sections: Record<Section, SectionStyle>
   check: CheckStyle
   splash: SplashStyle
+  /** 모든 메뉴(가계부, 할 일, 일기, 캘린더, 스크랩, 설정)를 대시보드와 같은 색으로 (사용자 요청 2026-11-16) */
+  sameColor: boolean
 }
 
 const KEY = 'tidy-customize'
@@ -108,6 +110,7 @@ export function defaultCustomization(): Customization {
     sections: Object.fromEntries(SECTIONS.map((s) => [s, defaultSection()])) as Record<Section, SectionStyle>,
     check: { ...DEFAULT_CHECK },
     splash: { ...DEFAULT_SPLASH, palettes: {} },
+    sameColor: true,
   }
 }
 
@@ -138,6 +141,7 @@ export function parseCustomization(raw: unknown): Customization {
     clear: clamp(b.clear, 0, 100, DEFAULT_BACKGROUND.clear),
     cardClear: clamp(b.cardClear, 0, 70, 0),
   }
+  base.sameColor = (raw as { sameColor?: unknown }).sameColor !== false
   const ch = (r.check ?? {}) as Record<string, unknown>
   base.check = { color: ch.color === 'fixed' ? 'fixed' : 'section', fixed: isHex(ch.fixed) ? ch.fixed : DEFAULT_CHECK.fixed }
   const sp = (r.splash ?? {}) as Record<string, unknown>
@@ -225,12 +229,16 @@ export function withSplashColors(c: Customization, dark: boolean): Customization
   return { ...c, sections, background }
 }
 
-/** 켤 때 고른 랜덤 색에, 고정한 구역 색을 덮어쓴다 */
+/**
+ * 켤 때 고른 랜덤 색에, 고정한 구역 색을 덮어쓴다.
+ * 모든 메뉴 같은 색이면 대시보드 색(랜덤이든 고정이든)을 모든 구역에 똑같이 쓴다.
+ */
 export function withFixedColors(theme: Theme, c: Customization): Theme {
   const sections = { ...theme.sections }
   for (const s of SECTIONS) {
     if (c.sections[s].color === 'fixed') sections[s] = { colors: c.sections[s].colors, name: '내가 고른 색' }
   }
+  if (c.sameColor) for (const s of SECTIONS) sections[s] = sections.main
   return { ...theme, sections }
 }
 
