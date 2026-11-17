@@ -20,7 +20,22 @@ const ERASER_PX = 36
 /** 저장하는 그림 너비 (높이는 화면 비율대로) */
 const OUT_WIDTH = 1000
 
-type Stroke = { color: string; width: number; points: [number, number][] }
+/** 점마다 굵기를 따로 둔다 (펜 누르는 힘) */
+type Pt = [x: number, y: number, w: number]
+type Stroke = { color: string; width: number; points: Pt[] }
+
+/** 펜 누르는 힘(0~1) → 굵기 배율. 살살 쓰면 가늘게, 세게 누르면 굵게 */
+export function pressureScale(pressure: number): number {
+  if (!(pressure > 0)) return 1
+  return Math.min(1.8, Math.max(0.35, 0.35 + pressure * 1.45))
+}
+
+/**
+ * S펜 옆 버튼(배럴 버튼)이나 지우개 끝으로 그으면 지우개.
+ * 포인터 이벤트에서 배럴 버튼은 buttons 의 2, 지우개 끝은 32 로 온다
+ */
+export const isPenEraser = (pointerType: string, buttons: number) => pointerType === 'pen' && (buttons & (2 | 32)) !== 0
+
 
 interface Props {
   /** 고칠 때: 이전에 쓴 손글씨 (그 위에 이어서 쓴다) */
@@ -45,6 +60,10 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
   const [undone, setUndone] = useState<Stroke[]>([])
   const [cleared, setCleared] = useState(false)
   const drawing = useRef<Stroke | null>(null)
+  /** 지금 긋고 있는 손가락·펜 (다른 손가락·손바닥은 무시) */
+  const active = useRef<number | null>(null)
+  /** 펜으로 쓴 적이 있으면 손가락·손바닥 터치는 무시한다 (손을 화면에 대고 써도 되게) */
+  const [penMode, setPenMode] = useState(false)
 
   // 캔버스 크기: 너비 OUT_WIDTH, 높이는 화면 칸 비율. 고칠 때는 원래 그림 비율
   useLayoutEffect(() => {
@@ -86,16 +105,24 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
     }
   }, [onCancel])
 
-  function point(e: ReactPointerEvent<HTMLCanvasElement>): [number, number] {
-    const c = e.currentTarget
+  /** 화면 좌표 → 캔버스 점. 펜이면 누르는 힘으로 굵기를 바꾼다 (지우개는 그대로) */
+  function point(c: HTMLCanvasElement, ev: { clientX: number; clientY: number; pressure: number; pointerType: string }, s: Pick<Stroke, 'width' | 'color'>): Pt {
     const r = c.getBoundingClientRect()
-    return [((e.clientX - r.left) / r.width) * c.width, ((e.clientY - r.top) / r.height) * c.height]
+    const w = ev.pointerType === 'pen' && s.color !== '#ffffff' ? s.width * pressureScale(ev.pressure) : s.width
+    return [((ev.clientX - r.left) / r.width) * c.width, ((ev.clientY - r.top) / r.height) * c.height, w]
   }
 
   function down(e: ReactPointerEvent<HTMLCanvasElement>) {
     e.preventDefault()
+    if (e.pointerType === 'pen' && !penMode) setPenMode(true)
+    // 펜으로 쓰는 중이면 손바닥·손가락은 무시, 이미 긋는 중이면 두 번째 손가락도 무시
+    if (penMode && e.pointerType === 'touch') return
+    if (active.current !== null) return
+    active.current = e.pointerId
     e.currentTarget.setPointerCapture(e.pointerId)
-    const s: Stroke = { color: erasing ? '#ffffff' : color, width: erasing ? ERASER_PX : width, points: [point(e)] }
+    const rub = erasing || isPenEraser(e.pointerType, e.buttons)
+    const s: Stroke = { color: rub ? '#ffffff' : color, width: rub ? ERASER_PX : width, points: [] }
+    s.points.push(point(e.currentTarget, e, s))
     drawing.current = s
     const ctx = e.currentTarget.getContext('2d')
     if (ctx) paint(ctx, s)
@@ -103,28 +130,22 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
 
   function move(e: ReactPointerEvent<HTMLCanvasElement>) {
     const s = drawing.current
-    if (!s) return
-    const ctx = e.currentTarget.getContext('2d')
+    if (!s || e.pointerId !== active.current) return
+    const c = e.currentTarget
+    const ctx = c.getContext('2d')
     // 빠르게 그을 때 놓친 점까지
     const events = 'getCoalescedEvents' in e.nativeEvent ? e.nativeEvent.getCoalescedEvents() : []
-    const list = events.length ? events.map((ev) => point({ ...e, clientX: ev.clientX, clientY: ev.clientY } as ReactPointerEvent<HTMLCanvasElement>)) : [point(e)]
+    const list = (events.length ? events : [e.nativeEvent]).map((ev) => point(c, ev, s))
     for (const p of list) {
       const last = s.points[s.points.length - 1]
       s.points.push(p)
-      if (ctx) {
-        ctx.strokeStyle = s.color
-        ctx.lineWidth = s.width
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        ctx.beginPath()
-        ctx.moveTo(last[0], last[1])
-        ctx.lineTo(p[0], p[1])
-        ctx.stroke()
-      }
+      if (ctx) segment(ctx, s.color, last, p)
     }
   }
 
-  function up() {
+  function up(e: ReactPointerEvent<HTMLCanvasElement>) {
+    if (e.pointerId !== active.current) return
+    active.current = null
     const s = drawing.current
     drawing.current = null
     if (!s) return
@@ -192,6 +213,7 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
             onPointerMove={move}
             onPointerUp={up}
             onPointerCancel={up}
+            onContextMenu={(e) => e.preventDefault()}
             className="max-h-full max-w-full touch-none rounded-2xl bg-white shadow-sm"
             style={{ aspectRatio: `${size.w} / ${size.h}`, cursor: erasing ? 'cell' : 'crosshair' }}
             aria-label="손글씨 쓰는 곳"
@@ -233,6 +255,7 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
         <button type="button" onClick={() => setErasing((v) => !v)} className={tool(erasing)} aria-label="지우개" aria-pressed={erasing}>
           <Eraser className="size-5" aria-hidden />
         </button>
+        {penMode && <span className="shrink-0 pl-1 text-xs whitespace-nowrap text-slate-500">S펜: 버튼 누르고 그으면 지우개 · 손은 화면에 대도 돼요</span>}
       </div>
     </div>,
     document.body,
@@ -240,21 +263,27 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
 }
 
 function paint(ctx: CanvasRenderingContext2D, s: Stroke) {
-  ctx.strokeStyle = s.color
-  ctx.fillStyle = s.color
-  ctx.lineWidth = s.width
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
+  if (!s.points.length) return
   if (s.points.length === 1) {
-    const [x, y] = s.points[0]
+    const [x, y, w] = s.points[0]
+    ctx.fillStyle = s.color
     ctx.beginPath()
-    ctx.arc(x, y, s.width / 2, 0, Math.PI * 2)
+    ctx.arc(x, y, w / 2, 0, Math.PI * 2)
     ctx.fill()
     return
   }
+  for (let i = 1; i < s.points.length; i++) segment(ctx, s.color, s.points[i - 1], s.points[i])
+}
+
+/** 두 점 사이 한 토막 (굵기는 두 점의 가운데) */
+function segment(ctx: CanvasRenderingContext2D, color: string, a: Pt, b: Pt) {
+  ctx.strokeStyle = color
+  ctx.lineWidth = (a[2] + b[2]) / 2
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
   ctx.beginPath()
-  ctx.moveTo(s.points[0][0], s.points[0][1])
-  for (const [x, y] of s.points.slice(1)) ctx.lineTo(x, y)
+  ctx.moveTo(a[0], a[1])
+  ctx.lineTo(b[0], b[1])
   ctx.stroke()
 }
 
@@ -267,11 +296,11 @@ function trimmed(c: HTMLCanvasElement, strokes: Stroke[] | null): string {
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
   for (const s of strokes) {
     if (s.color === '#ffffff') continue
-    for (const [x, y] of s.points) {
-      x0 = Math.min(x0, x - s.width)
-      y0 = Math.min(y0, y - s.width)
-      x1 = Math.max(x1, x + s.width)
-      y1 = Math.max(y1, y + s.width)
+    for (const [x, y, w] of s.points) {
+      x0 = Math.min(x0, x - w)
+      y0 = Math.min(y0, y - w)
+      x1 = Math.max(x1, x + w)
+      y1 = Math.max(y1, y + w)
     }
   }
   if (!Number.isFinite(x0)) return c.toDataURL('image/png')
