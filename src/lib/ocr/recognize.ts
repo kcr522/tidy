@@ -1,5 +1,6 @@
 // 기기 안에서 사진 속 글자를 읽는다 (Tesseract, 무료, 인터넷으로 사진을 보내지 않는다)
 // 처음 한 번은 글자 인식 파일(약 6MB)을 Tidy 서버에서 받아 기기에 저장한다.
+import { Capacitor } from '@capacitor/core'
 import type { Worker } from 'tesseract.js'
 import { toDecodable } from '../heic'
 
@@ -21,6 +22,9 @@ function getWorker(): Promise<Worker> {
         workerPath: ocrUrl('worker.min.js'),
         corePath: ocrUrl('core'),
         langPath: ocrUrl('lang'),
+        // 안드로이드 앱을 만들 때 .gz 파일은 압축이 풀리고 이름에서 .gz 가 빠진 채 들어간다 (kor.traineddata).
+        // 그래서 폰 앱에서는 .gz 가 아닌 이름으로 찾는다. 웹은 그대로 .gz 를 받는다.
+        gzip: !Capacitor.isNativePlatform(),
         logger: (m) => {
           if (m.status === 'recognizing text') progress?.('reading', m.progress)
           else progress?.('loading', m.progress)
