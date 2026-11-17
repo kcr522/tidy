@@ -100,7 +100,7 @@ export default function WidgetCard() {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 크게 늘리면 글자가 커지고 하루에 일정이 4개까지 보여요.</p>
+          <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 가장 크게(4×6, 폰 화면 가득) 늘리면 글자가 커지고 하루에 일정이 4개까지 보여요.</p>
         </div>
       )}
       <Wallpaper tall={kind === 'calendar' && calSize === 'large'}>
@@ -144,7 +144,7 @@ export default function WidgetCard() {
 const CAL_SIZES: { size: CalendarSize; label: string }[] = [
   { size: 'small', label: '작게 4×3' },
   { size: 'medium', label: '보통 4×4' },
-  { size: 'large', label: '크게 (화면 가득)' },
+  { size: 'large', label: '크게 4×6' },
 ]
 
 /** 투명도가 보이도록 홈 화면 배경처럼 깔아 두는 그림. tall 이면 폰 홈 화면 한 장 크기 (상태 줄과 아래 앱 줄까지) */
