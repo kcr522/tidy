@@ -53,7 +53,7 @@ function BasicSplash({ leaving, onSkip }: { leaving: boolean; onSkip: () => void
 export default function Splash() {
   const location = useLocation()
   const [splash] = useState<SplashState | null>(() => {
-    if (shown || location.pathname.startsWith('/share')) return null
+    if (shown || location.pathname.startsWith('/share') || location.pathname.startsWith('/widget')) return null
     const c = loadCustomization()
     const ref = splashPhoto(c)
     if (!ref && !c.splash.basic) return null

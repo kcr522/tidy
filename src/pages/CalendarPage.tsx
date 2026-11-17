@@ -25,6 +25,7 @@ import DayPopup from '../components/calendar/DayPopup'
 import { diaryRepo } from '../repositories/diaryRepo'
 import { eventRepo, type EventInput } from '../repositories/eventRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
+import { deviceCalName, loadDeviceCal } from '../platform/deviceCalendar'
 import { calOf, loadGoogleCals, onGoogleCalChange } from '../platform/googleCalendar'
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -122,7 +123,7 @@ export default function CalendarPage() {
   }
 
   function openEvent(e: CalendarEvent) {
-    if (e.source === 'google') setGoogleItem(e)
+    if (e.source) setGoogleItem(e)
     else setEditor({ mode: 'event', item: e })
   }
 
@@ -483,8 +484,14 @@ export default function CalendarPage() {
         {googleItem && (
           <div className="space-y-2 text-sm text-slate-700">
             <p>{googleItem.startDate === googleItem.endDate ? dayTitle(googleItem.startDate) : `${shortDate(googleItem.startDate)} ~ ${shortDate(googleItem.endDate)} · ${eventDays(googleItem)}일`}</p>
-            {googleItem.memo && <p className="text-slate-500">{googleItem.memo}</p>}
-            <p className="rounded-2xl bg-blue-50 px-3 py-2.5 text-xs break-keep text-blue-700">구글 캘린더{calOf(googleItem, googleCals) ? ` "${calOf(googleItem, googleCals)?.name}"` : ''}에서 가져온 일정이에요. 바꾸려면 구글 캘린더에서 고쳐 주세요. 다음에 가져올 때 같이 바뀌어요.</p>
+            {googleItem.memo && <p className="whitespace-pre-wrap text-slate-500">{googleItem.memo}</p>}
+            {googleItem.source === 'device' ? (
+              <p className="rounded-2xl bg-blue-50 px-3 py-2.5 text-xs break-keep text-blue-700">
+                삼성 캘린더{deviceCalName(googleItem.calId, loadDeviceCal()) ? ` "${deviceCalName(googleItem.calId, loadDeviceCal())}"` : ''}에서 가져온 일정이에요. 바꾸려면 삼성 캘린더에서 고쳐 주세요. 몇 분 안에 여기도 같이 바뀌어요.
+              </p>
+            ) : (
+              <p className="rounded-2xl bg-blue-50 px-3 py-2.5 text-xs break-keep text-blue-700">구글 캘린더{calOf(googleItem, googleCals) ? ` "${calOf(googleItem, googleCals)?.name}"` : ''}에서 가져온 일정이에요. 바꾸려면 구글 캘린더에서 고쳐 주세요. 다음에 가져올 때 같이 바뀌어요.</p>
+            )}
           </div>
         )}
       </Modal>

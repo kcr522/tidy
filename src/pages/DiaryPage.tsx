@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Clock, ImagePlus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AttachmentField, { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
+import HandwriteButton, { appendHandwritten } from '../components/common/HandwriteButton'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import PageHeader from '../components/common/PageHeader'
@@ -384,7 +385,8 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
           className="w-full resize-none rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
           aria-label="일기 내용"
         />
-        <div className="mt-1 flex items-center justify-end">
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <HandwriteButton label="일기" onText={(t) => setText((old) => appendHandwritten(old, t, true, MAX_TEXT))} />
           <span className="text-xs text-slate-400">
             {text.length}/{MAX_TEXT}
           </span>

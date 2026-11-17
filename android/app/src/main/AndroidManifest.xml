@@ -27,15 +27,88 @@
             </intent-filter>
         </activity>
 
-        <!-- 홈 화면 위젯 -->
+        <!-- 삼성 노트 등에서 "공유 → Tidy 메모": 글 · 사진 · 파일을 새 메모로 (ShareIntentPlugin 이 이 이름으로 구분한다) -->
+        <activity-alias
+            android:name=".MemoShare"
+            android:targetActivity=".MainActivity"
+            android:label="@string/share_memo_label"
+            android:icon="@mipmap/ic_launcher"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 홈 화면 위젯 여섯 종류 (WidgetData.java) -->
         <receiver
             android:name=".TidyWidget"
-            android:label="@string/app_name"
+            android:label="@string/widget_name_today"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/tidy_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".TodoWidget"
+            android:label="@string/widget_name_todo"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_todo_info" />
+        </receiver>
+        <receiver
+            android:name=".MoneyWidget"
+            android:label="@string/widget_name_money"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_money_info" />
+        </receiver>
+        <receiver
+            android:name=".EventWidget"
+            android:label="@string/widget_name_event"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_event_info" />
+        </receiver>
+        <receiver
+            android:name=".HabitWidget"
+            android:label="@string/widget_name_habit"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_habit_info" />
+        </receiver>
+        <receiver
+            android:name=".CalendarWidget"
+            android:label="@string/widget_name_calendar"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_info" />
+        </receiver>
+        <receiver
+            android:name=".MemoWidget"
+            android:label="@string/widget_name_memo"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_memo_info" />
         </receiver>
 
         <!-- 결제 알림 읽기: 카드사·은행·삼성 월렛 결제 알림을 가계부 후보로 모은다 (PayNotifyService) -->
@@ -67,4 +140,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- "가계부에 기록할까요?" 알림 띄우기 (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 삼성 캘린더(폰 캘린더) 일정 읽기 · Tidy 일정 넣기 (설정에서 켤 때 처음 한 번 물어본다) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 </manifest>

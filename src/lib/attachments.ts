@@ -33,6 +33,7 @@ export function cleanAttachments(list: readonly Attachment[] | undefined): Attac
 }
 
 export const isImage = (a: Pick<Attachment, 'type'>) => a.type.startsWith('image/')
+export const isVideo = (a: Pick<Attachment, 'type'>) => a.type.startsWith('video/')
 export const isGif = (a: Pick<Attachment, 'type'>) => a.type === 'image/gif'
 
 /** 다른 기기로도 넘어가는지 */
@@ -62,8 +63,8 @@ export function dataUrlBytes(src: string): number {
 export const readAsDataUrl = (file: Blob): Promise<string> => blobToDataUrl(file)
 
 export class AttachmentTooBigError extends Error {
-  constructor(name: string) {
-    super(`${name}: ${formatBytes(MAX_ATTACHMENT_BYTES)}보다 큰 파일은 넣을 수 없어요`)
+  constructor(name: string, max = MAX_ATTACHMENT_BYTES) {
+    super(`${name}: ${formatBytes(max)}보다 큰 파일은 넣을 수 없어요`)
     this.name = 'AttachmentTooBigError'
   }
 }
@@ -75,7 +76,7 @@ const shrinkable = (type: string, name: string) => (/^image\/(jpeg|png|webp|heic
  * 고른 파일 하나 → 첨부.
  * 사진은 긴 쪽 1600px JPEG 으로 줄이고(못 줄이면 그대로), 나머지(GIF, PDF, 문서 등)는 그대로 넣는다.
  */
-export async function fileToAttachment(file: File, shrink: (f: File) => Promise<string>): Promise<Attachment> {
+export async function fileToAttachment(file: File, shrink: (f: File) => Promise<string>, maxBytes = MAX_ATTACHMENT_BYTES): Promise<Attachment> {
   const name = file.name || '파일'
   if (shrinkable(file.type, name)) {
     try {
@@ -85,7 +86,7 @@ export async function fileToAttachment(file: File, shrink: (f: File) => Promise<
       // 열 수 없는 사진이면 파일 그대로
     }
   }
-  if (file.size > MAX_ATTACHMENT_BYTES) throw new AttachmentTooBigError(name)
+  if (file.size > maxBytes) throw new AttachmentTooBigError(name, maxBytes)
   const src = await readAsDataUrl(file)
   return { name, type: file.type || 'application/octet-stream', size: file.size, src }
 }

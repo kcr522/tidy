@@ -265,3 +265,22 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .animate-splash-pop { animation: none; }
 }
+
+/* 메모 꾸민 글 (src/components/memo/RichTextEditor.tsx, 메모 미리보기) */
+.memo-rich ul { list-style: disc; padding-left: 1.5rem; }
+.memo-rich ol { list-style: decimal; padding-left: 1.6rem; }
+.memo-rich li { margin: 0.1rem 0; }
+.memo-rich img { display: inline-block; max-width: 100%; height: auto; border-radius: 0.75rem; vertical-align: bottom; margin: 0.25rem 0; cursor: pointer; }
+.memo-rich img[data-sel] { outline: 3px solid var(--color-brand-500); outline-offset: 2px; }
+.memo-rich span[style*='background-color'] { border-radius: 0.2em; padding: 0 0.05em; }
+/* 다크 모드: 형광펜 위 글자는 어둡게, '기본 색'으로 칠한 글자는 화면 글자 색으로 */
+.dark .memo-rich span[style*='background-color'] { color: #191f28; }
+.dark .memo-rich [style*='rgb(25, 31, 40)'] { color: inherit !important; }
+
+/* 컴퓨터 위젯 앱(Tidy 달력): 창 바탕을 비워 바탕화면이 비치게 (src/pages/WidgetWindowPage.tsx) */
+html.desk-widget,
+html.desk-widget body,
+html.desk-widget #root {
+  background: transparent !important;
+  background-image: none !important;
+}

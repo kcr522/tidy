@@ -8,6 +8,7 @@ import { MAX_MEMO_LENGTH, MAX_TITLE_LENGTH, domainOf, normalizeUrl, validateMemo
 import type { BookmarkInput } from '../../repositories/bookmarkRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
+import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
 import { inputClass } from '../common/formStyles'
 import CategoryPicker from './CategoryPicker'
 import SourceBadge from './SourceBadge'
@@ -186,6 +187,7 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
           onChange={(e) => setMemo(e.target.value)}
           className={`${inputClass(!!errors.memo)} py-2`}
         />
+        <HandwriteButton label="스크랩 메모" className="mt-1.5" onText={(t) => setMemo((old) => appendHandwritten(old, t, true, MAX_MEMO_LENGTH))} />
       </Field>
 
       {sameExists && (

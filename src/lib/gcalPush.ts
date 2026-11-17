@@ -67,7 +67,8 @@ export function buildPushItems(events: CalendarEvent[], todos: Todo[], opts: Pus
   const out: PushItem[] = []
   const add = (id: string, body: GoogleEventBody) => out.push({ id, body, hash: hashOf(body) })
   for (const e of events) {
-    if (e.id == null || e.source === 'google') continue
+    // 구글 · 폰 캘린더에서 가져온 일정은 보내지 않는다 (Tidy 에서 만든 것만)
+    if (e.id == null || e.source) continue
     add(eventGoogleId(e.id), {
       summary: e.title,
       ...(e.memo && { description: e.memo }),

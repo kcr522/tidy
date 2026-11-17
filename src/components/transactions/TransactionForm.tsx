@@ -12,6 +12,7 @@ import { ACCOUNT_PRESETS, accountEmoji, MAX_ACCOUNT_LENGTH } from '../../lib/acc
 import { transactionRepo, type TransactionInput } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
+import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
 import { inputClass } from '../common/formStyles'
 import MerchantAvatar from './MerchantAvatar'
 
@@ -198,13 +199,16 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
 
       {/* 메모 */}
       <Field label={`가게 · 메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
-        <input
-          value={memo}
-          maxLength={MAX_MEMO_LENGTH}
-          placeholder="예: 다이소 운남점, 점심"
-          onChange={(e) => changeMemo(e.target.value)}
-          className={inputClass(!!errors.memo)}
-        />
+        <div className="flex gap-2">
+          <input
+            value={memo}
+            maxLength={MAX_MEMO_LENGTH}
+            placeholder="예: 다이소 운남점, 점심"
+            onChange={(e) => changeMemo(e.target.value)}
+            className={inputClass(!!errors.memo)}
+          />
+          <HandwriteButton compact label="가게 · 메모" className="self-center" onText={(t) => changeMemo(appendHandwritten(memo, t, false, MAX_MEMO_LENGTH))} />
+        </div>
         {savedAlias ? (
           <span className="mt-2 block text-xs text-slate-500">
             전에 알려 준 대로 <b className="font-semibold text-slate-700">{savedAlias.name}</b>(으)로 저장돼요
