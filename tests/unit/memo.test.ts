@@ -106,3 +106,26 @@ describe('memoRepo', () => {
     expect(await repo.list()).toMatchObject([{ title: '주간 회의', folderId: f, attachments: [{ name: 'a.mp4' }] }])
   })
 })
+
+describe('메모 위젯', () => {
+  it('고정 먼저, 최근 순으로 4개. 파일집 색, 오늘은 시각·다른 날은 날짜. 잠금이면 숨김', async () => {
+    const { buildWidgetSummary, memoWidgetView } = await import('../../src/lib/widgetSummary')
+    const memos = [
+      memo({ id: 1, title: '오래된 고정', pinned: 1, createdAt: '2026-11-01T03:00:00.000Z' }),
+      memo({ id: 2, title: '', text: '장보기\n우유', folderId: 7, createdAt: '2026-11-17T05:05:00.000Z' }),
+      memo({ id: 3, title: '어제', createdAt: '2026-11-16T03:00:00.000Z' }),
+      memo({ id: 4, title: 'a', createdAt: '2026-11-10T03:00:00.000Z' }),
+      memo({ id: 5, title: 'b', createdAt: '2026-11-09T03:00:00.000Z' }),
+    ]
+    const folders = [{ id: 7, name: '집', color: '#e5484d', order: 0, createdAt: '' }]
+    const s = buildWidgetSummary([], [], '2026-11-17', false, { memos, memoFolders: folders })
+    expect(s.memon).toBe(5)
+    const view = memoWidgetView(s, '2026-11-17')
+    expect(view.rows.map((r) => r.id)).toEqual([1, 2, 3, 4])
+    expect(view.rows[1]).toMatchObject({ t: '장보기', c: '#e5484d', p: 0 })
+    expect(view.rows[0].p).toBe(1)
+    expect(view.rows[2].when).toBe('11/16')
+    const locked = memoWidgetView(buildWidgetSummary([], [], '2026-11-17', true, { memos }), '2026-11-17')
+    expect(locked).toMatchObject({ locked: true, rows: [] })
+  })
+})

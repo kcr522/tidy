@@ -16,7 +16,7 @@ import java.util.Calendar;
 import java.util.Locale;
 
 /**
- * 홈 화면 위젯 다섯 종류가 함께 쓰는 것: 요약 읽기, 바탕 투명도, 앱 열기, 자정에 다시 그리기.
+ * 홈 화면 위젯 여섯 종류가 함께 쓰는 것: 요약 읽기, 바탕 투명도, 앱 열기, 자정에 다시 그리기.
  * 요약 모양은 src/lib/widgetSummary.ts 의 WidgetSummary, 투명도는 src/lib/widgetSettings.ts.
  */
 final class WidgetData {
@@ -35,12 +35,13 @@ final class WidgetData {
         if ("money".equals(kind)) return MoneyWidget.class;
         if ("event".equals(kind)) return EventWidget.class;
         if ("habit".equals(kind)) return HabitWidget.class;
+        if ("calendar".equals(kind)) return CalendarWidget.class;
         if ("memo".equals(kind)) return MemoWidget.class;
         return TidyWidget.class;
     }
 
     static TidyBaseWidget[] all() {
-        return new TidyBaseWidget[] {new TidyWidget(), new TodoWidget(), new MoneyWidget(), new EventWidget(), new HabitWidget(), new MemoWidget()};
+        return new TidyBaseWidget[] {new TidyWidget(), new TodoWidget(), new MoneyWidget(), new EventWidget(), new HabitWidget(), new CalendarWidget(), new MemoWidget()};
     }
 
     static String todayKey() {
@@ -87,7 +88,7 @@ final class WidgetData {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         for (TidyBaseWidget w : all()) {
             int[] ids = manager.getAppWidgetIds(new ComponentName(context, w.getClass()));
-            for (int id : ids) manager.updateAppWidget(id, w.build(context));
+            for (int id : ids) manager.updateAppWidget(id, w.build(context, id));
         }
         scheduleMidnight(context);
     }

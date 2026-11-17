@@ -8,6 +8,8 @@ import { loadLock, onLockChange } from '../../lib/appLock'
 import { loadWidgetOpacity, onWidgetSettingsChange, saveWidgetOpacity, WIDGET_KINDS, type WidgetKind } from '../../lib/widgetSettings'
 import {
   buildWidgetSummary,
+  CALENDAR_MODES,
+  calendarWidgetView,
   eventWidgetView,
   habitWidgetView,
   memoWidgetView,
@@ -15,6 +17,7 @@ import {
   todoWidgetView,
   widgetRange,
   widgetView,
+  type CalendarMode,
   type EventWidgetView,
   type HabitWidgetView,
   type MemoWidgetView,
@@ -132,6 +135,7 @@ function KindPreview({ kind, summary, today, opacity }: { kind: WidgetKind; summ
   if (kind === 'money') return <MoneyWidgetPreview view={moneyWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'event') return <EventWidgetPreview view={eventWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'habit') return <HabitWidgetPreview view={habitWidgetView(summary, today)} opacity={opacity} />
+  if (kind === 'calendar') return <CalendarWidgetPreview summary={summary} today={today} opacity={opacity} />
   if (kind === 'memo') return <MemoWidgetPreview view={memoWidgetView(summary, today)} opacity={opacity} />
   return <WidgetPreview view={widgetView(summary, today)} opacity={opacity} />
 }
@@ -324,6 +328,59 @@ function HabitWidgetPreview({ view, opacity }: { view: HabitWidgetView; opacity:
           </ul>
         </>
       )}
+    </Frame>
+  )
+}
+
+const WEEK_HEAD = ['일', '월', '화', '수', '목', '금', '토']
+
+/** '달력' 위젯 (widget_calendar.xml): 위의 버튼으로 돈 · 일기 · 일정 달력을 바꿔 본다 */
+function CalendarWidgetPreview({ summary, today, opacity }: { summary: WidgetSummary; today: string; opacity: number }) {
+  const [mode, setMode] = useState<CalendarMode>('money')
+  const view = calendarWidgetView(summary, today, mode)
+  const dayColor = (weekday: number, holiday: boolean) => (weekday === 0 || holiday ? 'text-[#f04452]' : weekday === 6 ? 'text-[#3182f6]' : '')
+  return (
+    <Frame wide opacity={opacity} label="달력 위젯 미리보기">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[15px] font-bold">{view.monthLabel}</p>
+        <div className="flex gap-1">
+          {CALENDAR_MODES.map((m) => (
+            <button
+              key={m.mode}
+              type="button"
+              onClick={() => setMode(m.mode)}
+              aria-pressed={mode === m.mode}
+              className={`rounded-full px-2 py-0.5 text-xs font-bold ${mode === m.mode ? 'bg-[#1d8fe1] text-[#fff]' : 'bg-[#e8eef5] text-[#6b7684] dark:bg-[#2c313a] dark:text-[#9aa4b1]'}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className={`mt-0.5 h-4 text-xs ${MUTED}`}>{view.stale ? STALE : view.locked ? '🔒 잠금 중이라 숨겼어요' : view.sum}</p>
+      <div className="mt-1.5 grid grid-cols-7 text-center text-[10px] font-semibold">
+        {WEEK_HEAD.map((w, i) => (
+          <span key={w} className={dayColor(i, false) || MUTED}>
+            {w}
+          </span>
+        ))}
+      </div>
+      <div className="mt-0.5 grid grid-cols-7 gap-y-0.5 text-center">
+        {view.weeks.flat().map((c, i) =>
+          c === null ? (
+            <span key={i} className="h-9" />
+          ) : (
+            <span key={i} className={`flex h-9 min-w-0 flex-col items-center rounded-lg pt-0.5 ${c.today ? 'bg-[#1d8fe1]/15' : ''}`}>
+              <span className={`text-[11px] leading-tight font-semibold ${c.today ? 'text-[#1d8fe1]' : dayColor(c.weekday, c.holiday)}`}>{c.day}</span>
+              {c.dot ? (
+                <span className="mt-0.5 size-2.5 rounded-full" style={{ background: c.dot }} />
+              ) : (
+                <span className={`w-full truncate px-0.5 text-[9px] leading-tight ${mode === 'money' ? 'text-[#f04452]' : ''}`}>{c.text}</span>
+              )}
+            </span>
+          ),
+        )}
+      </div>
     </Frame>
   )
 }

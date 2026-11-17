@@ -1,6 +1,8 @@
-import { addDays, format } from 'date-fns'
-import type { Budget, CalendarEvent, Habit, HabitCheck, Memo, MemoFolder, Todo, Transaction } from '../db/types'
+import { addDays, addMonths, endOfMonth, format, getDay, getDaysInMonth } from 'date-fns'
+import type { Budget, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, Todo, Transaction } from '../db/types'
+import { cellWon } from './calendar'
 import { parseDateKey } from './date'
+import { holidaysBetween } from './holidays'
 import { memoTitle, sortMemos } from './memo'
 import { isDueOn } from './savings'
 import { todayTodos } from './summary'
@@ -86,6 +88,20 @@ export interface WidgetSummary {
   memos: WidgetMemo[]
   /** 메모 전체 수 */
   memon: number
+  /** 달력 위젯: YYYY-MM → 그달 칸 (이번 달과 다음 달) */
+  cal: Record<string, WidgetCalMonth>
+}
+
+/** 달력 위젯 한 달. 키는 날짜 숫자 ('1'~'31') */
+export interface WidgetCalMonth {
+  /** 그날 지출. 잠금 중이면 비어 있다 */
+  s: Record<string, number>
+  /** 그날 일정: [첫 일정 제목, 일정 수]. 잠금 중이면 비어 있다 */
+  e: Record<string, [string, number]>
+  /** 일기 쓴 날: 일기 색. 잠금 중이면 비어 있다 */
+  d: Record<string, string>
+  /** 공휴일인 날 */
+  h: number[]
 }
 
 /** 할 일, 지출 말고 다른 위젯이 쓰는 것들 (없으면 빈 칸) */
@@ -97,6 +113,8 @@ export interface WidgetExtras {
   checks?: HabitCheck[]
   budgets?: Budget[]
   opacity?: WidgetOpacity
+  /** 이번 달과 다음 달 일기 (날짜와 색만 쓴다) */
+  diaries?: Pick<Diary, 'date' | 'color'>[]
   memos?: Memo[]
   memoFolders?: MemoFolder[]
 }
@@ -145,16 +163,46 @@ export function buildWidgetSummary(todos: Todo[], transactions: Transaction[], t
     }
   }
   const total = extras.budgets?.find((b) => b.category === '')
+  const cal = buildCal(transactions, events, extras.diaries ?? [], today, locked)
   const folderColor = new Map((extras.memoFolders ?? []).map((f) => [f.id, f.color]))
   const memos = sortMemos(extras.memos ?? [])
     .slice(0, WIDGET_MEMOS)
     .map((m) => ({ id: m.id ?? 0, t: locked ? '' : memoTitle(m), at: m.createdAt, c: (m.folderId && folderColor.get(m.folderId)) || '', p: (m.pinned ? 1 : 0) as 0 | 1 }))
-  return { v: 2, locked, days, months, budget: locked || !total ? null : total.amount, opacity: extras.opacity ?? defaultOpacity(), memos, memon: extras.memos?.length ?? 0 }
+  return { v: 2, locked, days, months, budget: locked || !total ? null : total.amount, opacity: extras.opacity ?? defaultOpacity(), cal, memos, memon: extras.memos?.length ?? 0 }
 }
 
-/** 위젯용 내역을 읽을 범위: [이번 달 1일, 오늘 + WIDGET_DAYS일) */
+/** 달력 위젯이 앱 없이 다음 달까지 보이도록 이번 달과 다음 달을 담는다 */
+function buildCal(transactions: Transaction[], events: CalendarEvent[], diaries: Pick<Diary, 'date' | 'color'>[], today: string, locked: boolean): Record<string, WidgetCalMonth> {
+  const cal: Record<string, WidgetCalMonth> = {}
+  const first = parseDateKey(`${today.slice(0, 7)}-01`)
+  for (let m = 0; m < 2; m++) {
+    const start = addMonths(first, m)
+    const ym = format(start, 'yyyy-MM')
+    const last = format(endOfMonth(start), 'yyyy-MM-dd')
+    const month: WidgetCalMonth = { s: {}, e: {}, d: {}, h: [] }
+    for (const key of holidaysBetween(`${ym}-01`, last).keys()) month.h.push(Number(key.slice(8)))
+    cal[ym] = month
+    if (locked) continue
+    for (const t of transactions) {
+      if (t.type !== 'EXPENSE' || t.date.slice(0, 7) !== ym) continue
+      const d = String(Number(t.date.slice(8)))
+      month.s[d] = (month.s[d] ?? 0) + t.amount
+    }
+    for (const dy of diaries) if (dy.date.slice(0, 7) === ym) month.d[String(Number(dy.date.slice(8)))] = dy.color || '#1d8fe1'
+    const n = getDaysInMonth(start)
+    for (let day = 1; day <= n; day++) {
+      const key = `${ym}-${String(day).padStart(2, '0')}`
+      const on = events.filter((e) => e.startDate <= key && e.endDate >= key)
+      if (on.length > 0) month.e[String(day)] = [on[0].title, on.length]
+    }
+  }
+  return cal
+}
+
+/** 위젯용 내역 · 일정을 읽을 범위: [이번 달 1일, 다다음 달 1일) — 달력 위젯이 다음 달까지 쓴다 */
 export function widgetRange(today: string): [string, string] {
-  return [`${today.slice(0, 7)}-01`, format(addDays(parseDateKey(today), WIDGET_DAYS), 'yyyy-MM-dd')]
+  const first = parseDateKey(`${today.slice(0, 7)}-01`)
+  return [`${today.slice(0, 7)}-01`, format(addMonths(first, 2), 'yyyy-MM-dd')]
 }
 
 /** 위젯 한 장에 보이는 내용. 안드로이드 TidyWidget.java 도 같은 규칙으로 그린다 */
@@ -283,6 +331,71 @@ export function habitWidgetView(s: WidgetSummary | null, today: string): HabitWi
   const day = s?.days[today]
   if (!s || !day) return { stale: true, locked: s?.locked ?? false, done: 0, total: 0, items: [] }
   return { stale: false, locked: s.locked, done: day.hbd ?? 0, total: day.hbn ?? 0, items: day.hb ?? [] }
+}
+
+/** 달력 위젯에서 보는 것 */
+export type CalendarMode = 'money' | 'diary' | 'event'
+
+export const CALENDAR_MODES: { mode: CalendarMode; label: string }[] = [
+  { mode: 'money', label: '💰 돈' },
+  { mode: 'diary', label: '📔 일기' },
+  { mode: 'event', label: '📅 일정' },
+]
+
+export interface CalendarCell {
+  day: number
+  today: boolean
+  /** 0 = 일요일 ~ 6 = 토요일 */
+  weekday: number
+  holiday: boolean
+  /** 칸 아래 글자 (지출 금액, 일정 제목). 없으면 '' */
+  text: string
+  /** 일기 모드: 일기 색 (쓴 날만) */
+  dot: string | null
+}
+
+/** '달력' 위젯: 이번 달 칸 (주 단위로, 앞뒤 빈칸은 null) */
+export interface CalendarWidgetView {
+  stale: boolean
+  locked: boolean
+  /** "11월" */
+  monthLabel: string
+  /** 머리줄 오른쪽 요약: "지출 21.6만" · "일기 5일" · "일정 7개" */
+  sum: string
+  weeks: (CalendarCell | null)[][]
+}
+
+export function calendarWidgetView(s: WidgetSummary | null, today: string, mode: CalendarMode): CalendarWidgetView {
+  const ym = today.slice(0, 7)
+  const first = parseDateKey(`${ym}-01`)
+  const monthLabel = `${first.getMonth() + 1}월`
+  const month = s?.cal?.[ym]
+  const n = getDaysInMonth(first)
+  const lead = getDay(first)
+  const todayNum = Number(today.slice(8))
+  const cells: (CalendarCell | null)[] = Array.from({ length: lead }, () => null)
+  for (let day = 1; day <= n; day++) {
+    const k = String(day)
+    let text = ''
+    let dot: string | null = null
+    if (month && !s!.locked) {
+      if (mode === 'money' && month.s[k]) text = cellWon(month.s[k])
+      if (mode === 'event' && month.e[k]) text = month.e[k][1] > 1 ? `${month.e[k][0]} +${month.e[k][1] - 1}` : month.e[k][0]
+      if (mode === 'diary') dot = month.d[k] ?? null
+    }
+    cells.push({ day, today: day === todayNum, weekday: (lead + day - 1) % 7, holiday: month?.h.includes(day) ?? false, text, dot })
+  }
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks: (CalendarCell | null)[][] = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  let sum = ''
+  if (month && s && !s.locked) {
+    if (mode === 'money') sum = `지출 ${cellWon(Object.values(month.s).reduce((a, b) => a + b, 0))}원`
+    if (mode === 'diary') sum = `일기 ${Object.keys(month.d).length}일`
+    if (mode === 'event') sum = `일정 있는 날 ${Object.keys(month.e).length}일`
+  }
+  return { stale: !month, locked: s?.locked ?? false, monthLabel, sum, weeks }
 }
 
 /** '메모' 위젯: 최근 메모. 안드로이드 MemoWidget.java 도 같은 규칙으로 그린다 */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent, Habit, Todo, Transaction } from '../../src/db/types'
-import { buildWidgetSummary, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
+import { buildWidgetSummary, calendarWidgetView, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
 
 const todo = (title: string, dueDate: string | null, done = false): Todo => ({
   title,
@@ -64,8 +64,8 @@ describe('buildWidgetSummary', () => {
 })
 
 describe('widgetRange', () => {
-  it('이번 달 1일부터 7일 뒤까지', () => {
-    expect(widgetRange('2026-11-28')).toEqual(['2026-11-01', '2026-12-05'])
+  it('이번 달 1일부터 다다음 달 1일 전까지 (달력 위젯이 다음 달까지 쓴다)', () => {
+    expect(widgetRange('2026-11-28')).toEqual(['2026-11-01', '2027-01-01'])
   })
 })
 
@@ -103,7 +103,7 @@ describe('위젯 여러 종류', () => {
     habits: [habit(1, '물 마시기', '💧', 1), habit(2, '적금 넣기', '💰', 2, { freq: 'weekly' as const, weekday: 3 })],
     checks: [{ habitId: 1, date: '2026-11-10', createdAt: '' }],
     budgets: [{ category: '', amount: 20000, updatedAt: '' }, { category: '식비', amount: 5000, updatedAt: '' }],
-    opacity: { today: 100, todo: 40, money: 0, event: 75, habit: 100 },
+    opacity: { today: 100, todo: 40, money: 0, event: 75, habit: 100, calendar: 50 },
   }
   const s = buildWidgetSummary(many, txs, '2026-11-10', false, extras)
 
@@ -133,7 +133,7 @@ describe('위젯 여러 종류', () => {
 
   it('투명도를 함께 싣는다 (없으면 모두 100)', () => {
     expect(s.opacity).toEqual(extras.opacity)
-    expect(buildWidgetSummary([], [], '2026-11-10', false).opacity).toEqual({ today: 100, todo: 100, money: 100, event: 100, habit: 100 })
+    expect(buildWidgetSummary([], [], '2026-11-10', false).opacity).toEqual({ today: 100, todo: 100, money: 100, event: 100, habit: 100, calendar: 100, memo: 100 })
   })
 
   it('잠금 중이면 일정 제목, 습관 제목, 예산을 넣지 않는다', () => {
@@ -142,5 +142,45 @@ describe('위젯 여러 종류', () => {
     expect(JSON.stringify(l)).not.toContain('여행')
     expect(JSON.stringify(l)).not.toContain('물 마시기')
     expect(eventWidgetView(l, '2026-11-10')).toMatchObject({ locked: true, todayCount: 2, rows: [] })
+  })
+})
+
+describe('달력 위젯', () => {
+  const extras = {
+    events: [ev('여행', '2026-11-09', '2026-11-11'), ev('회의', '2026-11-10'), ev('송년회', '2026-12-20')],
+    diaries: [{ date: '2026-11-03', color: '#ffb3c7' }, { date: '2026-12-01', color: '#9fd8ff' }],
+  }
+  const s = buildWidgetSummary([], txs, '2026-11-10', false, extras)
+
+  it('이번 달과 다음 달을 담는다', () => {
+    expect(Object.keys(s.cal)).toEqual(['2026-11', '2026-12'])
+    expect(s.cal['2026-11'].s).toEqual({ '1': 10000, '10': 12300, '12': 7000 })
+    expect(s.cal['2026-11'].e['10']).toEqual(['여행', 2])
+    expect(s.cal['2026-12'].e['20']).toEqual(['송년회', 1])
+    expect(s.cal['2026-11'].d).toEqual({ '3': '#ffb3c7' })
+    expect(s.cal['2026-12'].h).toContain(25)
+  })
+
+  it('돈 · 일기 · 일정 모드마다 칸 글자가 바뀐다', () => {
+    const cell = (mode: 'money' | 'diary' | 'event', day: number) => calendarWidgetView(s, '2026-11-10', mode).weeks.flat().find((c) => c?.day === day)
+    expect(cell('money', 10)?.text).toBe('1.2만')
+    expect(cell('event', 10)?.text).toBe('여행 +1')
+    expect(cell('diary', 3)?.dot).toBe('#ffb3c7')
+    expect(cell('money', 10)?.today).toBe(true)
+    expect(calendarWidgetView(s, '2026-11-10', 'money').sum).toBe('지출 2.9만원')
+  })
+
+  it('2026년 11월은 일요일에 시작해 5주', () => {
+    const v = calendarWidgetView(s, '2026-11-10', 'money')
+    expect(v.weeks).toHaveLength(5)
+    expect(v.weeks[0][0]?.day).toBe(1)
+  })
+
+  it('앱을 안 열어도 다음 달까지 보이고, 잠금 중이면 숨긴다', () => {
+    expect(calendarWidgetView(s, '2026-12-01', 'diary').stale).toBe(false)
+    expect(calendarWidgetView(s, '2027-01-01', 'diary').stale).toBe(true)
+    const l = buildWidgetSummary([], txs, '2026-11-10', true, extras)
+    expect(JSON.stringify(l.cal)).not.toContain('여행')
+    expect(calendarWidgetView(l, '2026-11-10', 'money').weeks.flat().every((c) => !c || c.text === '')).toBe(true)
   })
 })

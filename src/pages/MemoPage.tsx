@@ -34,7 +34,7 @@ const AUTOSAVE_MS = 800
 type FolderFilter = 'all' | 'none' | number
 
 /** 지금 쓰고 있는 메모. 새 메모는 처음 저장할 때 id 가 생긴다 */
-type Editing = { key: string; id?: number; startedAt: string; folderId?: number }
+type Editing = { key: string; id?: number; startedAt: string; folderId?: number; fromLink?: boolean }
 let nextKey = 0
 
 /** 메모: 글 + 사진·영상·파일을 남기고, 색깔 있는 파일집에 모은다. 쓴 시각이 그대로 남는다 (사용자 요청 2026-11-17) */
@@ -46,18 +46,19 @@ export default function MemoPage() {
   const folders = useLiveQuery(() => memoRepo.folders(), [])
   const [filter, setFilter] = useState<FolderFilter>('all')
   const [query, setQuery] = useState('')
-  const [editing, setEditing] = useState<Editing | null>(() => {
-    // 전체 검색에서 누르고 들어오면 그 메모를 바로 연다
-    const id = (location.state as { memoId?: number } | null)?.memoId
-    return id ? { key: `e${nextKey++}`, id, startedAt: nowIso() } : null
-  })
+  const [editing, setEditing] = useState<Editing | null>(null)
   const [folderForm, setFolderForm] = useState<MemoFolder | 'new' | null>(null)
   const [removingFolder, setRemovingFolder] = useState<MemoFolder | null>(null)
+  // 다른 곳에서 들어올 때: 전체 검색(state.memoId), 홈 화면 메모 위젯(?id=3 은 그 메모, ?new=1 은 새 메모)
   useEffect(() => {
-    if (location.state) navigate(location.pathname, { replace: true, state: null })
-    // 처음 한 번만
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    const params = new URLSearchParams(location.search)
+    const id = (location.state as { memoId?: number } | null)?.memoId ?? (Number(params.get('id')) || undefined)
+    const fresh = params.get('new') === '1'
+    if (!id && !fresh) return
+    if (id) setEditing({ key: `e${nextKey++}`, id, startedAt: nowIso(), fromLink: true })
+    else setEditing({ key: `e${nextKey++}`, startedAt: nowIso() })
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.search, location.state, location.pathname, navigate])
 
   const folderById = useMemo(() => new Map((folders ?? []).map((f) => [f.id!, f])), [folders])
   const counts = useMemo(() => {
@@ -78,6 +79,10 @@ export default function MemoPage() {
   }, [memos, filter, query, folderById])
 
   const current = editing?.id !== undefined ? memos?.find((m) => m.id === editing.id) : undefined
+  // 위젯·검색으로 연 메모가 그 사이 지워졌으면 목록으로
+  useEffect(() => {
+    if (editing?.fromLink && memos && !current) setEditing(null)
+  }, [editing, memos, current])
   const selFolder = typeof filter === 'number' ? folderById.get(filter) : undefined
   // 고른 파일집이 지워지면 전체로
   useEffect(() => {

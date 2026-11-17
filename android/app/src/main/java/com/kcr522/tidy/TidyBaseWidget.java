@@ -15,9 +15,14 @@ public abstract class TidyBaseWidget extends AppWidgetProvider {
     /** 지금 날짜와 저장된 요약으로 위젯 한 장을 그린다 */
     abstract RemoteViews build(Context context);
 
+    /** 위젯 한 장마다 다르게 그릴 때 (달력 위젯의 모드) 덮어쓴다 */
+    RemoteViews build(Context context, int appWidgetId) {
+        return build(context);
+    }
+
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        for (int id : ids) manager.updateAppWidget(id, build(context));
+        for (int id : ids) manager.updateAppWidget(id, build(context, id));
         WidgetData.scheduleMidnight(context);
     }
 
