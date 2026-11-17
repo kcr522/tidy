@@ -1,7 +1,7 @@
 import { BellRing } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { refinePayments } from '../../lib/assistant/learn'
-import { formatTimeLabel } from '../../lib/format'
+import { formatTimeLabel, formatWon } from '../../lib/format'
 import type { PayCandidate } from '../../lib/payNotify'
 import { addApp, addWord, loadPayFilter, savePayFilter } from '../../lib/payNotifyFilter'
 import { removePayNotifications } from '../../platform/payNotify'
@@ -106,7 +106,8 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
         </div>
       ) : (
         <>
-          <p className="mb-3 text-sm break-keep text-slate-500">결제 알림 {rows.length}건을 찾았어요. 맞는지 확인하고 저장할 것만 골라 주세요.</p>
+          <p className="mb-2 text-sm break-keep text-slate-500">결제 · 입출금 알림 {rows.length}건을 찾았어요. 맞는지 확인하고 저장할 것만 골라 주세요.</p>
+          <MoneyFlow rows={rows} />
           <ul className="space-y-2.5">
             {rows.map((r) => (
               <PaymentDraftCard key={r.key} row={r} onChange={(p) => update(r.key, p)} note={<SourceNote row={r} onMute={(kind) => mute(r, kind)} />} />
@@ -169,5 +170,24 @@ function SourceNote({ row, onMute }: { row: Row; onMute: (kind: 'word' | 'app') 
         </div>
       )}
     </details>
+  )
+}
+
+/** 체크한 것 기준: 나간 돈 · 들어온 돈 합계 */
+function MoneyFlow({ rows }: { rows: Row[] }) {
+  const picked = rows.filter((r) => r.checked)
+  const out = picked.filter((r) => r.input.type === 'EXPENSE').reduce((a, r) => a + r.input.amount, 0)
+  const inc = picked.filter((r) => r.input.type === 'INCOME').reduce((a, r) => a + r.input.amount, 0)
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-2 text-center">
+      <p className="rounded-2xl bg-slate-50 py-2">
+        <span className="block text-xs text-slate-500">나간 돈</span>
+        <span className="text-[15px] font-bold text-expense">-{formatWon(out)}</span>
+      </p>
+      <p className="rounded-2xl bg-slate-50 py-2">
+        <span className="block text-xs text-slate-500">들어온 돈</span>
+        <span className="text-[15px] font-bold text-income">+{formatWon(inc)}</span>
+      </p>
+    </div>
   )
 }

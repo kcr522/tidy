@@ -43,9 +43,9 @@ public class PayNotifyService extends NotificationListenerService {
     private static final int MAX_PENDING = 60;
     private static final long RECENT_MS = 10 * 60 * 1000L;
 
-    /** 금액: "6,100원", "₩6,100" */
-    private static final Pattern MONEY = Pattern.compile("(\\d{1,3}(,\\d{3})+|\\d{3,9})\\s*원|[₩￦]\\s*\\d");
-    private static final Pattern VERB = Pattern.compile("승인|결제|사용|출금|입금|이체|지급|구매|취소|환불");
+    /** 금액: "6,100원", "₩6,100", 은행 문자의 "50,000"(쉼표), "출금50000" */
+    private static final Pattern MONEY = Pattern.compile("(\\d{1,3}(,\\d{3})+|\\d{3,9})\\s*원|[₩￦]\\s*\\d|\\d{1,3}(,\\d{3})+|(출금|입금|이체)\\s*\\d{3,}");
+    private static final Pattern VERB = Pattern.compile("승인|결제|사용|출금|입금|이체|지급|구매|취소|환불|송금|보냈|받았|들어왔|인출|납부");
     /** 광고·혜택 알림은 빼기 */
     private static final Pattern AD = Pattern.compile("\\(광고\\)|광고|이벤트|혜택|쿠폰|추첨|당첨|최대|프로모션|캐시백\\s*받|무료|가입");
     /** 카드사·은행·간편결제 앱 패키지 이름에 흔히 들어가는 낱말 */
@@ -129,8 +129,8 @@ public class PayNotifyService extends NotificationListenerService {
         return fin && MONEY.matcher(all).find() && VERB.matcher(all).find() && !AD.matcher(all).find();
     }
 
-    private static final Pattern FIRST_AMOUNT = Pattern.compile("(\\d{1,3}(?:,\\d{3})+|\\d{3,9})\\s*원|[₩￦]\\s*(\\d{1,3}(?:,\\d{3})+|\\d{1,9})");
-    private static final Pattern BALANCE = Pattern.compile("(잔액|잔고|누적|한도)\\s*:?\\s*[\\d,]+\\s*원?");
+    private static final Pattern FIRST_AMOUNT = Pattern.compile("(\\d{1,3}(?:,\\d{3})+|\\d{3,9})\\s*원|[₩￦]\\s*(\\d{1,3}(?:,\\d{3})+|\\d{1,9})|(\\d{1,3}(?:,\\d{3})+)");
+    private static final Pattern BALANCE = Pattern.compile("(잔액|잔고|누적|잔여한도|한도)\\s*:?\\s*[\\d,]+\\s*원?|\\d{2,6}(-[\\d*]{2,8}){1,4}");
 
     /** 앱 화면의 payNotifyFilter.ts blockReason 과 같은 규칙 (금액은 잔액·누적을 뺀 첫 금액) */
     static boolean blocked(String json, String pkg, String all) {
@@ -151,7 +151,7 @@ public class PayNotifyService extends NotificationListenerService {
             if (min > 0) {
                 java.util.regex.Matcher m = FIRST_AMOUNT.matcher(BALANCE.matcher(all).replaceAll(" "));
                 if (m.find()) {
-                    String num = m.group(1) != null ? m.group(1) : m.group(2);
+                    String num = m.group(1) != null ? m.group(1) : m.group(2) != null ? m.group(2) : m.group(3);
                     if (Long.parseLong(num.replace(",", "")) < min) return true;
                 }
             }
