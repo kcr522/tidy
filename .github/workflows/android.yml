@@ -48,6 +48,19 @@ jobs:
         env:
           TIDY_BUILD_NUMBER: ${{ github.run_number }}
 
+      # 용량 줄이기(R8)로 플러그인이 빠지지 않았는지 확인하고, 무엇이 얼마나 큰지 기록에 남긴다
+      - name: APK 크기 · 플러그인 확인
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          ls -l $APK
+          unzip -lv $APK | awk 'NR>3 && $8!=""{k=$8; if(k~/\.dex$/)k="코드(dex)"; else if(k~/ocr\//)k="글자 인식"; else if(k~/^assets/)k="웹 화면"; else if(k~/^res|resources.arsc/)k="리소스"; else k="기타"; c[k]+=$3} END{for(k in c) printf "%-12s %6.2fMB\n",k,c[k]/1048576}'
+          AA=$(ls $ANDROID_HOME/cmdline-tools/*/bin/apkanalyzer | head -1)
+          $AA dex packages --defined-only $APK | awk '$1=="C"{print $4}' > classes.txt
+          wc -l < classes.txt
+          for c in $(node -e "for (const p of require('./android/app/src/main/assets/capacitor.plugins.json')) console.log(p.classpath)") com.kcr522.tidy.MainActivity com.kcr522.tidy.BiometricPlugin com.kcr522.tidy.GoogleAuthPlugin com.kcr522.tidy.AppUpdatePlugin com.kcr522.tidy.TidyWidget; do
+            grep -qx "$c" classes.txt && echo "있음 $c" || { echo "::error::APK에 $c 가 없어요"; exit 1; }
+          done
+
       - name: 파일 이름 정리
         run: cp android/app/build/outputs/apk/debug/app-debug.apk tidy-debug.apk && cp tidy-debug.apk tidy.apk
 
