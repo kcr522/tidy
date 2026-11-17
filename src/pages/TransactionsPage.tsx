@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, Camera, List, Menu, PiggyBank, Plus } from 'lucide-react'
+import { BellRing, CalendarDays, Camera, ChevronRight, List, Menu, PiggyBank, Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -10,6 +10,8 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import BankCapture from '../components/transactions/BankCapture'
 import MealCapture from '../components/transactions/MealCapture'
+import PayNotifyReview from '../components/transactions/PayNotifyReview'
+import PayNotifyGuide from '../components/payNotify/PayNotifyGuide'
 import MoneyCalendar from '../components/transactions/MoneyCalendar'
 import MonthSummary from '../components/transactions/MonthSummary'
 import SavingsManager from '../components/transactions/SavingsManager'
@@ -19,6 +21,7 @@ import TransactionList from '../components/transactions/TransactionList'
 import MoneyMenu, { type MenuView } from '../components/transactions/insights/MoneyMenu'
 import BudgetStrip from '../components/budget/BudgetStrip'
 import type { Transaction } from '../db/types'
+import { usePayNotify } from '../hooks/usePayNotify'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
 import { accountEmoji } from '../lib/accounts'
@@ -31,6 +34,15 @@ type Editor = { mode: 'add'; date?: string; draft?: TransactionInput } | { mode:
 type FilterBy = 'category' | 'account'
 type View = 'list' | 'calendar'
 const VIEW_KEY = 'tidy:money-view'
+const PAY_PROMO_KEY = 'tidy:pay-notify-promo-closed'
+
+function promoClosed(): boolean {
+  try {
+    return localStorage.getItem(PAY_PROMO_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function loadView(): View {
   try {
@@ -65,6 +77,27 @@ export default function TransactionsPage() {
   const [selected, setSelected] = useState(jump ?? today)
   const toast = useToast()
   const navigate = useNavigate()
+  // 결제 알림 → 가계부 (갤럭시 앱): 모인 알림 확인 화면, 켜는 방법 안내
+  const pay = usePayNotify()
+  const [showPay, setShowPay] = useState(false)
+  const [showPayGuide, setShowPayGuide] = useState(false)
+  const [promoHidden, setPromoHidden] = useState(promoClosed)
+  // "가계부에 기록할까요?" 알림을 눌러 들어오면 바로 확인 화면
+  useEffect(() => {
+    if (!(location.state as { payNotify?: boolean } | null)?.payNotify) return
+    navigate(location.pathname, { replace: true, state: null })
+    pay.refresh()
+    setShowPay(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key])
+  function closePromo() {
+    setPromoHidden(true)
+    try {
+      localStorage.setItem(PAY_PROMO_KEY, '1')
+    } catch {
+      /* 저장 못 해도 지금은 숨긴다 */
+    }
+  }
   useEffect(() => {
     if (jump) navigate(location.pathname, { replace: true, state: null })
     // 처음 한 번만
@@ -209,6 +242,41 @@ export default function TransactionsPage() {
           </div>
         }
       />
+
+      {pay.candidates.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPay(true)}
+          className="mb-4 flex w-full items-center gap-3 rounded-3xl bg-brand-50 p-4 text-left ring-1 ring-brand-100 transition active:scale-[0.99]"
+        >
+          <span className="bg-grad on-grad flex size-10 shrink-0 items-center justify-center rounded-2xl">
+            <BellRing className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-slate-800">결제 알림 {pay.candidates.length}건이 와 있어요</span>
+            <span className="block truncate text-xs text-slate-500">
+              {pay.candidates
+                .slice(0, 2)
+                .map((c) => `${c.guess.merchant} ${formatWon(c.guess.amount)}`)
+                .join(' · ')}
+              {pay.candidates.length > 2 && ' …'} · 확인하고 기록하기
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-slate-400" aria-hidden />
+        </button>
+      )}
+      {pay.available && pay.granted === false && !promoHidden && (
+        <div className="mb-4 flex items-center gap-2 rounded-3xl bg-white p-3 pl-4 shadow-card">
+          <BellRing className="size-5 shrink-0 text-brand-500" aria-hidden />
+          <button type="button" onClick={() => setShowPayGuide(true)} className="min-w-0 flex-1 text-left text-sm">
+            <span className="font-semibold text-slate-800">카드 결제 알림으로 자동 기록</span>
+            <span className="block text-xs text-slate-500">한 번 켜 두면 결제할 때마다 기록할지 물어봐요 · 켜는 방법</span>
+          </button>
+          <button type="button" onClick={closePromo} className="tap rounded-full p-2 text-slate-400 hover:bg-slate-100" aria-label="안내 닫기">
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
 
       <MonthSummary
         year={ym.year}
@@ -429,6 +497,25 @@ export default function TransactionsPage() {
             }}
           />
         )}
+      </Modal>
+
+      <Modal open={showPay} title="결제 알림으로 기록" onClose={() => setShowPay(false)}>
+        {showPay && (
+          <PayNotifyReview
+            candidates={pay.candidates}
+            skipped={pay.skipped}
+            onLater={() => setShowPay(false)}
+            onDone={(n) => {
+              setShowPay(false)
+              pay.refresh()
+              if (n > 0) toast(`결제 알림에서 ${n}건을 기록했어요`)
+            }}
+          />
+        )}
+      </Modal>
+
+      <Modal open={showPayGuide} title="결제 알림으로 자동 기록" onClose={() => setShowPayGuide(false)}>
+        {showPayGuide && <PayNotifyGuide granted={pay.granted} />}
       </Modal>
 
       <Modal open={showMeal} title="음식 사진으로 기록" onClose={() => setShowMeal(false)}>
