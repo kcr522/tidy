@@ -13,10 +13,13 @@
     <string name="widget_name_habit">습관</string>
     <string name="widget_name_calendar">달력</string>
     <string name="widget_calendar_description">돈 · 일기 · 일정 달력을 버튼으로 바꿔 봐요</string>
+    <string name="widget_name_memo">메모</string>
+    <string name="widget_memo_description">최근 메모를 보고 바로 새 메모를 써요</string>
     <string name="widget_todo_description">오늘 할 일 목록을 홈 화면에서 봐요</string>
     <string name="widget_money_description">이번 달 지출과 남은 예산을 봐요</string>
     <string name="widget_event_description">오늘부터 일주일 일정을 봐요</string>
     <string name="widget_habit_description">오늘 할 습관과 체크를 봐요</string>
     <string name="share_label">Tidy에 스크랩</string>
+    <string name="share_memo_label">Tidy 메모</string>
     <string name="pay_notify_label">Tidy 결제 알림 기록</string>
 </resources>

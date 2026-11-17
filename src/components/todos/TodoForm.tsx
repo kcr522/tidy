@@ -11,6 +11,7 @@ import { todoCategoryRepo } from '../../repositories/todoCategoryRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
+import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
 import { inputClass } from '../common/formStyles'
 import { CATEGORY_HEX } from './categoryColors'
 import { PRIORITY_LABEL } from './priority'
@@ -97,15 +98,18 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <Field label={`할 일 (${title.length}/${MAX_TITLE_LENGTH})`} error={error}>
-        <input
-          value={title}
-          maxLength={MAX_TITLE_LENGTH}
-          placeholder="예: 주간 업무 보고서 작성"
-          onChange={(e) => setTitle(e.target.value)}
-          className={inputClass(!!error)}
-          aria-invalid={!!error}
-          autoFocus={!initial}
-        />
+        <div className="flex gap-2">
+          <input
+            value={title}
+            maxLength={MAX_TITLE_LENGTH}
+            placeholder="예: 주간 업무 보고서 작성"
+            onChange={(e) => setTitle(e.target.value)}
+            className={inputClass(!!error)}
+            aria-invalid={!!error}
+            autoFocus={!initial}
+          />
+          <HandwriteButton compact label="할 일" className="self-center" onText={(t) => setTitle((old) => appendHandwritten(old, t, false, MAX_TITLE_LENGTH))} />
+        </div>
       </Field>
 
       <Field label="마감일 (선택)">

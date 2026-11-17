@@ -19,19 +19,21 @@ export function useWidgetExtras(today: string, enabled = true): WidgetExtras | u
   const [from, to] = widgetRange(today)
   const data = useLiveQuery(async () => {
     if (!enabled) return null
-    const [events, habits, checks, budgets, diaries] = await Promise.all([
+    const [events, habits, checks, budgets, diaries, memos, memoFolders] = await Promise.all([
       db.events.where('startDate').below(to).filter((e) => e.endDate >= from).toArray(),
       db.habits.toArray(),
       db.habitChecks.where('date').between(today, last, true, true).toArray(),
       db.budgets.toArray(),
       db.diaries.where('date').between(from, to, true, false).toArray(),
+      db.memos.toArray(),
+      db.memoFolders.toArray(),
     ])
-    return { events, habits, checks, budgets, diaries: diaries.map((d) => ({ date: d.date, color: d.color })) }
+    return { events, habits, checks, budgets, diaries: diaries.map((d) => ({ date: d.date, color: d.color })), memos, memoFolders }
   }, [enabled, today, last, from, to])
   return useMemo(() => (data ? { ...data, opacity } : undefined), [data, opacity])
 }
 
-/** 갤럭시 홈 화면 위젯: 할 일, 지출, 일정, 습관이 바뀌면 위젯 요약을 새로 보낸다 (폰 앱에서만) */
+/** 갤럭시 홈 화면 위젯: 할 일, 지출, 일정, 습관, 메모가 바뀌면 위젯 요약을 새로 보낸다 (폰 앱에서만) */
 export function useWidgetSync(todos: Todo[] | undefined, today: string) {
   const native = isNativeApp()
   const [locked, setLocked] = useState(() => loadLock() !== null)

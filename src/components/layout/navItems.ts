@@ -1,4 +1,4 @@
-import { BookHeart, Bookmark, CalendarDays, House, ListChecks, Settings, Wallet, type LucideIcon } from 'lucide-react'
+import { BookHeart, Bookmark, CalendarDays, House, ListChecks, NotebookPen, Settings, Wallet, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   to: string
@@ -14,5 +14,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/diary', label: '일기', icon: BookHeart },
   { to: '/calendar', label: '캘린더', icon: CalendarDays },
   { to: '/scraps', label: '스크랩', icon: Bookmark },
+  { to: '/memo', label: '메모', icon: NotebookPen },
   { to: '/settings', label: '설정', icon: Settings },
 ]

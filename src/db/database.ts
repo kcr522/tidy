@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from './types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -22,6 +22,8 @@ export class TidyDB extends Dexie {
   todoCategories!: Table<TodoCategory, number>
   budgets!: Table<Budget, string>
   stickers!: Table<DaySticker, string>
+  memoFolders!: Table<MemoFolder, number>
+  memos!: Table<Memo, number>
 
   constructor(name = 'tidy') {
     super(name)
@@ -76,6 +78,11 @@ export class TidyDB extends Dexie {
     // 2차: 달력 날짜 칸 이모티콘 스티커
     this.version(10).stores({
       stickers: '&date',
+    })
+    // 메모 + 메모 파일집 (사용자 요청 2026-11-17)
+    this.version(11).stores({
+      memoFolders: '++id, order',
+      memos: '++id, folderId, createdAt, updatedAt',
     })
   }
 }
