@@ -190,6 +190,30 @@ export function createBookmarkRepo(database: TidyDB = defaultDb) {
       })
     },
 
+    /**
+     * 여러 스크랩을 카테고리 이름으로 한꺼번에 나누기 (인스타 캡션 분류).
+     * 없는 카테고리는 만들고, 그사이 사용자가 이미 나눈 스크랩은 건드리지 않는다. 바꾼 수를 돌려준다
+     */
+    async assignCategories(list: { id: number; name: string }[]): Promise<number> {
+      return database.transaction('rw', database.bookmarks, database.scrapCategories, async () => {
+        const cats = new Map((await database.scrapCategories.toArray()).map((c) => [c.name, c.id as number]))
+        let order = ((await database.scrapCategories.orderBy('order').last())?.order ?? -1) + 1
+        let changed = 0
+        for (const { id, name } of list) {
+          const b = await database.bookmarks.get(id)
+          if (!b || b.categoryId != null) continue
+          let categoryId = cats.get(name)
+          if (categoryId == null) {
+            categoryId = (await database.scrapCategories.add({ name, order: order++, createdAt: nowIso() })) as number
+            cats.set(name, categoryId)
+          }
+          await database.bookmarks.update(id, { categoryId, updatedAt: nowIso() })
+          changed++
+        }
+        return changed
+      })
+    },
+
     /** 최근 저장 순 (FR-034), 필터 (FR-037) */
     async list(filter: BookmarkFilter = 'all'): Promise<Bookmark[]> {
       const list = filter === 'unread' ? await database.bookmarks.where('isRead').equals(0).toArray() : await database.bookmarks.toArray()
