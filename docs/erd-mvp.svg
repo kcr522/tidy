@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" font-family="Pretendard, 'Noto Sans KR', sans-serif">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#4FD1FF"/>
+      <stop offset="0.5" stop-color="#8B7CFF"/>
+      <stop offset="1" stop-color="#FF7EB3"/>
+    </linearGradient>
+    <style>
+      .box { fill: #fff; stroke: #c4b5fd; stroke-width: 1.5; }
+      .head { fill: url(#g); }
+      .title { fill: #fff; font-size: 15px; font-weight: 800; }
+      .sub { fill: #fff; font-size: 11px; font-weight: 600; opacity: .9; }
+      .f { fill: #1f2937; font-size: 12.5px; }
+      .t { fill: #6b7280; font-size: 11px; }
+      .pk { fill: #b45309; font-size: 11px; font-weight: 800; }
+      .fk { fill: #7c3aed; font-size: 11px; font-weight: 800; }
+      .add { fill: #9ca3af; font-size: 10px; }
+      .rel { stroke: #7c3aed; stroke-width: 2; fill: none; }
+      .dash { stroke: #9ca3af; stroke-width: 1.5; fill: none; stroke-dasharray: 6 5; }
+      .lab { fill: #5b21b6; font-size: 12px; font-weight: 700; }
+      .lab2 { fill: #6b7280; font-size: 11px; }
+    </style>
+  </defs>
+
+  <!-- transactions -->
+  <g transform="translate(10,40)">
+    <rect class="box" width="240" height="300" rx="14"/>
+    <path class="head" d="M0 14a14 14 0 0 1 14-14h212a14 14 0 0 1 14 14v38H0z"/>
+    <text class="title" x="16" y="24">transactions</text>
+    <text class="sub" x="16" y="42">가계부 내역 (Transactions)</text>
+    <text class="pk" x="16" y="78">PK</text><text class="f" x="44" y="78">id</text><text class="t" x="224" y="78" text-anchor="end">number (자동)</text>
+    <text class="f" x="44" y="106">type</text><text class="t" x="224" y="106" text-anchor="end">INCOME | EXPENSE</text>
+    <text class="f" x="44" y="134">amount</text><text class="t" x="224" y="134" text-anchor="end">정수 1 ~ 999,999,999</text>
+    <text class="f" x="44" y="162">category</text><text class="t" x="224" y="162" text-anchor="end">text</text>
+    <text class="f" x="44" y="190">date</text><text class="t" x="224" y="190" text-anchor="end">YYYY-MM-DD</text>
+    <text class="f" x="44" y="218">memo</text><text class="t" x="224" y="218" text-anchor="end">0 ~ 200자</text>
+    <text class="f" x="44" y="246">createdAt</text><text class="add" x="224" y="246" text-anchor="end">ISO 시각 (추가)</text>
+    <text class="f" x="44" y="274">updatedAt</text><text class="add" x="224" y="274" text-anchor="end">ISO 시각 (추가)</text>
+  </g>
+
+  <!-- todos -->
+  <g transform="translate(310,20)">
+    <rect class="box" width="240" height="330" rx="14"/>
+    <path class="head" d="M0 14a14 14 0 0 1 14-14h212a14 14 0 0 1 14 14v38H0z"/>
+    <text class="title" x="16" y="24">todos</text>
+    <text class="sub" x="16" y="42">할 일 (Todos)</text>
+    <text class="pk" x="16" y="78">PK</text><text class="f" x="44" y="78">id</text><text class="t" x="224" y="78" text-anchor="end">number (자동)</text>
+    <text class="f" x="44" y="106">title</text><text class="t" x="224" y="106" text-anchor="end">1 ~ 100자</text>
+    <text class="f" x="44" y="134">isCompleted</text><text class="t" x="224" y="134" text-anchor="end">0 | 1</text>
+    <text class="f" x="44" y="162">completedAt</text><text class="add" x="224" y="162" text-anchor="end">ISO 시각 (추가)</text>
+    <text class="f" x="44" y="190">dueDate</text><text class="t" x="224" y="190" text-anchor="end">YYYY-MM-DD | 없음</text>
+    <text class="f" x="44" y="218">priority</text><text class="t" x="224" y="218" text-anchor="end">HIGH | MEDIUM | LOW</text>
+    <text class="fk" x="16" y="246">FK</text><text class="f" x="44" y="246">bookmarkId</text><text class="t" x="224" y="246" text-anchor="end">scrap_id, 중복 불가</text>
+    <text class="f" x="44" y="274">createdAt</text><text class="add" x="224" y="274" text-anchor="end">ISO 시각 (추가)</text>
+    <text class="f" x="44" y="302">updatedAt</text><text class="add" x="224" y="302" text-anchor="end">ISO 시각 (추가)</text>
+  </g>
+
+  <!-- bookmarks -->
+  <g transform="translate(610,40)">
+    <rect class="box" width="240" height="272" rx="14"/>
+    <path class="head" d="M0 14a14 14 0 0 1 14-14h212a14 14 0 0 1 14 14v38H0z"/>
+    <text class="title" x="16" y="24">bookmarks</text>
+    <text class="sub" x="16" y="42">스크랩 (Bookmarks)</text>
+    <text class="pk" x="16" y="78">PK</text><text class="f" x="44" y="78">id</text><text class="t" x="224" y="78" text-anchor="end">number (자동)</text>
+    <text class="f" x="44" y="106">url</text><text class="t" x="224" y="106" text-anchor="end">http(s)만</text>
+    <text class="f" x="44" y="134">title</text><text class="t" x="224" y="134" text-anchor="end">1 ~ 100자</text>
+    <text class="f" x="44" y="162">memo</text><text class="t" x="224" y="162" text-anchor="end">0 ~ 200자</text>
+    <text class="f" x="44" y="190">isRead</text><text class="t" x="224" y="190" text-anchor="end">0 | 1</text>
+    <text class="f" x="44" y="218">createdAt</text><text class="t" x="224" y="218" text-anchor="end">ISO 시각</text>
+    <text class="f" x="44" y="246">updatedAt</text><text class="add" x="224" y="246" text-anchor="end">ISO 시각 (추가)</text>
+  </g>
+
+  <!-- todos.bookmarkId (0..1) ── bookmarks.id (1) -->
+  <path class="rel" d="M550 262 H580 V114 H610"/>
+  <!-- 할 일 쪽: 0..1 (동그라미 + 한 줄) -->
+  <circle cx="566" cy="262" r="5" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <path class="rel" d="M556 254 v16"/>
+  <!-- 스크랩 쪽: 정확히 1 (두 줄) -->
+  <path class="rel" d="M596 106 v16 M602 106 v16"/>
+  <text class="lab" x="596" y="338">1 : 0..1</text>
+  <text class="lab2" x="596" y="354">스크랩 하나 → 할 일 0개 또는 1개</text>
+
+  <!-- transactions ·· todos : 기획에만 있던 연동 -->
+  <path class="dash" d="M250 190 H310"/>
+  <text class="lab2" x="280" y="372" text-anchor="middle">점선: 기획서의 "참조/완료 시 연동"</text>
+  <text class="lab2" x="280" y="388" text-anchor="middle">1차는 대시보드에서 함께 보여 주기만 함 (FK 없음)</text>
+</svg>
