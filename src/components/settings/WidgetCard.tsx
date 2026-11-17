@@ -224,10 +224,10 @@ function TodoWidgetPreview({ view, opacity }: { view: TodoWidgetView; opacity: n
         <p className={`mt-2 text-sm ${MUTED}`}>오늘 할 일이 없어요 🎉</p>
       ) : (
         <ul className="mt-2 space-y-0.5 text-[13px]">
-          {view.items.slice(0, 6).map((i, n) => (
+          {view.items.slice(0, 5).map((i, n) => (
             <TodoItem key={n} {...i} />
           ))}
-          {view.total > 6 && <li className={`pl-5 text-xs ${MUTED}`}>+{view.total - 6}개 더</li>}
+          {view.total > 5 && <li className={`pl-5 text-xs ${MUTED}`}>+{view.total - 5}개 더</li>}
         </ul>
       )}
     </Frame>

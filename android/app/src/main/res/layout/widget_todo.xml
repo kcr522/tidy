@@ -61,7 +61,6 @@
         <TextView android:id="@+id/widget_item3" style="@style/WidgetItem" android:textSize="13sp" android:visibility="gone" />
         <TextView android:id="@+id/widget_item4" style="@style/WidgetItem" android:textSize="13sp" android:visibility="gone" />
         <TextView android:id="@+id/widget_item5" style="@style/WidgetItem" android:textSize="13sp" android:visibility="gone" />
-        <TextView android:id="@+id/widget_item6" style="@style/WidgetItem" android:textSize="13sp" android:visibility="gone" />
 
         <TextView
             android:id="@+id/widget_more"

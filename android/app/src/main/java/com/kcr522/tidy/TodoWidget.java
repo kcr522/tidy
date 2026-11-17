@@ -9,7 +9,7 @@ import org.json.JSONObject;
 
 /** '할 일' 위젯: 오늘 할 일을 길게 (src/lib/widgetSummary.ts 의 todoWidgetView) */
 public class TodoWidget extends TidyBaseWidget {
-    private static final int[] ITEM_IDS = {R.id.widget_item1, R.id.widget_item2, R.id.widget_item3, R.id.widget_item4, R.id.widget_item5, R.id.widget_item6};
+    private static final int[] ITEM_IDS = {R.id.widget_item1, R.id.widget_item2, R.id.widget_item3, R.id.widget_item4, R.id.widget_item5};
 
     @Override
     String kind() {
