@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 홈 화면 위젯 (TidyWidget.java). 웹 미리보기는 src/components/settings/WidgetCard.tsx -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 홈 화면 '오늘' 위젯 (TidyWidget.java). 웹 미리보기는 src/components/settings/WidgetCard.tsx -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 바탕: 투명도는 setImageAlpha 로 바꾼다 (WidgetData.applyOpacity) -->
+    <ImageView
+        android:id="@+id/widget_bg_img"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg" />
+
+<LinearLayout
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -113,3 +125,4 @@
             android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>
+</FrameLayout>

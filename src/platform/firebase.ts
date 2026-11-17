@@ -8,6 +8,7 @@ import type { Firestore } from 'firebase/firestore'
 import { firebaseConfig, firebaseReady, nativeSignInClientId } from '../lib/firebaseConfig'
 import { GoogleAuthError, NativeAuth } from './googleAuth'
 import { isNativeApp } from './native'
+import { isDeskWidget, waitForDeskLogin } from './deskWidget'
 
 export interface Firebase {
   app: FirebaseApp
@@ -65,6 +66,12 @@ export async function signInWithGoogle(): Promise<User> {
     const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(r.idToken))
     return cred.user
   }
+  // 컴퓨터 위젯 앱: 기본 브라우저에서 로그인하고 받은 구글 ID 토큰으로 들어간다
+  if (isDeskWidget()) {
+    const idToken = await waitForDeskLogin()
+    if (!idToken) throw new GoogleAuthError('구글 로그인을 취소했어요', true)
+    return (await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))).user
+  }
   // 개발할 때만: 에뮬레이터에 가짜 구글 계정으로 들어간다 (구글 팝업은 에뮬레이터에서 못 띄운다)
   if (import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATOR === '1') {
     const fake = JSON.stringify({ sub: 'tester', email: 'tidy.tester@gmail.com', email_verified: true, name: '김채림' })
@@ -84,6 +91,25 @@ export async function signInWithGoogle(): Promise<User> {
     }
     if (code === 'auth/unauthorized-domain') throw new GoogleAuthError('이 주소가 Firebase 로그인 허용 도메인에 없어요')
     if (code === 'auth/network-request-failed') throw new GoogleAuthError('인터넷 연결을 확인해 주세요')
+    throw new GoogleAuthError('구글 로그인 오류' + (code ? ` (${code})` : ''))
+  }
+}
+
+/** 컴퓨터 위젯 앱에 넘길 구글 ID 토큰 (브라우저의 /widget-login 에서). 위젯 앱이 이 토큰으로 같은 계정에 로그인한다 */
+export async function googleIdTokenForWidget(): Promise<string> {
+  const { auth } = await loadFirebase()
+  const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth')
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  try {
+    const token = GoogleAuthProvider.credentialFromResult(await signInWithPopup(auth, provider))?.idToken
+    if (!token) throw new GoogleAuthError('구글 로그인 정보를 받지 못했어요')
+    return token
+  } catch (err) {
+    if (err instanceof GoogleAuthError) throw err
+    const code = (err as { code?: string }).code ?? ''
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new GoogleAuthError('구글 로그인을 취소했어요', true)
+    if (code === 'auth/popup-blocked') throw new GoogleAuthError('팝업이 막혔어요. 주소창에서 팝업을 허용해 주세요')
     throw new GoogleAuthError('구글 로그인 오류' + (code ? ` (${code})` : ''))
   }
 }

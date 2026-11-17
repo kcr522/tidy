@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { useAccount } from '../../hooks/useAccount'
 import { login, logout, skipLogin } from '../../lib/sync/account'
 import { loginSkipped } from '../../lib/sync/state'
+import { isDeskWidget } from '../../platform/deskWidget'
 import { GoogleAuthError } from '../../platform/googleAuth'
 import logoUrl from '../../assets/logo.svg'
 
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string>()
 
   const again = account.signedOutUnexpectedly
-  const show = account.available && !account.checking && !account.user && (again || !skipped) && !location.pathname.startsWith('/share')
+  const show = account.available && !account.checking && !account.user && (again || !skipped) && !location.pathname.startsWith('/share') && location.pathname !== '/widget-login'
   if (!show) return null
 
   async function google() {
@@ -90,8 +91,9 @@ export default function LoginScreen() {
             className="tap flex min-h-13 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 text-[15px] font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
           >
             <GoogleLogo />
-            {busy ? '로그인하는 중…' : 'Google로 계속하기'}
+            {busy ? (isDeskWidget() ? '브라우저에서 로그인하는 중…' : '로그인하는 중…') : 'Google로 계속하기'}
           </button>
+          {isDeskWidget() && <p className="text-center text-xs break-keep text-slate-400">컴퓨터의 기본 브라우저가 열려요. 거기서 로그인하면 위젯으로 돌아와요.</p>}
           {error && (
             <p className="text-center text-sm break-keep text-expense" role="alert">
               {error}
