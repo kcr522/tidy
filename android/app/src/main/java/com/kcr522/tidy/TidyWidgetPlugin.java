@@ -24,12 +24,12 @@ public class TidyWidgetPlugin extends Plugin {
             return;
         }
         Context context = getContext();
-        context.getSharedPreferences(TidyWidget.PREFS, Context.MODE_PRIVATE).edit().putString(TidyWidget.KEY, data).apply();
-        TidyWidget.refreshAll(context);
+        context.getSharedPreferences(WidgetData.PREFS, Context.MODE_PRIVATE).edit().putString(WidgetData.KEY, data).apply();
+        WidgetData.refreshAll(context);
         call.resolve();
     }
 
-    /** 런처에 "홈 화면에 위젯 추가" 창을 띄워 달라고 한다 (안드로이드 8 이상, 지원하는 런처만) */
+    /** 런처에 "홈 화면에 위젯 추가" 창을 띄워 달라고 한다 (안드로이드 8 이상, 지원하는 런처만). kind: 위젯 종류 */
     @PluginMethod
     public void pin(PluginCall call) {
         JSObject result = new JSObject();
@@ -37,7 +37,7 @@ public class TidyWidgetPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             AppWidgetManager manager = getContext().getSystemService(AppWidgetManager.class);
             if (manager != null && manager.isRequestPinAppWidgetSupported()) {
-                ok = manager.requestPinAppWidget(new ComponentName(getContext(), TidyWidget.class), null, null);
+                ok = manager.requestPinAppWidget(new ComponentName(getContext(), WidgetData.classOf(call.getString("kind", "today"))), null, null);
             }
         }
         result.put("ok", ok);

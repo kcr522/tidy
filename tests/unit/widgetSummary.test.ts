@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Todo, Transaction } from '../../src/db/types'
-import { buildWidgetSummary, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
+import type { CalendarEvent, Habit, Todo, Transaction } from '../../src/db/types'
+import { buildWidgetSummary, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
 
 const todo = (title: string, dueDate: string | null, done = false): Todo => ({
   title,
@@ -52,7 +52,7 @@ describe('buildWidgetSummary', () => {
 
   it('잠금 중이면 제목과 금액을 넣지 않는다', () => {
     const l = buildWidgetSummary(todos, txs, '2026-11-10', true)
-    expect(l.days['2026-11-10']).toEqual({ done: 1, total: 3, items: [], spend: null })
+    expect(l.days['2026-11-10']).toMatchObject({ done: 1, total: 3, items: [], spend: null, ev: [] })
     expect(l.months).toEqual({})
     expect(JSON.stringify(l)).not.toContain('장보기')
   })
@@ -90,5 +90,57 @@ describe('widgetView', () => {
   it('잠금 중이면 금액을 숨긴다', () => {
     const v = widgetView(buildWidgetSummary(todos, txs, '2026-11-10', true), '2026-11-10')
     expect(v).toMatchObject({ locked: true, money: null, items: [], total: 3 })
+  })
+})
+
+const ev = (title: string, startDate: string, endDate = startDate): CalendarEvent => ({ title, startDate, endDate, color: 'sky', memo: '', createdAt: '', updatedAt: '' })
+const habit = (id: number, title: string, emoji: string, order: number, schedule?: Habit['schedule']): Habit => ({ id, title, emoji, order, schedule, createdAt: '', updatedAt: '' })
+
+describe('위젯 여러 종류', () => {
+  const many = Array.from({ length: 10 }, (_, i) => todo(`일 ${i + 1}`, '2026-11-10'))
+  const extras = {
+    events: [ev('여행', '2026-11-09', '2026-11-11'), ev('치과', '2026-11-12'), ev('회의', '2026-11-10')],
+    habits: [habit(1, '물 마시기', '💧', 1), habit(2, '적금 넣기', '💰', 2, { freq: 'weekly' as const, weekday: 3 })],
+    checks: [{ habitId: 1, date: '2026-11-10', createdAt: '' }],
+    budgets: [{ category: '', amount: 20000, updatedAt: '' }, { category: '식비', amount: 5000, updatedAt: '' }],
+    opacity: { today: 100, todo: 40, money: 0, event: 75, habit: 100 },
+  }
+  const s = buildWidgetSummary(many, txs, '2026-11-10', false, extras)
+
+  it("'오늘' 위젯은 4개만, '할 일' 위젯은 8개까지", () => {
+    expect(widgetView(s, '2026-11-10')).toMatchObject({ more: 6 })
+    expect(widgetView(s, '2026-11-10').items).toHaveLength(4)
+    expect(todoWidgetView(s, '2026-11-10')).toMatchObject({ total: 10, more: 2 })
+    expect(todoWidgetView(s, '2026-11-10').items).toHaveLength(8)
+  })
+
+  it('가계부: 이번 달 지출과 남은 예산 (전체 예산만 쓴다)', () => {
+    expect(moneyWidgetView(s, '2026-11-10')).toMatchObject({ monthLabel: '11월', today: 12300, month: 29300, budget: 20000, left: -9300, pct: 100 })
+    expect(moneyWidgetView(buildWidgetSummary([], txs, '2026-11-10', false), '2026-11-10').budget).toBeNull()
+  })
+
+  it('일정: 여러 날 일정은 오늘(또는 첫날)에만, 날짜 순으로', () => {
+    const v = eventWidgetView(s, '2026-11-10')
+    expect(v.todayCount).toBe(2)
+    expect(v.rows.map((r) => `${r.label} ${r.t}`)).toEqual(['오늘 여행', '오늘 회의', '11/12 목 치과'])
+    expect(eventWidgetView(s, '2026-11-11').rows.map((r) => `${r.label} ${r.t}`)).toEqual(['오늘 여행', '내일 치과'])
+  })
+
+  it('습관: 그날 할 습관만, 체크한 것', () => {
+    expect(habitWidgetView(s, '2026-11-10')).toMatchObject({ done: 1, total: 1 })
+    expect(habitWidgetView(s, '2026-11-11')).toMatchObject({ done: 0, total: 2 })
+  })
+
+  it('투명도를 함께 싣는다 (없으면 모두 100)', () => {
+    expect(s.opacity).toEqual(extras.opacity)
+    expect(buildWidgetSummary([], [], '2026-11-10', false).opacity).toEqual({ today: 100, todo: 100, money: 100, event: 100, habit: 100 })
+  })
+
+  it('잠금 중이면 일정 제목, 습관 제목, 예산을 넣지 않는다', () => {
+    const l = buildWidgetSummary(many, txs, '2026-11-10', true, extras)
+    expect(l.budget).toBeNull()
+    expect(JSON.stringify(l)).not.toContain('여행')
+    expect(JSON.stringify(l)).not.toContain('물 마시기')
+    expect(eventWidgetView(l, '2026-11-10')).toMatchObject({ locked: true, todayCount: 2, rows: [] })
   })
 })

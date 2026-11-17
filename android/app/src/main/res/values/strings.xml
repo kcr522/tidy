@@ -6,5 +6,14 @@
     <string name="custom_url_scheme">com.kcr522.tidy</string>
     <string name="widget_description">오늘 할 일과 지출을 홈 화면에서 봐요</string>
     <string name="widget_loading">Tidy</string>
+    <string name="widget_name_today">오늘 요약</string>
+    <string name="widget_name_todo">할 일</string>
+    <string name="widget_name_money">가계부</string>
+    <string name="widget_name_event">일정</string>
+    <string name="widget_name_habit">습관</string>
+    <string name="widget_todo_description">오늘 할 일 목록을 홈 화면에서 봐요</string>
+    <string name="widget_money_description">이번 달 지출과 남은 예산을 봐요</string>
+    <string name="widget_event_description">오늘부터 일주일 일정을 봐요</string>
+    <string name="widget_habit_description">오늘 할 습관과 체크를 봐요</string>
     <string name="share_label">Tidy에 스크랩</string>
 </resources>

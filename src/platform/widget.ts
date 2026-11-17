@@ -1,4 +1,5 @@
 import { registerPlugin } from '@capacitor/core'
+import type { WidgetKind } from '../lib/widgetSettings'
 import type { WidgetSummary } from '../lib/widgetSummary'
 import { isNativeApp } from './native'
 
@@ -7,7 +8,7 @@ interface TidyWidgetPlugin {
   /** 요약을 저장하고 홈 화면 위젯을 다시 그린다 */
   update(options: { data: string }): Promise<void>
   /** 홈 화면에 위젯을 추가해 달라고 런처에 부탁한다. 지원하지 않는 런처면 false */
-  pin(): Promise<{ ok: boolean }>
+  pin(options: { kind: WidgetKind }): Promise<{ ok: boolean }>
 }
 
 const TidyWidget = registerPlugin<TidyWidgetPlugin>('TidyWidget')
@@ -28,10 +29,10 @@ export async function syncWidget(summary: WidgetSummary): Promise<void> {
 }
 
 /** 홈 화면에 위젯 추가 창을 띄운다. 못 띄우면 false (직접 추가하는 방법을 안내한다) */
-export async function pinWidget(): Promise<boolean> {
+export async function pinWidget(kind: WidgetKind = 'today'): Promise<boolean> {
   if (!isNativeApp()) return false
   try {
-    return (await TidyWidget.pin()).ok
+    return (await TidyWidget.pin({ kind })).ok
   } catch {
     return false
   }
