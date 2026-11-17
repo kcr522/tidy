@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Settings2 } from 'lucide-react'
+import { LayoutGrid, List, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
+import BookmarkRow from '../components/bookmarks/BookmarkRow'
 import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
 import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
@@ -31,6 +32,16 @@ type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
 const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v1'
+/** 카드 보기 / 목록 보기 (기기마다 기억) */
+const VIEW_KEY = 'tidy.scrap.view'
+type View = 'card' | 'list'
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'card'
+  } catch {
+    return 'card'
+  }
+}
 
 /** 공유받기(/share)에서 넘어오는 값 */
 export interface ShareState {
@@ -48,6 +59,15 @@ export default function BookmarksPage() {
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
+  const [view, setViewState] = useState<View>(readView)
+  function setView(v: View) {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // 기억 못 해도 지금 화면은 바뀐다
+    }
+  }
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -102,17 +122,21 @@ export default function BookmarksPage() {
     return remembered != null && categories.some((c) => c.id === remembered) ? remembered : null
   }
 
-  async function save({ input, thumb }: BookmarkFormValue) {
+  async function save({ input, thumb, titleByUser }: BookmarkFormValue) {
     try {
       let id: number
+      let merged = false
       const isNew = editor?.mode !== 'edit'
       if (editor?.mode === 'edit' && editor.item.id != null) {
         id = editor.item.id
         await bookmarkRepo.update(id, input)
         toast('수정했어요')
       } else {
-        id = await bookmarkRepo.add(input)
-        toast(input.categoryId != null ? `'${catName(input.categoryId) ?? ''}'에 저장했어요` : '저장했어요')
+        // 같은 게시물이 이미 있으면 새로 만들지 않고 그 스크랩을 최신 내용으로 바꾼다
+        const r = await bookmarkRepo.addOrMerge(input, { titleByUser })
+        id = r.id
+        merged = r.merged
+        toast(merged ? '이미 있던 스크랩을 최신 내용으로 바꿨어요' : input.categoryId != null ? `'${catName(input.categoryId) ?? ''}'에 저장했어요` : '저장했어요')
       }
       if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
       if (input.source) rememberCategory(input.source, input.categoryId ?? null)
@@ -124,6 +148,8 @@ export default function BookmarksPage() {
         .then((b) => b && enrichScrap(b))
         .catch(() => undefined)
       // 새 링크면 서버가 사이트 화면을 자동으로 찍고 → 보여 주면서 "편집" / "그냥 올리기". 끄면 예전처럼 "캡처본도 같이 저장할까요?"
+      // 합친 스크랩은 이미 찍어 둔 화면이 있으니 다시 찍지 않는다
+      if (merged) return
       if (autoCaptureEnabled()) setAutoShot({ id, url: input.url })
       else if (askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
     } catch {
@@ -179,7 +205,8 @@ export default function BookmarksPage() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
+      <div className="mb-4 flex items-center gap-2">
+      <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs md:flex-none md:basis-80" role="tablist">
         {(
           [
             ['all', `전체 (${counts.all})`],
@@ -198,6 +225,28 @@ export default function BookmarksPage() {
           </button>
         ))}
       </div>
+        <div className="ml-auto flex shrink-0 gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기">
+          {(
+            [
+              ['card', '카드로 보기', LayoutGrid],
+              ['list', '목록으로 보기', List],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              aria-label={label}
+              title={label}
+              onClick={() => setView(key)}
+              className={`flex size-11 items-center justify-center rounded-xl ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+            >
+              <Icon className="size-5" aria-hidden />
+            </button>
+          ))}
+        </div>
+      </div>
 
       {all === undefined ? null : items.length === 0 ? (
         <EmptyState
@@ -205,6 +254,19 @@ export default function BookmarksPage() {
           title={filter === 'unread' ? '안 읽은 스크랩이 없어요' : cat !== 'all' ? '이 카테고리에 저장한 링크가 없어요' : '나중에 볼 링크를 저장해 보세요'}
           action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>}
         />
+      ) : view === 'list' ? (
+        <ul className="card divide-y divide-slate-100 overflow-hidden py-1">
+          {items.map((b) => (
+            <BookmarkRow
+              key={b.id}
+              bookmark={b}
+              cover={b.id != null ? covers?.get(b.id)?.cover : undefined}
+              categoryName={catName(b.categoryId)}
+              onOpen={() => open(b)}
+              onDetail={() => setDetailId(b.id ?? null)}
+            />
+          ))}
+        </ul>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {items.map((b) => {
@@ -236,7 +298,7 @@ export default function BookmarksPage() {
             prefill={editor.mode === 'add' ? editor.prefill : undefined}
             categories={categories}
             defaultCategoryId={defaultCategory(editor.mode === 'add' ? editor.prefill?.url : undefined)}
-            isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url, editingId))}
+            isDuplicate={async (url) => !!(await bookmarkRepo.findSame(url, editingId))}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />
