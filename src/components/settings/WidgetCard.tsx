@@ -18,6 +18,7 @@ import {
   widgetRange,
   widgetView,
   type CalendarMode,
+  type CalendarSize,
   type EventWidgetView,
   type HabitWidgetView,
   type MemoWidgetView,
@@ -42,6 +43,7 @@ export default function WidgetCard() {
   const [opacity, setOpacity] = useState(loadWidgetOpacity)
   useEffect(() => onWidgetSettingsChange(() => setOpacity(loadWidgetOpacity())), [])
   const [kind, setKind] = useState<WidgetKind>('today')
+  const [calSize, setCalSize] = useState<CalendarSize>('medium')
 
   const [from, to] = widgetRange(today)
   const todos = useLiveQuery(() => todoRepo.listAll(), [])
@@ -84,7 +86,28 @@ export default function WidgetCard() {
       <p className="mb-2 text-sm text-slate-600">
         <span className="font-semibold">{info.name}</span> · {info.desc} <span className="text-slate-400">({info.size} 칸)</span>
       </p>
-      <Wallpaper>{summary && <KindPreview kind={kind} summary={summary} today={today} opacity={opacity[kind]} />}</Wallpaper>
+      {kind === 'calendar' && (
+        <div className="mb-2">
+          <div className="flex gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="달력 위젯 크기 미리보기">
+            {CAL_SIZES.map((z) => (
+              <button
+                key={z.size}
+                type="button"
+                role="radio"
+                aria-checked={calSize === z.size}
+                onClick={() => setCalSize(z.size)}
+                className={`flex-1 rounded-lg py-1.5 text-sm font-semibold transition ${calSize === z.size ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+              >
+                {z.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 가장 크게(4×6, 폰 화면 가득) 늘리면 글자가 커지고 하루에 일정이 4개까지 보여요.</p>
+        </div>
+      )}
+      <Wallpaper tall={kind === 'calendar' && calSize === 'large'}>
+        {summary && <KindPreview kind={kind} summary={summary} today={today} opacity={opacity[kind]} calSize={calSize} />}
+      </Wallpaper>
 
       <label className="mt-4 block">
         <span className="mb-1 flex items-center justify-between text-sm">
@@ -108,6 +131,7 @@ export default function WidgetCard() {
       </label>
       {native && <p className="mt-1 text-xs text-slate-400">바꾸면 홈 화면에 놓인 &apos;{info.name}&apos; 위젯에 바로 적용돼요.</p>}
 
+      {kind === 'calendar' && !native && <DesktopWidgetHelp />}
       {native ? (
         <Button className="mt-4 w-full" onClick={add}>
           &apos;{info.name}&apos; 위젯 홈 화면에 추가
@@ -119,23 +143,83 @@ export default function WidgetCard() {
   )
 }
 
-/** 투명도가 보이도록 홈 화면 배경처럼 깔아 두는 그림 */
-function Wallpaper({ children }: { children: ReactNode }) {
+/** 컴퓨터(맥 · 윈도우)에서는 달력만 보이는 작은 창을 앱으로 설치해 바탕화면에 띄운다 (/widget) */
+/** 컴퓨터 위젯 앱 'Tidy 달력' 받는 곳 (desktop-widget/, GitHub Actions가 맥 · 윈도우용을 만들어 올린다) */
+const DESK_APP_URL = 'https://github.com/kcr522/tidy/releases/tag/desktop-widget-latest'
+
+function DesktopWidgetHelp() {
+  const mac = /Mac/i.test(navigator.platform || navigator.userAgent)
+  function open() {
+    window.open('/widget', 'tidy-widget', 'popup,width=420,height=480')
+  }
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#7dd3fc_0%,#c4b5fd_45%,#f9a8d4_100%)] p-4 dark:bg-[linear-gradient(135deg,#0c4a6e_0%,#4c1d95_50%,#831843_100%)]">
-      <div className="pointer-events-none absolute -top-8 -left-6 size-32 rounded-full bg-[#fde68a]/70 blur-sm" aria-hidden />
-      <div className="pointer-events-none absolute -right-10 -bottom-10 size-40 rounded-full bg-[#34d399]/60 blur-sm" aria-hidden />
-      <div className="relative flex justify-center">{children}</div>
+    <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm">
+      <p className="font-bold">💻 컴퓨터 바탕화면에 띄우기</p>
+      <p className="mt-1 break-keep text-slate-500">맥북 · 삼성 노트북 바탕화면에 달력을 늘 띄워 둘 수 있어요. 창 크기를 키우면 글자와 일정 줄 수도 커져요.</p>
+
+      <p className="mt-3 font-semibold">1. 'Tidy 달력' 위젯 앱 (투명도 조절 ✓)</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
+        <li>{mac ? "아래 버튼에서 'Tidy-Calendar-mac.dmg'를 받아 열고, 'Tidy 달력'을 응용 프로그램 폴더로 끌어 넣어요" : "아래 버튼에서 'Tidy-Calendar-windows.exe'를 받아 설치해요"}</li>
+        <li>{mac ? "처음 열 때 '확인되지 않은 개발자'가 나오면 시스템 설정 → 개인정보 보호 및 보안 → '그래도 열기'" : "'Windows의 PC 보호' 창이 나오면 '추가 정보' → '실행'"}</li>
+        <li>위젯 위에 마우스를 올리면 아래에 막대가 나와요: 끌어서 옮기기 · 투명도 · 닫기</li>
+        <li>처음 한 번 구글 로그인 (브라우저가 열려요). 컴퓨터를 켤 때마다 저절로 떠요</li>
+      </ol>
+      <a href={DESK_APP_URL} target="_blank" rel="noreferrer" className="tap mt-2 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 font-bold text-white">
+        {mac ? '맥용 위젯 앱 받기' : '윈도우용 위젯 앱 받기'}
+      </a>
+
+      <p className="mt-4 font-semibold">2. 설치 없이 브라우저 창으로 (불투명)</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
+        <li>아래 버튼으로 위젯 창을 열어요 (크롬 · 엣지)</li>
+        <li>주소창 오른쪽 설치 아이콘 또는 메뉴 ⋮ → '앱으로 설치' / '이 사이트를 앱으로 설치'</li>
+        <li>{mac ? "독(Dock)의 'Tidy 달력' 아이콘을 오른쪽 클릭 → 옵션 → '로그인 시 열기'를 켜면 맥을 켤 때마다 떠요" : "작업 표시줄의 'Tidy 달력'을 고정해 두면 언제든 열 수 있어요"}</li>
+      </ol>
+      <Button variant="secondary" className="mt-3 w-full" onClick={open}>
+        위젯 창 열기
+      </Button>
     </div>
   )
 }
 
-function KindPreview({ kind, summary, today, opacity }: { kind: WidgetKind; summary: WidgetSummary; today: string; opacity: number }) {
+/** 달력 위젯 미리보기 크기 */
+const CAL_SIZES: { size: CalendarSize; label: string }[] = [
+  { size: 'small', label: '작게 4×3' },
+  { size: 'medium', label: '보통 4×4' },
+  { size: 'large', label: '크게 4×6' },
+]
+
+/** 투명도가 보이도록 홈 화면 배경처럼 깔아 두는 그림. tall 이면 폰 홈 화면 한 장 크기 (상태 줄과 아래 앱 줄까지) */
+function Wallpaper({ children, tall }: { children: ReactNode; tall?: boolean }) {
+  return (
+    <div
+      className={`relative overflow-hidden bg-[linear-gradient(135deg,#7dd3fc_0%,#c4b5fd_45%,#f9a8d4_100%)] dark:bg-[linear-gradient(135deg,#0c4a6e_0%,#4c1d95_50%,#831843_100%)] ${tall ? 'mx-auto flex aspect-[9/19.5] max-w-[340px] flex-col rounded-[2.2rem] px-3 pt-2 pb-3 ring-4 ring-slate-800' : 'rounded-3xl p-4'}`}
+    >
+      <div className="pointer-events-none absolute -top-8 -left-6 size-32 rounded-full bg-[#fde68a]/70 blur-sm" aria-hidden />
+      <div className="pointer-events-none absolute -right-10 -bottom-10 size-40 rounded-full bg-[#34d399]/60 blur-sm" aria-hidden />
+      {tall && (
+        <div className="relative mb-3 flex justify-between px-3 text-[11px] font-semibold text-[#191f28]" aria-hidden>
+          <span>3:41</span>
+          <span>5G ▮▮▮ 87%</span>
+        </div>
+      )}
+      <div className={`relative flex justify-center ${tall ? 'min-h-0 flex-1' : ''}`}>{children}</div>
+      {tall && (
+        <div className="relative mt-3 flex justify-around px-4" aria-hidden>
+          {['bg-[#34c759]', 'bg-[#ffcc00]', 'bg-[#ff6b6b]', 'bg-[#5b9dff]'].map((c) => (
+            <span key={c} className={`size-11 rounded-2xl ${c} opacity-90 shadow`} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function KindPreview({ kind, summary, today, opacity, calSize }: { kind: WidgetKind; summary: WidgetSummary; today: string; opacity: number; calSize: CalendarSize }) {
   if (kind === 'todo') return <TodoWidgetPreview view={todoWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'money') return <MoneyWidgetPreview view={moneyWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'event') return <EventWidgetPreview view={eventWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'habit') return <HabitWidgetPreview view={habitWidgetView(summary, today)} opacity={opacity} />
-  if (kind === 'calendar') return <CalendarWidgetPreview summary={summary} today={today} opacity={opacity} />
+  if (kind === 'calendar') return <CalendarWidgetPreview summary={summary} today={today} opacity={opacity} size={calSize} />
   if (kind === 'memo') return <MemoWidgetPreview view={memoWidgetView(summary, today)} opacity={opacity} />
   return <WidgetPreview view={widgetView(summary, today)} opacity={opacity} />
 }
@@ -144,9 +228,9 @@ const MUTED = 'text-[#6b7684] dark:text-[#9aa4b1]'
 const STALE = '앱을 한 번 열면 새로 고쳐져요'
 
 /** 안드로이드 위젯과 같은 모양의 틀. 바탕만 opacity를 따르고 글자는 그대로 (widget_*.xml 의 widget_bg_img) */
-function Frame({ wide, opacity, label, children }: { wide?: boolean; opacity: number; label: string; children: ReactNode }) {
+function Frame({ wide, fill, opacity, label, children }: { wide?: boolean; fill?: boolean; opacity: number; label: string; children: ReactNode }) {
   return (
-    <div className={`relative overflow-hidden rounded-[22px] text-[#191f28] dark:text-[#eef1f5] ${wide ? 'w-full max-w-sm' : 'aspect-square w-44'}`} aria-label={label}>
+    <div className={`relative overflow-hidden text-[#191f28] dark:text-[#eef1f5] ${fill ? 'h-full w-full rounded-none' : wide ? 'h-full w-full max-w-sm rounded-[22px]' : 'aspect-square w-44 rounded-[22px]'}`} aria-label={label}>
       <div className="absolute inset-0 bg-[#ffffff] dark:bg-[#1c1f26]" style={{ opacity: opacity / 100 }} aria-hidden />
       <div className={`relative h-full ${wide ? 'p-4' : 'p-3.5'}`}>{children}</div>
     </div>
@@ -334,54 +418,92 @@ function HabitWidgetPreview({ view, opacity }: { view: HabitWidgetView; opacity:
 
 const WEEK_HEAD = ['일', '월', '화', '수', '목', '금', '토']
 
+/** 크기마다 높이 · 글자 크기 (안드로이드 CalendarWidget 과 같은 비율) */
+const CAL_LOOK: Record<CalendarSize, { frame: string; day: string; line: string; dot: string }> = {
+  small: { frame: 'h-64', day: 'text-[11px]', line: 'text-[9px]', dot: 'size-2' },
+  medium: { frame: 'h-[22rem]', day: 'text-[12px]', line: 'text-[9.5px]', dot: 'size-2.5' },
+  large: { frame: 'h-full', day: 'text-[14px]', line: 'text-[10px]', dot: 'size-3' },
+}
+
 /** '달력' 위젯 (widget_calendar.xml): 위의 버튼으로 돈 · 일기 · 일정 달력을 바꿔 본다 */
-function CalendarWidgetPreview({ summary, today, opacity }: { summary: WidgetSummary; today: string; opacity: number }) {
-  const [mode, setMode] = useState<CalendarMode>('money')
-  const view = calendarWidgetView(summary, today, mode)
+/**
+ * 달력 위젯 그림. 설정 미리보기와 컴퓨터용 위젯 창(/widget, fill)이 같이 쓴다.
+ * modeKey 를 주면 고른 모드를 이 기기에 기억한다.
+ */
+export function CalendarWidgetPreview({ summary, today, opacity, size, fill, modeKey }: { summary: WidgetSummary; today: string; opacity: number; size: CalendarSize; fill?: boolean; modeKey?: string }) {
+  const [mode, setModeState] = useState<CalendarMode>(() => {
+    try {
+      const saved = modeKey ? localStorage.getItem(modeKey) : null
+      return saved === 'diary' || saved === 'event' ? saved : 'money'
+    } catch {
+      return 'money'
+    }
+  })
+  function setMode(m: CalendarMode) {
+    setModeState(m)
+    try {
+      if (modeKey) localStorage.setItem(modeKey, m)
+    } catch {
+      // 기억 못 해도 지금은 바뀐다
+    }
+  }
+  const view = calendarWidgetView(summary, today, mode, size)
+  const look = CAL_LOOK[size]
   const dayColor = (weekday: number, holiday: boolean) => (weekday === 0 || holiday ? 'text-[#f04452]' : weekday === 6 ? 'text-[#3182f6]' : '')
   return (
-    <Frame wide opacity={opacity} label="달력 위젯 미리보기">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[15px] font-bold">{view.monthLabel}</p>
-        <div className="flex gap-1">
-          {CALENDAR_MODES.map((m) => (
-            <button
-              key={m.mode}
-              type="button"
-              onClick={() => setMode(m.mode)}
-              aria-pressed={mode === m.mode}
-              className={`rounded-full px-2 py-0.5 text-xs font-bold ${mode === m.mode ? 'bg-[#1d8fe1] text-[#fff]' : 'bg-[#e8eef5] text-[#6b7684] dark:bg-[#2c313a] dark:text-[#9aa4b1]'}`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className={`mt-0.5 h-4 text-xs ${MUTED}`}>{view.stale ? STALE : view.locked ? '🔒 잠금 중이라 숨겼어요' : view.sum}</p>
-      <div className="mt-1.5 grid grid-cols-7 text-center text-[10px] font-semibold">
-        {WEEK_HEAD.map((w, i) => (
-          <span key={w} className={dayColor(i, false) || MUTED}>
-            {w}
-          </span>
-        ))}
-      </div>
-      <div className="mt-0.5 grid grid-cols-7 gap-y-0.5 text-center">
-        {view.weeks.flat().map((c, i) =>
-          c === null ? (
-            <span key={i} className="h-9" />
-          ) : (
-            <span key={i} className={`flex h-9 min-w-0 flex-col items-center rounded-lg pt-0.5 ${c.today ? 'bg-[#1d8fe1]/15' : ''}`}>
-              <span className={`text-[11px] leading-tight font-semibold ${c.today ? 'text-[#1d8fe1]' : dayColor(c.weekday, c.holiday)}`}>{c.day}</span>
-              {c.dot ? (
-                <span className="mt-0.5 size-2.5 rounded-full" style={{ background: c.dot }} />
+    <div className={fill ? 'h-full w-full' : `w-full max-w-sm ${look.frame}`}>
+      <Frame wide fill={fill} opacity={opacity} label="달력 위젯 미리보기">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <p className={`${size === 'large' ? 'text-[17px]' : 'text-[15px]'} font-bold`}>{view.monthLabel}</p>
+            <div className="flex gap-1">
+              {CALENDAR_MODES.map((m) => (
+                <button
+                  key={m.mode}
+                  type="button"
+                  onClick={() => setMode(m.mode)}
+                  aria-pressed={mode === m.mode}
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${mode === m.mode ? 'bg-[#1d8fe1] text-[#fff]' : 'bg-[#e8eef5] text-[#6b7684] dark:bg-[#2c313a] dark:text-[#9aa4b1]'}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className={`mt-0.5 h-4 text-xs ${MUTED}`}>{view.stale ? STALE : view.locked ? '🔒 잠금 중이라 숨겼어요' : view.sum}</p>
+          <div className="mt-1.5 grid grid-cols-7 text-center text-[10px] font-semibold">
+            {WEEK_HEAD.map((w, i) => (
+              <span key={w} className={dayColor(i, false) || MUTED}>
+                {w}
+              </span>
+            ))}
+          </div>
+          <div className="mt-0.5 grid min-h-0 flex-1 grid-cols-7 gap-0.5 text-center" style={{ gridTemplateRows: `repeat(${view.weeks.length}, minmax(0, 1fr))` }}>
+            {view.weeks.flat().map((c, i) =>
+              c === null ? (
+                <span key={i} />
               ) : (
-                <span className={`w-full truncate px-0.5 text-[9px] leading-tight ${mode === 'money' ? 'text-[#f04452]' : ''}`}>{c.text}</span>
-              )}
-            </span>
-          ),
-        )}
-      </div>
-    </Frame>
+                <span key={i} className={`flex min-h-0 min-w-0 flex-col items-center overflow-hidden rounded-lg pt-0.5 ${c.today ? 'bg-[#1d8fe1]/15' : ''}`}>
+                  <span className={`${look.day} leading-tight font-semibold ${c.today ? 'text-[#1d8fe1]' : dayColor(c.weekday, c.holiday)}`}>{c.day}</span>
+                  {c.dot ? (
+                    <span className={`mt-0.5 ${look.dot} rounded-full`} style={{ background: c.dot }} />
+                  ) : (
+                    c.lines.map((l, n) => (
+                      <span
+                        key={n}
+                        className={`w-full overflow-hidden whitespace-nowrap ${look.line} leading-tight ${mode === 'money' ? 'text-[#f04452]' : l.startsWith('+') ? `mt-px ${MUTED}` : 'mt-px rounded-[3px] bg-[#1d8fe1]/15 px-0.5 text-left'}`}
+                      >
+                        {l}
+                      </span>
+                    ))
+                  )}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+      </Frame>
+    </div>
   )
 }
 

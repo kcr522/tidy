@@ -276,3 +276,11 @@ button {
 /* 다크 모드: 형광펜 위 글자는 어둡게, '기본 색'으로 칠한 글자는 화면 글자 색으로 */
 .dark .memo-rich span[style*='background-color'] { color: #191f28; }
 .dark .memo-rich [style*='rgb(25, 31, 40)'] { color: inherit !important; }
+
+/* 컴퓨터 위젯 앱(Tidy 달력): 창 바탕을 비워 바탕화면이 비치게 (src/pages/WidgetWindowPage.tsx) */
+html.desk-widget,
+html.desk-widget body,
+html.desk-widget #root {
+  background: transparent !important;
+  background-image: none !important;
+}

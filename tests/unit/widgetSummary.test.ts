@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent, Habit, Todo, Transaction } from '../../src/db/types'
-import { buildWidgetSummary, calendarWidgetView, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
+import { buildWidgetSummary, calendarSizeOf, calendarWidgetView, eventLines, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
 
 const todo = (title: string, dueDate: string | null, done = false): Todo => ({
   title,
@@ -155,19 +155,29 @@ describe('달력 위젯', () => {
   it('이번 달과 다음 달을 담는다', () => {
     expect(Object.keys(s.cal)).toEqual(['2026-11', '2026-12'])
     expect(s.cal['2026-11'].s).toEqual({ '1': 10000, '10': 12300, '12': 7000 })
-    expect(s.cal['2026-11'].e['10']).toEqual(['여행', 2])
-    expect(s.cal['2026-12'].e['20']).toEqual(['송년회', 1])
+    expect(s.cal['2026-11'].e['10']).toEqual([2, '여행', '회의'])
+    expect(s.cal['2026-12'].e['20']).toEqual([1, '송년회'])
     expect(s.cal['2026-11'].d).toEqual({ '3': '#ffb3c7' })
     expect(s.cal['2026-12'].h).toContain(25)
   })
 
   it('돈 · 일기 · 일정 모드마다 칸 글자가 바뀐다', () => {
-    const cell = (mode: 'money' | 'diary' | 'event', day: number) => calendarWidgetView(s, '2026-11-10', mode).weeks.flat().find((c) => c?.day === day)
-    expect(cell('money', 10)?.text).toBe('1.2만')
-    expect(cell('event', 10)?.text).toBe('여행 +1')
+    const cell = (mode: 'money' | 'diary' | 'event', day: number, size?: 'small' | 'medium' | 'large') => calendarWidgetView(s, '2026-11-10', mode, size).weeks.flat().find((c) => c?.day === day)
+    expect(cell('money', 10)?.lines).toEqual(['1.2만'])
+    expect(cell('event', 10, 'small')?.lines).toEqual(['여행'])
+    expect(cell('event', 10, 'large')?.lines).toEqual(['여행', '회의'])
     expect(cell('diary', 3)?.dot).toBe('#ffb3c7')
     expect(cell('money', 10)?.today).toBe(true)
     expect(calendarWidgetView(s, '2026-11-10', 'money').sum).toBe('지출 2.9만원')
+  })
+
+  it('일정이 줄보다 많으면 마지막 줄은 +남은 수', () => {
+    expect(eventLines([5, 'a', 'b', 'c', 'd'], 2)).toEqual(['a', '+4'])
+    expect(eventLines([4, 'a', 'b', 'c', 'd'], 4)).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('위젯 높이로 크기를 고른다', () => {
+    expect([200, 320, 700].map(calendarSizeOf)).toEqual(['small', 'medium', 'large'])
   })
 
   it('2026년 11월은 일요일에 시작해 5주', () => {
@@ -181,6 +191,6 @@ describe('달력 위젯', () => {
     expect(calendarWidgetView(s, '2027-01-01', 'diary').stale).toBe(true)
     const l = buildWidgetSummary([], txs, '2026-11-10', true, extras)
     expect(JSON.stringify(l.cal)).not.toContain('여행')
-    expect(calendarWidgetView(l, '2026-11-10', 'money').weeks.flat().every((c) => !c || c.text === '')).toBe(true)
+    expect(calendarWidgetView(l, '2026-11-10', 'money').weeks.flat().every((c) => !c || c.lines.length === 0)).toBe(true)
   })
 })
