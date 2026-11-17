@@ -16,7 +16,7 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|icons/|ocr/|sw.js|workbox-|manifest.webmanifest|favicon.svg|privacy.html).*)",
+      "source": "/((?!api/|assets/|icons/|ocr/|sw.js|workbox-|manifest.webmanifest|favicon.svg|privacy.html|version.json).*)",
       "destination": "/index.html"
     }
   ],
@@ -43,6 +43,15 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000"
+        }
+      ]
+    },
+    {
+      "source": "/version.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
         }
       ]
     },

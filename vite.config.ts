@@ -9,6 +9,18 @@ import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
 import { captureSite, readPageContent } from './src/lib/scrap/pageContent.ts'
 import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
 
+/** 배포된 웹이 어느 커밋인지 알 수 있게 dist/version.json 을 만든다 (.github/workflows/web-deploy.yml 이 합친 뒤 실제 사이트에 새 버전이 올라갔는지 확인할 때 쓴다) */
+function buildVersionFile(): Plugin {
+  return {
+    name: 'tidy-version-file',
+    apply: 'build',
+    generateBundle() {
+      const info = { version: pkg.version, commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? '', branch: process.env.VERCEL_GIT_COMMIT_REF ?? '', builtAt: new Date().toISOString() }
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify(info) })
+    },
+  }
+}
+
 /** 개발 중(npm run dev)에도 링크 미리보기가 되도록: 배포 때 api/preview.ts 가 하는 일을 똑같이 한다 */
 function devPreviewApi(): Plugin {
   return {
@@ -67,6 +79,7 @@ export default defineConfig({
   },
   plugins: [
     devPreviewApi(),
+    buildVersionFile(),
     react(),
     tailwindcss(),
     // PWA: 오프라인 동작 + 폰 홈 화면/컴퓨터 "앱 설치" 지원
