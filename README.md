@@ -297,6 +297,10 @@
 
 <img src="docs/screenshots/pay-notify-2-guide.png" width="240"> <img src="docs/screenshots/pay-notify-5-banner.png" width="240"> <img src="docs/screenshots/pay-notify-6-review.png" width="240"> <img src="docs/screenshots/pay-notify-4-settings-on.png" width="240"> <img src="docs/screenshots/pay-filter-2-review-muted.png" width="240"> <img src="docs/screenshots/pay-filter-3-settings.png" width="240">
 
+**어떤 카드 · 계좌로 썼는지 구분 (카드 · 계좌별 보기 → 내 카드 · 계좌 관리 → 입력할 때 고르기 → 적금이 나가는 계좌)**
+
+<img src="docs/screenshots/pay-method-list.png" width="240"> <img src="docs/screenshots/pay-method-manager.png" width="240"> <img src="docs/screenshots/pay-method-edit.png" width="240"> <img src="docs/screenshots/pay-method-form.png" width="240"> <img src="docs/screenshots/savings-from-list.png" width="240"> <img src="docs/screenshots/savings-from-detail.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

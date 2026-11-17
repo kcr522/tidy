@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BarChart3, CalendarCheck, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
+import { BarChart3, CalendarCheck, CreditCard, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { budgetStatus } from '../../../lib/budget'
@@ -11,12 +11,15 @@ import { recurringRepo } from '../../../repositories/recurringRepo'
 import { transactionRepo } from '../../../repositories/transactionRepo'
 import Modal from '../../common/Modal'
 import RecurringManager from '../RecurringManager'
+import PayMethodManager from '../../payMethods/PayMethodManager'
+import { payMethodRepo } from '../../../repositories/payMethodRepo'
+import { accountTotals, NO_ACCOUNT } from '../../../lib/summary'
 import ChartPanel from './ChartPanel'
 import StatsPanel from './StatsPanel'
 
-export type MenuView = 'menu' | 'chart' | 'stats' | 'fixed' | 'budget'
+export type MenuView = 'menu' | 'chart' | 'stats' | 'fixed' | 'budget' | 'methods'
 
-const TITLE: Record<MenuView, string> = { menu: '가계부 메뉴', chart: '차트', stats: '통계', fixed: '고정 금액', budget: '예산' }
+const TITLE: Record<MenuView, string> = { menu: '가계부 메뉴', chart: '차트', stats: '통계', fixed: '고정 금액', budget: '예산', methods: '카드 · 계좌' }
 
 /** ≡ 버튼을 누르면 열리는 창: 차트 / 통계 / 고정 금액. 열 때만 그린다 (닫으면 처음 메뉴로) */
 export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { onClose: () => void; today: string; initialView?: MenuView }) {
@@ -25,6 +28,7 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
   const navigate = useNavigate()
   const items = useLiveQuery(() => transactionRepo.listAll(), [])
   const rules = useLiveQuery(() => recurringRepo.list(), [])
+  const methods = useLiveQuery(() => payMethodRepo.list(), [])
 
   const month = periodOf('month', today)
   const inMonth = (items ?? []).filter((t) => inPeriod(t, month))
@@ -33,6 +37,7 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
   const expense = inMonth.reduce((s, t) => (t.type === 'EXPENSE' ? s + t.amount : s), 0)
   const active = (rules ?? []).filter((r) => r.isActive === 1)
   const fixedOut = active.reduce((s, r) => (r.type === 'EXPENSE' ? s + r.amount : s), 0)
+  const topMethod = accountTotals(inMonth.filter((t) => t.type === 'EXPENSE')).find((a) => a.account !== NO_ACCOUNT)
   const budget = budgets ? budgetStatus(budgets, inMonth, today.slice(0, 7), today).total : null
 
   return (
@@ -72,6 +77,13 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
             onClick={() => setView('stats')}
           />
           <MenuItem
+            icon={<CreditCard className="size-5" aria-hidden />}
+            title="카드 · 계좌"
+            desc="내 카드 · 계좌를 등록하고, 어디서 얼마 썼는지"
+            hint={topMethod ? `이번 달 ${topMethod.account}에서 가장 많이 (${formatWon(topMethod.expense)})` : methods && methods.length > 0 ? `${methods.length}개 등록됨` : undefined}
+            onClick={() => setView('methods')}
+          />
+          <MenuItem
             icon={<Repeat className="size-5" aria-hidden />}
             title="고정 금액"
             desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈"
@@ -94,6 +106,7 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
       {view === 'stats' && items && <StatsPanel items={items} today={today} />}
       {view === 'fixed' && <RecurringManager today={today} />}
       {view === 'budget' && <BudgetPanel today={today} />}
+      {view === 'methods' && <PayMethodManager today={today} />}
     </Modal>
   )
 }

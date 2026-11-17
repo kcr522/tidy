@@ -10,6 +10,7 @@ import { toDateKey } from './date'
 import { matchMerchant } from './merchants'
 import { findAccount, guessCategory } from './ocr/bankText'
 import { readPayText, timeOf } from './payNotifyText'
+import { findLast4 } from './payMethods'
 import { blockReason, type PayFilter } from './payNotifyFilter'
 
 /** PayNotifyService.java 가 모아 둔 알림 하나 */
@@ -60,6 +61,8 @@ export function parsePayNotification(n: PayNotification): PaymentGuess | null {
   const category =
     r.type === 'INCOME' ? (cancel ? '기타' : /급여|월급|상여/.test(all) ? '월급' : /용돈/.test(all) ? '용돈' : '기타') : (brand?.brand.category ?? guessCategory(r.merchant))
   const account = findAccount(all) ?? findAccount(n.app) ?? BANK_SHORT.find(([re]) => re.test(all))?.[1] ?? APP_ACCOUNTS.find(([re]) => re.test(n.pkg) || re.test(n.app))?.[1] ?? null
+  // 카드 · 계좌 끝 4자리 (내 카드 · 계좌에 등록한 것과 맞춰 본다)
+  const last4 = findLast4(all)
   return {
     type: r.type,
     merchant: r.merchant,
@@ -68,6 +71,7 @@ export function parsePayNotification(n: PayNotification): PaymentGuess | null {
     date: r.date ?? toDateKey(posted),
     time: r.time ?? timeOf(n.postedAt),
     account,
+    ...(last4 ? { last4 } : {}),
     category,
   }
 }
@@ -99,6 +103,7 @@ export function buildCandidates(items: PayNotification[], filter?: PayFilter): {
       // 이름이 "결제"뿐이거나 카드 이름이 없던 쪽을 더 자세한 쪽으로 채운다
       if (/^(결제|입금|출금)$/.test(same.guess.merchant) && !/^(결제|입금|출금)$/.test(guess.merchant)) same.guess = { ...same.guess, merchant: guess.merchant, category: guess.category }
       if (!same.guess.account || same.guess.account === '삼성페이') same.guess = { ...same.guess, account: guess.account ?? same.guess.account }
+      if (!same.guess.last4 && guess.last4) same.guess = { ...same.guess, last4: guess.last4 }
       continue
     }
     candidates.push({ guess, ids: [n.id], source: n })

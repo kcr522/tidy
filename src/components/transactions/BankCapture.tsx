@@ -5,6 +5,7 @@ import { formatWon } from '../../lib/format'
 import { parseBankText } from '../../lib/ocr/bankText'
 import { recognizeText } from '../../lib/ocr/recognize'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
+import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import { inputClass } from '../common/formStyles'
@@ -36,8 +37,8 @@ export default function BankCapture({ today, onDone }: Props) {
 
   async function toRows(text: string) {
     const parsed = parseBankText(text, today)
-    const [transactions, aliases] = await Promise.all([transactionRepo.listAll(), merchantAliasRepo.list()])
-    const drafts = refinePayments(parsed.payments, transactions, aliases)
+    const [transactions, aliases, methods] = await Promise.all([transactionRepo.listAll(), merchantAliasRepo.list(), payMethodRepo.list()])
+    const drafts = refinePayments(parsed.payments, transactions, aliases, methods)
     const rows = drafts.map((d, i) => ({ ...d, key: i, checked: !d.duplicate, realName: '' }))
     setStep({ kind: 'review', rows, balance: parsed.balance, text })
   }

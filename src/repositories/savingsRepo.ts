@@ -5,7 +5,7 @@ import { depositDates } from '../lib/savings'
 
 export type SavingsInput = Pick<
   SavingsPlan,
-  'name' | 'bank' | 'amount' | 'startDate' | 'endDate' | 'rate' | 'interestType' | 'taxType' | 'schedule' | 'autoDeposit' | 'alarmOn' | 'alarmTime' | 'memo'
+  'name' | 'bank' | 'fromAccount' | 'amount' | 'startDate' | 'endDate' | 'rate' | 'interestType' | 'taxType' | 'schedule' | 'autoDeposit' | 'alarmOn' | 'alarmTime' | 'memo'
 >
 
 /** 가계부에 적힐 이름 */
@@ -32,7 +32,8 @@ export function createSavingsRepo(database: TidyDB = defaultDb) {
       category: '저축',
       date,
       memo: depositMemo(plan),
-      ...(plan.bank ? { account: plan.bank } : {}),
+      // 어느 계좌에서 나갔는지: 정해 둔 계좌, 없으면 적금 은행
+      ...(plan.fromAccount || plan.bank ? { account: plan.fromAccount || plan.bank } : {}),
       savingsId: plan.id,
       createdAt: now,
       updatedAt: now,

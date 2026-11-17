@@ -24,7 +24,8 @@ import type { Transaction } from '../db/types'
 import { usePayNotify } from '../hooks/usePayNotify'
 import { useToday } from '../hooks/useToday'
 import { categoryEmoji } from '../lib/categories'
-import { accountEmoji } from '../lib/accounts'
+import { methodEmoji } from '../lib/payMethods'
+import { payMethodRepo } from '../repositories/payMethodRepo'
 import { dayTitle } from '../lib/calendar'
 import { formatWon } from '../lib/format'
 import { accountTotals, categoriesUsed, filterByAccount, filterByCategory, monthSummary } from '../lib/summary'
@@ -139,6 +140,7 @@ export default function TransactionsPage() {
   const items = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
   const used = useMemo(() => categoriesUsed(items ?? []), [items])
   const accounts = useMemo(() => accountTotals(items ?? []), [items])
+  const methods = useLiveQuery(() => payMethodRepo.list(), [])
   const filtered = useMemo(
     () => (items ? (filterBy === 'category' ? filterByCategory(items, category) : filterByAccount(items, account)) : undefined),
     [items, filterBy, category, account],
@@ -325,7 +327,7 @@ export default function TransactionsPage() {
             {(
               [
                 ['category', '카테고리별'],
-                ['account', '결제 수단별'],
+                ['account', '카드 · 계좌별'],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -357,12 +359,22 @@ export default function TransactionsPage() {
                       '전체'
                     ) : (
                       <>
-                        {accountEmoji(a.account)} {a.account}
+                        {methodEmoji(a.account, methods ?? [])} {a.account}
+                        {methods?.find((m) => m.name === a.account)?.last4 && <span className="ml-1 opacity-70">··{methods.find((m) => m.name === a.account)!.last4}</span>}
                         <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
                       </>
                     )}
                   </Chip>
                 ))}
+            {filterBy === 'account' && (
+              <button
+                type="button"
+                onClick={() => setShowMenu('methods')}
+                className="min-h-11 shrink-0 rounded-full border border-dashed border-slate-300 px-4 text-sm font-semibold whitespace-nowrap text-slate-500 hover:bg-white"
+              >
+                ⚙️ 카드 · 계좌 관리
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -48,6 +48,8 @@ export interface PaymentGuess {
   time: string | null
   /** 카드·계좌·앱 이름. 없으면 null */
   account: string | null
+  /** 카드 번호 · 계좌 번호 끝 4자리 (결제 알림에 있을 때만) */
+  last4?: string
   /** 가계부 카테고리 */
   category: string
 }

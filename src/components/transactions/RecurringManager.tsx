@@ -9,6 +9,7 @@ import { dayLabel, ddayFor, ddayLabel } from '../../lib/recurring'
 import { parseAmount } from '../../lib/validate'
 import { recurringRepo, type RecurringInput } from '../../repositories/recurringRepo'
 import Button from '../common/Button'
+import PayMethodPicker from '../payMethods/PayMethodPicker'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
@@ -252,14 +253,10 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="결제 수단 (선택)">
-          <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder={type === 'EXPENSE' ? '예: 신한카드' : '예: 토스뱅크'} maxLength={30} className={inputClass(false)} />
-        </Field>
-        <Field label="시작일">
-          <input type="date" value={startDate} onChange={(e) => e.target.value && setStartDate(e.target.value)} className={inputClass(false)} />
-        </Field>
-      </div>
+      <PayMethodPicker value={account} onChange={setAccount} label={type === 'EXPENSE' ? '나가는 카드 · 계좌 (선택)' : '들어오는 계좌 (선택)'} />
+      <Field label="시작일">
+        <input type="date" value={startDate} onChange={(e) => e.target.value && setStartDate(e.target.value)} className={inputClass(false)} />
+      </Field>
       <p className="-mt-2 text-xs text-slate-400">
         시작일이 지난 날짜면 그 뒤로 밀린 달도 한 번에 기록돼요. 규칙을 지워도 이미 기록된 내역은 남아요.
       </p>
