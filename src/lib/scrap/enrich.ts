@@ -1,7 +1,7 @@
 // 스크랩을 저장한 뒤 서버가 읽은 본문(동영상 캡션·글)을 같이 남기고, AI 없이 짧은 제목을 만든다
 import type { Bookmark } from '../../db/types'
 import { bookmarkRepo } from '../../repositories/bookmarkRepo'
-import { detectSource, isNameOnlySocialTitle, simpleTitle, socialCaptionFromTitle, tidyTitle, type LinkSource } from './link'
+import { cleanCaption, detectSource, isNameOnlySocialTitle, simpleTitle, socialCaptionFromTitle, tidyTitle, type LinkSource } from './link'
 import { fetchPageText } from './pageApi'
 
 /** 저장할 설명 길이 */
@@ -10,7 +10,7 @@ const MAX_DESC = 10000
 /** 자동으로 붙은 제목인가 (사용자가 직접 쓴 제목은 건드리지 않는다) */
 export function isAutoSocialTitle(title: string, source: LinkSource): boolean {
   if (source !== 'instagram' && source !== 'x') return false
-  return socialCaptionFromTitle(title) !== null || isNameOnlySocialTitle(title) || title === 'Instagram 게시물' || title === 'X 게시물'
+  return socialCaptionFromTitle(title) !== null || isNameOnlySocialTitle(title) || title === 'Instagram 게시물' || title === 'X 게시물' || /^@[\w.]+의 게시물$/.test(title)
 }
 
 /**
@@ -21,11 +21,17 @@ export async function enrichScrap(b: Bookmark): Promise<void> {
   if (b.id == null) return
   const source = (b.source as LinkSource | undefined) ?? detectSource(b.url)
   const page = await fetchPageText(b.url, AbortSignal.timeout(20000))
-  const body = page.caption || page.text
   const fields: { title?: string; description?: string } = {}
-  if (body && body.length > (b.description?.length ?? 0)) fields.description = body.slice(0, MAX_DESC)
+  if (source === 'instagram' || source === 'x') {
+    // 인스타 · X는 게시물 캡션(글)만 그대로 적는다. 좋아요 수 · 아이디 · 날짜 같은 덧붙은 글은 넣지 않는다
+    const caption = cleanCaption(page.caption)
+    if (caption && caption !== b.description) fields.description = caption.slice(0, MAX_DESC)
+  } else {
+    const body = page.caption || page.text
+    if (body && body.length > (b.description?.length ?? 0)) fields.description = body.slice(0, MAX_DESC)
+  }
   if (isAutoSocialTitle(b.title, source)) {
-    const t = simpleTitle(page.caption) || simpleTitle(b.description)
+    const t = simpleTitle(cleanCaption(page.caption)) || simpleTitle(b.description)
     if (t && t !== b.title) fields.title = t
   }
   await bookmarkRepo.patch(b.id, fields)
@@ -44,4 +50,26 @@ export async function tidyOldScrapTitles(list: Bookmark[]): Promise<number> {
     }
   }
   return n
+}
+
+/**
+ * 여러 스크랩을 차례로 채우기 (인스타 저장 목록 가져오기 뒤). 서버에 한꺼번에 몰리지 않게 둘씩.
+ * onProgress(끝난 수, 전체)
+ */
+export async function enrichMany(ids: number[], onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<void> {
+  let next = 0
+  let done = 0
+  const worker = async () => {
+    while (next < ids.length && !signal?.aborted) {
+      const id = ids[next++]
+      try {
+        const b = await bookmarkRepo.get(id)
+        if (b) await enrichScrap(b)
+      } catch {
+        // 못 읽은 게시물은 건너뛴다 (지워졌거나 비공개)
+      }
+      onProgress?.(++done, ids.length)
+    }
+  }
+  await Promise.all([worker(), worker()])
 }
