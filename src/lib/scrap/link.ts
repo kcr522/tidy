@@ -29,6 +29,38 @@ export function detectSource(url: string): LinkSource {
   return 'web'
 }
 
+/**
+ * 같은 게시물인지 비교하는 열쇠. 주소 모양이 달라도 같은 게시물이면 같은 값
+ * (인스타 /아이디/p/코드 · ?img_index, x.com ↔ twitter.com, youtu.be ↔ watch?v=, 추적용 ?utm_ 같은 것)
+ */
+export function linkKey(url: string): string {
+  let u: URL
+  try {
+    u = new URL(url.trim())
+  } catch {
+    return url.trim()
+  }
+  const h = hostOf(url)
+  const src = detectSource(url)
+  if (src === 'instagram') {
+    const m = u.pathname.match(/\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([\w-]{5,})/i)
+    if (m) return `instagram:${m[1]}`
+  }
+  if (src === 'x') {
+    const m = u.pathname.match(/\/status(?:es)?\/(\d+)/)
+    if (m) return `x:${m[1]}`
+  }
+  if (src === 'youtube') {
+    const id = h === 'youtu.be' ? u.pathname.slice(1).split('/')[0] : (u.searchParams.get('v') ?? u.pathname.match(/\/(?:shorts|embed|live)\/([\w-]{6,})/)?.[1])
+    if (id) return `youtube:${id}`
+  }
+  // 그 밖의 사이트: 추적용 값 · #뒤 · 끝 / 를 빼고 비교
+  for (const k of [...u.searchParams.keys()]) if (/^(utm_|fbclid$|gclid$|igsh$|igshid$)/i.test(k)) u.searchParams.delete(k)
+  u.searchParams.sort()
+  const q = u.searchParams.toString()
+  return `${h}${u.pathname.replace(/\/+$/, '')}${q ? `?${q}` : ''}`
+}
+
 const URL_RE = /https?:\/\/[^\s<>"'`]+/i
 
 /**

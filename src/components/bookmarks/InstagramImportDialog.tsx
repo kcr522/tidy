@@ -121,7 +121,7 @@ export default function InstagramImportDialog({ open, onClose }: Props) {
               인스타 컬렉션을 스크랩 카테고리로 나누기
             </label>
           )}
-          <p className="text-xs text-slate-400">이미 Tidy에 있는 게시물은 건너뛰어요. 자동 캡처는 하지 않고, 캡션만 차례로 읽어 와요.</p>
+          <p className="text-xs text-slate-400">이미 Tidy에 있는 게시물은 새로 만들지 않고 하나로 둬요. 자동 캡처는 하지 않고, 캡션만 차례로 읽어 와요.</p>
           <div className="flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setStep({ kind: 'pick' })}>
               다른 파일
@@ -139,7 +139,7 @@ export default function InstagramImportDialog({ open, onClose }: Props) {
             <CheckCircle2 className="size-9 shrink-0 text-emerald-500" aria-hidden />
             <div>
               <p className="text-lg font-extrabold text-slate-900">{step.added.toLocaleString()}개 가져왔어요</p>
-              {step.skipped > 0 && <p className="text-sm text-slate-500">이미 있던 {step.skipped}개는 건너뛰었어요</p>}
+              {step.skipped > 0 && <p className="text-sm text-slate-500">이미 있던 {step.skipped}개는 새로 만들지 않고 하나로 뒀어요 (적어 둔 메모 · 제목은 그대로)</p>}
             </div>
           </div>
           {step.added > 0 && (

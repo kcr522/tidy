@@ -122,17 +122,21 @@ export default function BookmarksPage() {
     return remembered != null && categories.some((c) => c.id === remembered) ? remembered : null
   }
 
-  async function save({ input, thumb }: BookmarkFormValue) {
+  async function save({ input, thumb, titleByUser }: BookmarkFormValue) {
     try {
       let id: number
+      let merged = false
       const isNew = editor?.mode !== 'edit'
       if (editor?.mode === 'edit' && editor.item.id != null) {
         id = editor.item.id
         await bookmarkRepo.update(id, input)
         toast('수정했어요')
       } else {
-        id = await bookmarkRepo.add(input)
-        toast(input.categoryId != null ? `'${catName(input.categoryId) ?? ''}'에 저장했어요` : '저장했어요')
+        // 같은 게시물이 이미 있으면 새로 만들지 않고 그 스크랩을 최신 내용으로 바꾼다
+        const r = await bookmarkRepo.addOrMerge(input, { titleByUser })
+        id = r.id
+        merged = r.merged
+        toast(merged ? '이미 있던 스크랩을 최신 내용으로 바꿨어요' : input.categoryId != null ? `'${catName(input.categoryId) ?? ''}'에 저장했어요` : '저장했어요')
       }
       if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
       if (input.source) rememberCategory(input.source, input.categoryId ?? null)
@@ -144,6 +148,8 @@ export default function BookmarksPage() {
         .then((b) => b && enrichScrap(b))
         .catch(() => undefined)
       // 새 링크면 서버가 사이트 화면을 자동으로 찍고 → 보여 주면서 "편집" / "그냥 올리기". 끄면 예전처럼 "캡처본도 같이 저장할까요?"
+      // 합친 스크랩은 이미 찍어 둔 화면이 있으니 다시 찍지 않는다
+      if (merged) return
       if (autoCaptureEnabled()) setAutoShot({ id, url: input.url })
       else if (askCaptureEnabled()) setAskCapture({ id, url: input.url, isVideo: !!input.isVideo })
     } catch {
@@ -292,7 +298,7 @@ export default function BookmarksPage() {
             prefill={editor.mode === 'add' ? editor.prefill : undefined}
             categories={categories}
             defaultCategoryId={defaultCategory(editor.mode === 'add' ? editor.prefill?.url : undefined)}
-            isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url, editingId))}
+            isDuplicate={async (url) => !!(await bookmarkRepo.findSame(url, editingId))}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
           />
