@@ -1,19 +1,19 @@
-import { CloudOff, FileText, Paperclip, Upload, X } from 'lucide-react'
+import { CloudOff, FileText, Paperclip, Play, Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Attachment } from '../../db/types'
 import { useFileDrop } from '../../hooks/useFileDrop'
-import { MAX_ATTACHMENTS, extLabel, fileToAttachment, formatBytes, isImage, syncsToCloud } from '../../lib/attachments'
+import { MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, extLabel, fileToAttachment, formatBytes, isImage, isVideo, syncsToCloud } from '../../lib/attachments'
 import { shrinkImage } from '../../lib/image'
 import { openAttachment } from '../../platform/openAttachment'
 import { useToast } from './Toast'
 
 /** 고른(또는 끌어다 놓은) 파일들을 첨부로 바꾼다. 넣지 못한 것은 이유를 모아 돌려준다 */
-export async function filesToAttachments(files: File[], room: number): Promise<{ added: Attachment[]; error?: string }> {
+export async function filesToAttachments(files: File[], room: number, maxBytes = MAX_ATTACHMENT_BYTES): Promise<{ added: Attachment[]; error?: string }> {
   const added: Attachment[] = []
   let error: string | undefined
   for (const file of files.slice(0, Math.max(0, room))) {
     try {
-      added.push(await fileToAttachment(file, (f) => shrinkImage(f, 1600, 0.85)))
+      added.push(await fileToAttachment(file, (f) => shrinkImage(f, 1600, 0.85), maxBytes))
     } catch (e) {
       error = e instanceof Error && e.name === 'AttachmentTooBigError' ? e.message : `${file.name}: 넣지 못했어요`
     }
@@ -36,11 +36,15 @@ export function DropOverlay({ show, label = '여기에 놓으면 첨부돼요' }
   )
 }
 
-/** 사진 한 장 크게 보기 */
-export function ImageViewer({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+/** 사진 한 장(또는 영상 하나) 크게 보기 */
+export function ImageViewer({ src, alt, video = false, onClose }: { src: string; alt: string; video?: boolean; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[57] flex items-center justify-center bg-black/85 p-4" role="dialog" aria-modal="true" aria-label={alt} onClick={onClose}>
-      <img src={src} alt={alt} className="max-h-full max-w-full rounded-xl object-contain" />
+      {video ? (
+        <video src={src} controls autoPlay playsInline className="max-h-full max-w-full rounded-xl" onClick={(e) => e.stopPropagation()} />
+      ) : (
+        <img src={src} alt={alt} className="max-h-full max-w-full rounded-xl object-contain" />
+      )}
       <button type="button" onClick={onClose} className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 rounded-full bg-white/15 p-2 text-white" aria-label="닫기">
         <X className="size-5" aria-hidden />
       </button>
@@ -56,10 +60,12 @@ interface Props {
   /** 고르기 창에서 보여 줄 종류 (기본: 모든 파일) */
   accept?: string
   addLabel?: string
+  /** 파일 하나 최대 크기 (기본 10MB) */
+  maxBytes?: number
 }
 
 /** 사진·파일 첨부 칸: 사진은 작은 그림으로, 나머지는 파일 줄로 보여 준다 */
-export default function AttachmentField({ value, onChange, acceptDrop = false, accept, addLabel = '사진·파일 첨부' }: Props) {
+export default function AttachmentField({ value, onChange, acceptDrop = false, accept, addLabel = '사진·파일 첨부', maxBytes }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [adding, setAdding] = useState(false)
   const [viewing, setViewing] = useState<Attachment | null>(null)
@@ -70,7 +76,7 @@ export default function AttachmentField({ value, onChange, acceptDrop = false, a
     if (files.length === 0) return
     if (room <= 0) return void toast(`첨부는 ${MAX_ATTACHMENTS}개까지 넣을 수 있어요`, 'error')
     setAdding(true)
-    const { added, error } = await filesToAttachments(files, room)
+    const { added, error } = await filesToAttachments(files, room, maxBytes)
     setAdding(false)
     onChange([...value, ...added].slice(0, MAX_ATTACHMENTS))
     if (error) toast(error, 'error')
@@ -78,17 +84,28 @@ export default function AttachmentField({ value, onChange, acceptDrop = false, a
   const dragging = useFileDrop((f) => void add(f), acceptDrop)
 
   const remove = (i: number) => onChange(value.filter((_, j) => j !== i))
-  const images = value.map((a, i) => ({ a, i })).filter((x) => isImage(x.a))
-  const files = value.map((a, i) => ({ a, i })).filter((x) => !isImage(x.a))
+  const images = value.map((a, i) => ({ a, i })).filter((x) => isImage(x.a) || isVideo(x.a))
+  const files = value.map((a, i) => ({ a, i })).filter((x) => !isImage(x.a) && !isVideo(x.a))
 
   return (
     <div>
       {images.length > 0 && (
-        <ul className="mb-2 grid grid-cols-4 gap-2" aria-label="첨부한 사진">
+        <ul className="mb-2 grid grid-cols-4 gap-2" aria-label="첨부한 사진·영상">
           {images.map(({ a, i }) => (
             <li key={i} className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
               <button type="button" onClick={() => setViewing(a)} className="size-full" aria-label={`${a.name} 크게 보기`}>
-                <img src={a.src} alt={a.name} className="size-full object-cover" />
+                {isVideo(a) ? (
+                  <>
+                    <video src={a.src} muted playsInline preload="metadata" className="size-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="rounded-full bg-slate-900/60 p-1.5 text-white">
+                        <Play className="size-4 fill-current" aria-hidden />
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <img src={a.src} alt={a.name} className="size-full object-cover" />
+                )}
               </button>
               {a.type === 'image/gif' && <span className="absolute bottom-1 left-1 rounded bg-slate-900/70 px-1 text-[10px] font-bold text-white">GIF</span>}
               {!syncsToCloud(a) && <CloudOff className="absolute bottom-1 right-1 size-3.5 text-white drop-shadow" aria-label="이 기기에만 저장" />}
@@ -147,7 +164,7 @@ export default function AttachmentField({ value, onChange, acceptDrop = false, a
         }}
       />
       <DropOverlay show={dragging} />
-      {viewing && <ImageViewer src={viewing.src} alt={viewing.name} onClose={() => setViewing(null)} />}
+      {viewing && <ImageViewer src={viewing.src} alt={viewing.name} video={isVideo(viewing)} onClose={() => setViewing(null)} />}
     </div>
   )
 }

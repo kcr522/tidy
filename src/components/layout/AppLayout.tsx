@@ -123,7 +123,7 @@ function SideNav() {
         <Logo />
         <ColorModeButton className="bg-slate-100 hover:bg-slate-200" />
       </div>
-      {/* 전체 검색: 가계부·할 일·일기·스크랩에서 찾기 */}
+      {/* 전체 검색: 가계부·할 일·일기·스크랩·메모에서 찾기 */}
       <Link to="/search" className="mb-4 flex items-center gap-2 rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-200">
         <Search className="size-4" aria-hidden />
         검색

@@ -1,6 +1,6 @@
 import { isEventColor } from '../lib/eventLayout'
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isTodoRepeat } from '../lib/todoRepeat'
 import { isAttachmentList } from '../lib/attachments'
@@ -38,6 +38,10 @@ export interface Backup {
   /** 한 달 예산 (스키마 9부터) */
   budgets?: Budget[]
   stickers?: DaySticker[]
+  /** 메모 파일집 (스키마 11부터) */
+  memoFolders?: MemoFolder[]
+  /** 메모 (스키마 11부터) */
+  memos?: Memo[]
 }
 
 export interface BackupMedia {
@@ -96,6 +100,17 @@ function isTodoCategory(v: unknown): v is TodoCategory {
 
 function isSticker(v: unknown): v is DaySticker {
   return isObj(v) && isStr(v.date) && isStr(v.emoji) && isStr(v.updatedAt)
+}
+
+function isMemoFolder(v: unknown): v is MemoFolder {
+  return isObj(v) && isId(v.id) && isStr(v.name) && isStr(v.color) && isNum(v.order) && isStr(v.createdAt)
+}
+
+function isMemo(v: unknown): v is Memo {
+  return (
+    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.text) && isId(v.folderId) && isAttachmentList(v.attachments) &&
+    (v.pinned === undefined || isFlag(v.pinned)) && isStr(v.createdAt) && isStr(v.updatedAt)
+  )
 }
 
 function isBudget(v: unknown): v is Budget {
@@ -205,13 +220,18 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const todoCategories = data.todoCategories ?? []
   const budgets = data.budgets ?? []
   const stickers = data.stickers ?? []
+  const memoFolders = data.memoFolders ?? []
+  const memos = data.memos ?? []
+  if (!Array.isArray(memoFolders) || !Array.isArray(memos)) throw new InvalidBackupError()
   if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories) || !Array.isArray(budgets) || !Array.isArray(stickers)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
     !categories.every(isCategory) || !media.every(isMedia) || !events.every(isEvent) || !diaries.every(isDiary) || !habits.every(isHabit) || !habitChecks.every(isHabitCheck) || !savings.every(isSavings) ||
     !todoCategories.every(isTodoCategory) ||
     !budgets.every(isBudget) ||
-    !stickers.every(isSticker)
+    !stickers.every(isSticker) ||
+    !memoFolders.every(isMemoFolder) ||
+    !memos.every(isMemo)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -223,7 +243,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets, d.stickers]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets, d.stickers, d.memoFolders, d.memos]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -247,6 +267,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         todoCategories: await database.todoCategories.toArray(),
         budgets: await database.budgets.toArray(),
         stickers: await database.stickers.toArray(),
+        memoFolders: await database.memoFolders.toArray(),
+        memos: await database.memos.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
         ...rest,
@@ -280,6 +302,8 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.todoCategories.bulkAdd(backup.todoCategories ?? [])
         await database.budgets.bulkAdd(backup.budgets ?? [])
         await database.stickers.bulkAdd(backup.stickers ?? [])
+        await database.memoFolders.bulkAdd(backup.memoFolders ?? [])
+        await database.memos.bulkAdd(backup.memos ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)

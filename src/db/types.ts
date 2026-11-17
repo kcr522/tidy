@@ -315,3 +315,30 @@ export interface DaySticker {
   emoji: string
   updatedAt: string
 }
+
+/** 메모 파일집 (스키마 11부터): 비슷한 메모끼리 모아 두는 폴더. 색을 고를 수 있다 */
+export interface MemoFolder {
+  id?: number
+  name: string
+  /** #rrggbb */
+  color: string
+  /** 보여 줄 순서 */
+  order: number
+  createdAt: string
+}
+
+/** 메모 (스키마 11부터): 글 + 사진·영상·파일. 쓴 시각(createdAt)이 그대로 남아 시간순으로 보인다 */
+export interface Memo {
+  id?: number
+  title: string
+  text: string
+  /** 들어 있는 파일집. 없으면 파일집 밖 */
+  folderId?: number
+  /** 사진·영상·파일 (최대 10개) */
+  attachments?: Attachment[]
+  /** 1이면 맨 위에 고정 */
+  pinned?: 0 | 1
+  /** 처음 쓴 시각 (ISO) */
+  createdAt: string
+  updatedAt: string
+}

@@ -13,6 +13,7 @@ import { lazyPage } from './lib/lazyPage'
 const TransactionsPage = lazyPage(() => import('./pages/TransactionsPage'))
 const TodosPage = lazyPage(() => import('./pages/TodosPage'))
 const DiaryPage = lazyPage(() => import('./pages/DiaryPage'))
+const MemoPage = lazyPage(() => import('./pages/MemoPage'))
 const CalendarPage = lazyPage(() => import('./pages/CalendarPage'))
 const BookmarksPage = lazyPage(() => import('./pages/BookmarksPage'))
 const SharePage = lazyPage(() => import('./pages/SharePage'))
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="money" element={<TransactionsPage />} />
         <Route path="todos" element={<TodosPage />} />
         <Route path="diary" element={<DiaryPage />} />
+        <Route path="memo" element={<MemoPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="scraps" element={<BookmarksPage />} />
         <Route path="share" element={<SharePage />} />
