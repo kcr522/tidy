@@ -133,7 +133,7 @@ describe('위젯 여러 종류', () => {
 
   it('투명도를 함께 싣는다 (없으면 모두 100)', () => {
     expect(s.opacity).toEqual(extras.opacity)
-    expect(buildWidgetSummary([], [], '2026-11-10', false).opacity).toEqual({ today: 100, todo: 100, money: 100, event: 100, habit: 100, calendar: 100 })
+    expect(buildWidgetSummary([], [], '2026-11-10', false).opacity).toEqual({ today: 100, todo: 100, money: 100, event: 100, habit: 100, calendar: 100, memo: 100 })
   })
 
   it('잠금 중이면 일정 제목, 습관 제목, 예산을 넣지 않는다', () => {

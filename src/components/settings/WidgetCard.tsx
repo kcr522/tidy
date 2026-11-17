@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, Check, Circle, LayoutGrid, Lock } from 'lucide-react'
+import { CalendarDays, Check, Circle, LayoutGrid, Lock, Pin, Plus } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { db } from '../../db/database'
 import { useWidgetExtras } from '../../hooks/useWidgetSync'
@@ -12,6 +12,7 @@ import {
   calendarWidgetView,
   eventWidgetView,
   habitWidgetView,
+  memoWidgetView,
   moneyWidgetView,
   todoWidgetView,
   widgetRange,
@@ -20,6 +21,7 @@ import {
   type CalendarSize,
   type EventWidgetView,
   type HabitWidgetView,
+  type MemoWidgetView,
   type MoneyWidgetView,
   type TodoWidgetView,
   type WidgetSummary,
@@ -218,6 +220,7 @@ function KindPreview({ kind, summary, today, opacity, calSize }: { kind: WidgetK
   if (kind === 'event') return <EventWidgetPreview view={eventWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'habit') return <HabitWidgetPreview view={habitWidgetView(summary, today)} opacity={opacity} />
   if (kind === 'calendar') return <CalendarWidgetPreview summary={summary} today={today} opacity={opacity} size={calSize} />
+  if (kind === 'memo') return <MemoWidgetPreview view={memoWidgetView(summary, today)} opacity={opacity} />
   return <WidgetPreview view={widgetView(summary, today)} opacity={opacity} />
 }
 
@@ -501,5 +504,35 @@ export function CalendarWidgetPreview({ summary, today, opacity, size, fill, mod
         </div>
       </Frame>
     </div>
+  )
+}
+
+/** '메모' 위젯 (widget_memo.xml): 최근 메모 네 개, 누르면 그 메모가 열린다. + 는 새 메모 */
+function MemoWidgetPreview({ view, opacity }: { view: MemoWidgetView; opacity: number }) {
+  return (
+    <Frame opacity={opacity} label="메모 위젯 미리보기">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[15px] font-bold">메모</p>
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#1d8fe1] text-white" aria-label="새 메모">
+          <Plus className="size-4" strokeWidth={3} aria-hidden />
+        </span>
+      </div>
+      {view.locked ? (
+        <LockedLine />
+      ) : view.rows.length === 0 ? (
+        <p className={`mt-2 text-sm ${MUTED}`}>아직 쓴 메모가 없어요. + 를 눌러 써 보세요</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5 text-[13px]">
+          {view.rows.map((m) => (
+            <li key={m.id} className="flex items-center gap-1.5">
+              <span className="size-2 shrink-0 rounded-full" style={{ background: m.c || '#c5ccd6' }} aria-hidden />
+              {m.p === 1 && <Pin className="size-3 shrink-0 text-[#1d8fe1]" aria-hidden />}
+              <span className="min-w-0 flex-1 truncate">{m.t}</span>
+              <span className={`shrink-0 text-[11px] ${MUTED}`}>{m.when}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Frame>
   )
 }

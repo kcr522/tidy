@@ -10,6 +10,7 @@ import type { TodoInput } from '../../repositories/todoRepo'
 import AttachmentField from '../common/AttachmentField'
 import Button from '../common/Button'
 import Field from '../common/FormField'
+import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
 import { inputClass } from '../common/formStyles'
 
 type Kind = 'event' | 'todo'
@@ -137,7 +138,10 @@ export default function CalendarAddForm({ date, today, initial, draft, initialFi
           </div>
 
           <Field label="메모 (선택)">
-            <input value={memo} maxLength={200} onChange={(e) => setMemo(e.target.value)} placeholder="장소나 준비물" className={inputClass()} />
+            <div className="flex gap-2">
+              <input value={memo} maxLength={200} onChange={(e) => setMemo(e.target.value)} placeholder="장소나 준비물" className={inputClass()} />
+              <HandwriteButton compact label="일정 메모" className="self-center" onText={(t) => setMemo((old) => appendHandwritten(old, t, false, 200))} />
+            </div>
           </Field>
           <AttachmentField value={files} onChange={setFiles} acceptDrop />
         </>

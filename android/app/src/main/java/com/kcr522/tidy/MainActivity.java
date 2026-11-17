@@ -19,6 +19,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppUpdatePlugin.class);
         // 인스타그램·X 등에서 "공유 → Tidy" 로 들어온 링크 받기 (ShareIntentPlugin)
         registerPlugin(ShareIntentPlugin.class);
+        // 홈 화면 위젯에서 누른 곳(메모 하나, 새 메모)으로 바로 가기 (WidgetRoutePlugin)
+        registerPlugin(WidgetRoutePlugin.class);
         // 결제 알림을 읽어 가계부 후보로 넘겨주기 (PayNotifyPlugin, PayNotifyService)
         registerPlugin(PayNotifyPlugin.class);
         // 삼성 캘린더(폰 캘린더) 읽고 쓰기 (DeviceCalendarPlugin)

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookHeart, Bookmark as BookmarkIcon, CalendarDays, Check, ListChecks, Search, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BookHeart, Bookmark as BookmarkIcon, CalendarDays, Check, ListChecks, NotebookPen, Search, Wallet, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
@@ -14,6 +14,8 @@ import { db } from '../db/database'
 import type { Bookmark, Todo, Transaction } from '../db/types'
 import { formatDateLabel, formatWon } from '../lib/format'
 import { KIND_LABEL, KIND_ORDER, highlightParts, searchAll, splitQuery, type SearchHit, type SearchKind } from '../lib/search'
+import { clockLabel } from '../lib/memo'
+import { toDateKey } from '../lib/date'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
 import { todoRepo, type TodoInput } from '../repositories/todoRepo'
@@ -24,6 +26,7 @@ const KIND_ICON: Record<SearchKind, LucideIcon> = {
   todo: ListChecks,
   diary: BookHeart,
   scrap: BookmarkIcon,
+  memo: NotebookPen,
   event: CalendarDays,
 }
 
@@ -60,14 +63,16 @@ export default function SearchPage() {
 
   // 기기 안의 기록을 한 번에 읽는다 (바뀌면 다시 읽는다)
   const data = useLiveQuery(async () => {
-    const [transactions, todos, diaries, bookmarks, events] = await Promise.all([
+    const [transactions, todos, diaries, bookmarks, events, memos, memoFolders] = await Promise.all([
       db.transactions.toArray(),
       db.todos.toArray(),
       db.diaries.toArray(),
       db.bookmarks.toArray(),
       db.events.toArray(),
+      db.memos.toArray(),
+      db.memoFolders.toArray(),
     ])
-    return { transactions, todos, diaries, bookmarks, events }
+    return { transactions, todos, diaries, bookmarks, events, memos, memoFolders }
   }, [])
 
   const hits = useMemo(() => (data ? searchAll(data, debounced) : []), [data, debounced])
@@ -85,6 +90,7 @@ export default function SearchPage() {
     else if (hit.kind === 'todo') setSheet({ mode: 'todo', item: hit.item })
     else if (hit.kind === 'scrap') setScrapId(hit.item.id ?? null)
     else if (hit.kind === 'diary') navigate('/diary', { state: { date: hit.item.date } })
+    else if (hit.kind === 'memo') navigate('/memo', { state: { memoId: hit.item.id } })
     else navigate('/calendar')
   }
 
@@ -160,7 +166,7 @@ export default function SearchPage() {
           enterKeyHint="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="메모, 할 일, 일기, 스크랩에서 찾기"
+          placeholder="가계부, 할 일, 일기, 스크랩, 메모에서 찾기"
           aria-label="검색어"
           className="h-13 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
         />
@@ -317,6 +323,8 @@ function meta(hit: SearchHit): string {
       return hit.field === '사진 메모' ? '사진 메모에서 찾음' : ''
     case 'scrap':
       return [hit.item.siteName || hostOf(hit.item.url), formatDateLabel(hit.item.createdAt.slice(0, 10)), hit.item.isRead ? '' : '안 읽음'].filter(Boolean).join(' · ')
+    case 'memo':
+      return [`${formatDateLabel(toDateKey(new Date(hit.item.createdAt)))} ${clockLabel(hit.item.createdAt)}에 씀`, hit.folder?.name].filter(Boolean).join(' · ')
     case 'event':
       return hit.item.startDate === hit.item.endDate ? formatDateLabel(hit.item.startDate) : `${formatDateLabel(hit.item.startDate)} ~ ${formatDateLabel(hit.item.endDate)}`
   }

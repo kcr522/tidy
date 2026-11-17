@@ -318,3 +318,53 @@ export interface DaySticker {
   emoji: string
   updatedAt: string
 }
+
+/** 메모 파일집 (스키마 11부터): 비슷한 메모끼리 모아 두는 폴더. 색을 고를 수 있다 */
+export interface MemoFolder {
+  id?: number
+  name: string
+  /** #rrggbb */
+  color: string
+  /** 보여 줄 순서 */
+  order: number
+  createdAt: string
+}
+
+/** 메모에 손으로 쓴 한 장 (사용자 요청 2026-11-17) */
+export interface MemoInk {
+  /** 흰 바탕 PNG data URL */
+  src: string
+  /** AI 가 읽은 글자 (검색에 쓴다). 아직 못 읽었으면 없음, 읽었는데 글자가 없으면 빈 글자 */
+  text?: string
+  /** 쓴 시각 (ISO) */
+  at: string
+}
+
+/** 메모 (스키마 11부터): 글 + 사진·영상·파일. 쓴 시각(createdAt)이 그대로 남아 시간순으로 보인다 */
+/** 메모 글 사이에 넣은 사진 (크기 · 자르기는 html 쪽 / src 쪽에 남는다) */
+export interface MemoPic {
+  id: string
+  /** 사진 data URL (자르면 자른 사진으로 바뀐다) */
+  src: string
+}
+
+export interface Memo {
+  id?: number
+  title: string
+  text: string
+  /** 들어 있는 파일집. 없으면 파일집 밖 */
+  folderId?: number
+  /** 사진·영상·파일 (최대 10개) */
+  attachments?: Attachment[]
+  /** 손글씨 (최대 10장, 쓴 순서) */
+  ink?: MemoInk[]
+  /** 꾸민 글 (굵게 · 밑줄 · 형광펜 · 글머리 기호 · 글 사이 사진). 없으면 text 가 그대로 본문. text 는 이것에서 꾸밈을 뺀 글자 */
+  html?: string
+  /** 글 사이 사진 (html 의 <img data-pic="id"> 자리에 들어간다) */
+  pics?: MemoPic[]
+  /** 1이면 맨 위에 고정 */
+  pinned?: 0 | 1
+  /** 처음 쓴 시각 (ISO) */
+  createdAt: string
+  updatedAt: string
+}

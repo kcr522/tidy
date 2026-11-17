@@ -1,19 +1,21 @@
-// 전체 검색: 가계부 · 할 일 · 일기 · 스크랩 · 일정에서 내가 쓴 글을 찾는다.
+// 전체 검색: 가계부 · 할 일 · 일기 · 스크랩 · 메모 · 일정에서 내가 쓴 글을 찾는다.
 // 데이터는 기기 안(IndexedDB)에 있어서 서버 없이 바로 찾는다.
-import type { Bookmark, CalendarEvent, Diary, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, Memo, MemoFolder, Todo, Transaction } from '../db/types'
+import { inkText, memoTitle } from './memo'
 
-export type SearchKind = 'money' | 'todo' | 'diary' | 'scrap' | 'event'
+export type SearchKind = 'money' | 'todo' | 'diary' | 'scrap' | 'memo' | 'event'
 
 export const KIND_LABEL: Record<SearchKind, string> = {
   money: '가계부',
   todo: '할 일',
   diary: '일기',
   scrap: '스크랩',
+  memo: '메모',
   event: '일정',
 }
 
 /** 화면에 보여 주는 순서 */
-export const KIND_ORDER: SearchKind[] = ['money', 'todo', 'diary', 'scrap', 'event']
+export const KIND_ORDER: SearchKind[] = ['money', 'todo', 'diary', 'scrap', 'memo', 'event']
 
 interface Base {
   /** 목록 key 로 쓰는 고유 값 */
@@ -33,6 +35,7 @@ export type SearchHit =
   | (Base & { kind: 'todo'; item: Todo })
   | (Base & { kind: 'diary'; item: Diary })
   | (Base & { kind: 'scrap'; item: Bookmark })
+  | (Base & { kind: 'memo'; item: Memo; folder?: MemoFolder })
   | (Base & { kind: 'event'; item: CalendarEvent })
 
 export interface SearchData {
@@ -41,6 +44,8 @@ export interface SearchData {
   diaries?: Diary[]
   bookmarks?: Bookmark[]
   events?: CalendarEvent[]
+  memos?: Memo[]
+  memoFolders?: MemoFolder[]
 }
 
 /** 대소문자와 띄어쓰기 차이는 무시한다 ("스타 벅스" = "스타벅스") */
@@ -167,6 +172,24 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
     if (!m) continue
     const title = b.title || b.url
     hits.push({ kind: 'scrap', key: `scrap-${b.id}`, item: b, title, field: m.label, snippet: pick(m, title, b.memo || b.summary || ''), sortKey: b.createdAt })
+  }
+
+  const folders = new Map((data.memoFolders ?? []).map((f) => [f.id, f]))
+  for (const n of data.memos ?? []) {
+    const folder = n.folderId ? folders.get(n.folderId) : undefined
+    const m = matchFields(
+      [
+        ['제목', n.title],
+        ['메모', n.text],
+        ['손글씨', inkText(n)],
+        ['첨부 파일', fileNames(n.attachments)],
+        ['파일집', folder?.name],
+      ],
+      terms,
+    )
+    if (!m) continue
+    const title = memoTitle(n)
+    hits.push({ kind: 'memo', key: `memo-${n.id}`, item: n, folder, title, field: m.label, snippet: pick(m, title, n.text), sortKey: n.createdAt })
   }
 
   for (const e of data.events ?? []) {

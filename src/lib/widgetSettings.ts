@@ -3,8 +3,8 @@
  * 이 기기(localStorage)에만 두고, 위젯 요약(widgetSummary)에 함께 실어 안드로이드 위젯에 보낸다.
  */
 
-/** 위젯 종류. 안드로이드 쪽 클래스: TidyWidget, TodoWidget, MoneyWidget, EventWidget, HabitWidget, CalendarWidget */
-export type WidgetKind = 'today' | 'todo' | 'money' | 'event' | 'habit' | 'calendar'
+/** 위젯 종류. 안드로이드 쪽 클래스: TidyWidget, TodoWidget, MoneyWidget, EventWidget, HabitWidget, CalendarWidget, MemoWidget */
+export type WidgetKind = 'today' | 'todo' | 'money' | 'event' | 'habit' | 'calendar' | 'memo'
 
 export const WIDGET_KINDS: { kind: WidgetKind; name: string; desc: string; size: string }[] = [
   { kind: 'today', name: '오늘', desc: '오늘 할 일과 지출을 한눈에', size: '4×2' },
@@ -13,6 +13,7 @@ export const WIDGET_KINDS: { kind: WidgetKind; name: string; desc: string; size:
   { kind: 'event', name: '일정', desc: '오늘부터 일주일 일정', size: '4×2' },
   { kind: 'habit', name: '습관', desc: '오늘 할 습관과 체크', size: '2×2' },
   { kind: 'calendar', name: '달력', desc: '돈 · 일기 · 일정 달력을 버튼으로 바꿔 보기', size: '4×4' },
+  { kind: 'memo', name: '메모', desc: '최근 메모 보기, 바로 새 메모 쓰기', size: '2×2' },
 ]
 
 /** 바탕이 얼마나 보이는지 (%). 0 = 완전히 투명, 100 = 불투명 */
