@@ -7,6 +7,7 @@ import { prefetchPages } from '../../lib/lazyPage'
 import { useWidgetSync } from '../../hooks/useWidgetSync'
 import { useBudgetAlerts } from '../../hooks/useBudgetAlerts'
 import { useAutoBackup } from '../../hooks/useAutoBackup'
+import { useDeviceCalendarSync } from '../../hooks/useDeviceCalendarSync'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
 import { useGooglePush } from '../../hooks/useGooglePush'
 import { syncAlarms } from '../../platform/alarms'
@@ -80,6 +81,9 @@ export default function AppLayout() {
 
   // 구글 계정을 연결했으면 Tidy 일정과 할 일이 바뀔 때마다 구글 캘린더에 보낸다
   useGooglePush()
+
+  // 삼성 캘린더(폰 캘린더) 연동을 켰으면 폰 일정을 가져오고, Tidy 일정을 폰 Tidy 캘린더에 넣는다 (폰 앱만)
+  useDeviceCalendarSync(today)
 
   // 첫 화면이 뜬 뒤 쉬는 틈에 다른 화면들을 미리 읽어 둔다
   useEffect(() => prefetchPages(), [])

@@ -99,4 +99,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- 앱 안에서 새 버전 APK 를 받아 설치 화면 띄우기 (처음 한 번 "이 출처 허용"을 물어본다) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 삼성 캘린더(폰 캘린더) 일정 읽기 · Tidy 일정 넣기 (설정에서 켤 때 처음 한 번 물어본다) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 </manifest>

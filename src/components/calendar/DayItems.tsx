@@ -2,6 +2,7 @@ import { Check, Paperclip } from 'lucide-react'
 import type { CalendarEvent, Todo } from '../../db/types'
 import { eventBg, eventDays, shortDate } from '../../lib/eventLayout'
 import { HOLIDAY_COLOR, type Holiday } from '../../lib/holidays'
+import { deviceCalName, loadDeviceCal } from '../../platform/deviceCalendar'
 import { calOf, type GoogleCal } from '../../platform/googleCalendar'
 
 interface Props {
@@ -42,9 +43,9 @@ export default function DayItems({ holidays, events, todos, today, googleCals, o
             <span className="min-w-0 flex-1">
               <span className={`block text-[15px] font-semibold ${clip}`}>{e.title}</span>
               <span className={`block text-xs text-slate-400 ${full ? '' : 'truncate'}`}>
-                {e.source === 'google' && (
+                {e.source && (
                   <span className="mr-1 rounded px-1 py-px text-[10px] font-bold text-white" style={{ background: eventBg(e.color) }}>
-                    {calOf(e, googleCals)?.name ?? '구글'}
+                    {e.source === 'google' ? (calOf(e, googleCals)?.name ?? '구글') : (deviceCalName(e.calId, loadDeviceCal()) ?? '삼성 캘린더')}
                   </span>
                 )}
                 {e.startDate === e.endDate ? '하루 일정' : `${shortDate(e.startDate)} ~ ${shortDate(e.endDate)} · ${eventDays(e)}일`}
