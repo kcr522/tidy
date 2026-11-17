@@ -182,9 +182,12 @@ export interface CalendarEvent {
   endDate: string
   color: EventColor
   memo: string
-  /** 구글 캘린더에서 가져온 일정이면 'google' (고칠 수 없고, 새로 가져올 때마다 바뀐다) */
-  source?: 'google'
-  /** 구글 캘린더를 여러 개 연결했을 때 어느 캘린더인지 (인덱스 아님) */
+  /**
+   * 구글 캘린더에서 가져온 일정이면 'google', 폰 캘린더(삼성 캘린더)에서 가져온 일정이면 'device'.
+   * 둘 다 Tidy 에서 고칠 수 없고, 새로 가져올 때마다 바뀐다
+   */
+  source?: 'google' | 'device'
+  /** 구글 캘린더를 여러 개 연결했을 때 어느 캘린더인지 (인덱스 아님). 폰 캘린더는 'd:기기:캘린더번호' */
   calId?: string
   /** 가져온 일정의 원래 id */
   uid?: string

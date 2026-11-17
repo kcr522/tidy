@@ -149,7 +149,7 @@ export function buildIcs(events: CalendarEvent[], todos: Todo[], now = new Date(
     if (memo) lines.push(`DESCRIPTION:${esc(memo)}`)
     lines.push('END:VEVENT')
   }
-  for (const e of events) if (e.source !== 'google') add(`event-${e.id}`, e.title, e.startDate, e.endDate, e.memo)
+  for (const e of events) if (!e.source) add(`event-${e.id}`, e.title, e.startDate, e.endDate, e.memo)
   for (const t of todos) if (t.dueDate && t.isCompleted === 0) add(`todo-${t.id}`, `할 일: ${t.title}`, t.dueDate, t.dueDate, '')
   lines.push('END:VCALENDAR')
   // 한 줄은 75바이트까지 (길면 접는다)

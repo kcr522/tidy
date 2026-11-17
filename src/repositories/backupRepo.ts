@@ -162,7 +162,7 @@ function isAlias(v: unknown): v is MerchantAlias {
 function isEvent(v: unknown): v is CalendarEvent {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.startDate) && isStr(v.endDate) && isEventColor(v.color) &&
-    isStr(v.memo) && (v.source === undefined || v.source === 'google') && isOptStr(v.uid) && isAttachmentList(v.attachments) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.memo) && (v.source === undefined || v.source === 'google' || v.source === 'device') && isOptStr(v.uid) && isAttachmentList(v.attachments) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 

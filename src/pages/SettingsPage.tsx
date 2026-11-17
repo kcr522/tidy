@@ -6,6 +6,7 @@ import AccountCard from '../components/settings/AccountCard'
 import AppLockCard from '../components/settings/AppLockCard'
 import AppUpdateCard from '../components/settings/AppUpdateCard'
 import AutoBackupCard from '../components/settings/AutoBackupCard'
+import DeviceCalendarCard from '../components/settings/DeviceCalendarCard'
 import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
 import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
@@ -124,6 +125,8 @@ export default function SettingsPage() {
         <CustomizeCard />
 
         <GoogleCalendarCard />
+
+        <DeviceCalendarCard />
 
         <AutoBackupCard />
 

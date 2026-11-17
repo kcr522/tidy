@@ -23,6 +23,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WidgetRoutePlugin.class);
         // 결제 알림을 읽어 가계부 후보로 넘겨주기 (PayNotifyPlugin, PayNotifyService)
         registerPlugin(PayNotifyPlugin.class);
+        // 삼성 캘린더(폰 캘린더) 읽고 쓰기 (DeviceCalendarPlugin)
+        registerPlugin(DeviceCalendarPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

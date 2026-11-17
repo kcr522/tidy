@@ -57,7 +57,7 @@ jobs:
           AA=$(ls $ANDROID_HOME/cmdline-tools/*/bin/apkanalyzer | head -1)
           $AA dex packages --defined-only $APK | awk '$1=="C"{print $NF}' > classes.txt
           wc -l < classes.txt
-          for c in $(node -e "for (const p of require('./android/app/src/main/assets/capacitor.plugins.json')) console.log(p.classpath)") com.kcr522.tidy.MainActivity com.kcr522.tidy.BiometricPlugin com.kcr522.tidy.GoogleAuthPlugin com.kcr522.tidy.AppUpdatePlugin com.kcr522.tidy.TidyWidget com.kcr522.tidy.ShareIntentPlugin com.kcr522.tidy.WidgetRoutePlugin com.kcr522.tidy.MemoWidget com.kcr522.tidy.PayNotifyPlugin com.kcr522.tidy.PayNotifyService; do
+          for c in $(node -e "for (const p of require('./android/app/src/main/assets/capacitor.plugins.json')) console.log(p.classpath)") com.kcr522.tidy.MainActivity com.kcr522.tidy.BiometricPlugin com.kcr522.tidy.GoogleAuthPlugin com.kcr522.tidy.AppUpdatePlugin com.kcr522.tidy.TidyWidget com.kcr522.tidy.ShareIntentPlugin com.kcr522.tidy.WidgetRoutePlugin com.kcr522.tidy.MemoWidget com.kcr522.tidy.PayNotifyPlugin com.kcr522.tidy.PayNotifyService com.kcr522.tidy.DeviceCalendarPlugin; do
             grep -qx "$c" classes.txt && echo "있음 $c" || { echo "::error::APK에 $c 가 없어요"; exit 1; }
           done
 
