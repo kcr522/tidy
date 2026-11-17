@@ -96,3 +96,47 @@ describe('거르기 (기록하지 않을 알림)', () => {
     expect(addApp(f, 'a.b', 'AB').apps).toHaveLength(1)
   })
 })
+
+describe('입출금 알림 · 금액 (은행 · 카드 · 간편결제 여러 모양)', () => {
+  const cases: [string, string, string, string, [string, number, string, string | null]][] = [
+    // [패키지, 앱 이름, 제목, 글, [종류, 금액, 가게(보낸 사람), 결제 수단]]
+    ['com.kbstar.kbbank', 'KB스타뱅킹', 'KB국민은행', '[KB]11/17 13:05\n123456**789\n김채림\n출금\n50,000\n잔액1,230,000', ['EXPENSE', 50000, '출금', 'KB국민은행']],
+    ['com.kbstar.kbbank', 'KB스타뱅킹', 'KB국민은행', '[KB]11/17 13:05 123456**789 김채림 입금 2,500,000 (주)타이디 급여 잔액3,730,000', ['INCOME', 2500000, '(주)타이디 급여', 'KB국민은행']],
+    ['com.kebhana.hanapush', '하나원큐', '하나은행', '하나 11/17 13:05 123-***456-78901 입금 25,000원 김철수 잔액 145,000원', ['INCOME', 25000, '김철수', '하나은행']],
+    ['com.wooribank.smart.npib', '우리WON뱅킹', '우리은행', '우리 11/17 13:05 *1234 출금 50,000원 관리비 잔액 120,000원', ['EXPENSE', 50000, '관리비', '우리은행']],
+    ['nh.smart.banking', 'NH스마트뱅킹', '농협', '농협 출금50,000원 11/17 13:05 352-****-1234-23 월세 잔액120,000원', ['EXPENSE', 50000, '월세', 'NH농협']],
+    ['com.kakaobank.channel', '카카오뱅크', '출금', '김채림(1234) 12,000원 | 스타벅스', ['EXPENSE', 12000, '스타벅스', '카카오뱅크']],
+    ['com.kakaobank.channel', '카카오뱅크', '입금', '홍길동 50,000원 → 내 입출금통장(1234)', ['INCOME', 50000, '홍길동', '카카오뱅크']],
+    ['viva.republica.toss', '토스', '토스뱅크', '50,000원 입금 | 홍길동', ['INCOME', 50000, '홍길동', '토스뱅크']],
+    ['viva.republica.toss', '토스', '송금 완료', '홍길동님께 50,000원을 보냈어요', ['EXPENSE', 50000, '홍길동', '토스']],
+    ['viva.republica.toss', '토스', '돈이 들어왔어요', '홍길동님이 30,000원을 보냈어요', ['INCOME', 30000, '홍길동', '토스']],
+    ['com.samsung.android.messaging', '메시지', '1544-7200', '[Web발신]\n신한 11/17 13:05\n110-***-123456\n이체출금 100,000\n김철수\n잔액 230,000', ['EXPENSE', 100000, '김철수', '신한은행']],
+    ['kr.co.samsungcard.mpocket', '삼성카드', '삼성카드 승인', '김*림 120,000원 03개월 11/17 13:05 롯데하이마트 누적1,230,000원', ['EXPENSE', 120000, '롯데하이마트', '삼성카드']],
+    ['com.kbcard.cxh.appcard', 'KB Pay', 'KB국민체크', '[KB국민체크]김*림님 11/17 13:05 6,100원 스타벅스 사용', ['EXPENSE', 6100, '스타벅스', 'KB국민카드']],
+    ['com.kbstar.kbbank', 'KB스타뱅킹', 'KB국민은행', '[KB]자동이체 출금 55,000원 SKT통신요금 잔액 1,175,000원', ['EXPENSE', 55000, 'SKT통신요금', 'KB국민은행']],
+    ['com.shinhan.sbanking', '신한 SOL뱅크', '신한은행', '이자 입금 1,234원 잔액 1,231,234원', ['INCOME', 1234, '이자', '신한은행']],
+    ['com.shinhan.sbanking', '신한 SOL뱅크', '신한은행', '잔액 1,230,000원 | 출금 5000원 GS25', ['EXPENSE', 5000, 'GS25', '신한은행']],
+    ['com.ibk.android.ionebank', 'i-ONE Bank', 'IBK기업은행', '[IBK]11/17 13:05 출금 33,000 쿠팡 잔액 1,000,000', ['EXPENSE', 33000, '쿠팡', 'IBK기업은행']],
+    ['com.kbankwith.smartbank', '케이뱅크', '케이뱅크', '입금 | 200,000원\n보낸 분: 홍길동\n잔액 1,200,000원', ['INCOME', 200000, '홍길동', '케이뱅크']],
+    ['com.shcard.smartpay', '신한 SOL페이', '신한카드 승인', '김*림 6,100원 일시불 11/17 13:05 (주)스타벅스코리아 누적 123,400원 잔여한도 2,000,000원', ['EXPENSE', 6100, '(주)스타벅스코리아', '신한카드']],
+  ]
+  for (const [pkg, app, title, text, want] of cases) {
+    it(`${title} | ${text.replace(/\n/g, ' ').slice(0, 40)}`, () => {
+      const g = parsePayNotification({ id: 'x', pkg, app, title, text, postedAt: at('13:06') })
+      expect(g && [g.type, g.amount, g.merchant, g.account]).toEqual(want)
+    })
+  }
+
+  it('잔액 · 누적 · 한도 · 계좌번호 숫자는 금액으로 고르지 않는다', () => {
+    const g = parsePayNotification(note('com.kbstar.kbbank', 'KB스타뱅킹', 'KB국민은행', '잔액 3,000,000 누적 900,000 [KB] 123-45-678901 출금 7,700 편의점'))
+    expect(g?.amount).toBe(7700)
+  })
+  it('급여 입금은 월급, 승인 취소는 수입(환불)', () => {
+    expect(parsePayNotification(note('com.kbstar.kbbank', 'KB스타뱅킹', 'KB국민은행', '입금 2,500,000원 (주)타이디 급여'))?.category).toBe('월급')
+    expect(parsePayNotification(note('com.hyundaicard.appcard', '현대카드', '현대카드', '[현대카드] 승인취소 김*림 6,100원 11/17 13:05 스타벅스'))).toMatchObject({ type: 'INCOME', amount: 6100, merchant: '스타벅스' })
+  })
+  it('외화 결제와 페이머니 충전은 빼기 (얼마 나갔는지 원으로 알 수 없거나, 내 돈을 옮긴 것)', () => {
+    expect(parsePayNotification(note('com.samsung.android.messaging', '메시지', '15447200', '[Web발신]\n신한카드(1234)승인 김*림 USD 12.99 11/17 13:05 NETFLIX.COM'))).toBeNull()
+    expect(parsePayNotification(note('com.kakaopay.app', '카카오페이', '카카오페이', '카카오페이머니 10,000원이 충전되었습니다'))).toBeNull()
+  })
+})
