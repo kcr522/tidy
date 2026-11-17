@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Settings2 } from 'lucide-react'
+import { LayoutGrid, List, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
+import BookmarkRow from '../components/bookmarks/BookmarkRow'
 import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
 import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
@@ -31,6 +32,16 @@ type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
 const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v1'
+/** 카드 보기 / 목록 보기 (기기마다 기억) */
+const VIEW_KEY = 'tidy.scrap.view'
+type View = 'card' | 'list'
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'card'
+  } catch {
+    return 'card'
+  }
+}
 
 /** 공유받기(/share)에서 넘어오는 값 */
 export interface ShareState {
@@ -48,6 +59,15 @@ export default function BookmarksPage() {
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
+  const [view, setViewState] = useState<View>(readView)
+  function setView(v: View) {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // 기억 못 해도 지금 화면은 바뀐다
+    }
+  }
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -179,7 +199,8 @@ export default function BookmarksPage() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="tablist">
+      <div className="mb-4 flex items-center gap-2">
+      <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs md:flex-none md:basis-80" role="tablist">
         {(
           [
             ['all', `전체 (${counts.all})`],
@@ -198,6 +219,28 @@ export default function BookmarksPage() {
           </button>
         ))}
       </div>
+        <div className="ml-auto flex shrink-0 gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기">
+          {(
+            [
+              ['card', '카드로 보기', LayoutGrid],
+              ['list', '목록으로 보기', List],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              aria-label={label}
+              title={label}
+              onClick={() => setView(key)}
+              className={`flex size-11 items-center justify-center rounded-xl ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+            >
+              <Icon className="size-5" aria-hidden />
+            </button>
+          ))}
+        </div>
+      </div>
 
       {all === undefined ? null : items.length === 0 ? (
         <EmptyState
@@ -205,6 +248,19 @@ export default function BookmarksPage() {
           title={filter === 'unread' ? '안 읽은 스크랩이 없어요' : cat !== 'all' ? '이 카테고리에 저장한 링크가 없어요' : '나중에 볼 링크를 저장해 보세요'}
           action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>}
         />
+      ) : view === 'list' ? (
+        <ul className="card divide-y divide-slate-100 overflow-hidden py-1">
+          {items.map((b) => (
+            <BookmarkRow
+              key={b.id}
+              bookmark={b}
+              cover={b.id != null ? covers?.get(b.id)?.cover : undefined}
+              categoryName={catName(b.categoryId)}
+              onOpen={() => open(b)}
+              onDetail={() => setDetailId(b.id ?? null)}
+            />
+          ))}
+        </ul>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {items.map((b) => {
