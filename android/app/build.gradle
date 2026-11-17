@@ -15,8 +15,12 @@ android {
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+            // 맨 끝 tesseract-core-lstm.wasm.js: 글자 인식 엔진 3종 중 SIMD 없는 옛 기기용(3.8MB)은 앱에 넣지 않는다.
+            // Tidy 화면 자체가 크롬 111 이상에서만 돌고, 그 웹뷰는 모두 SIMD 판(simd / relaxedsimd)을 쓰기 때문에 쓰일 일이 없다. (웹 배포에는 그대로 있다)
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!tesseract-core-lstm.wasm.js'
         }
+        // 앱 글자는 한국어뿐이라, 라이브러리에 딸린 다른 나라 말 번역은 넣지 않는다 (기본 영어 + 한국어만)
+        resourceConfigurations += ['ko']
     }
     // 언제 만들어도 같은 열쇠로 서명해야 폰이 지우지 않고 덮어 깔 수 있다 (열쇠가 바뀌면 "충돌" 오류가 나고 지워야 해서 기록이 사라진다)
     signingConfigs {
@@ -30,9 +34,12 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // 앱 용량 줄이기: 쓰지 않는 라이브러리 코드를 빼고 넣는다 (R8). 앱·Capacitor 코드는 proguard-rules.pro 에서 통째로 지킨다
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
