@@ -1,8 +1,8 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Attachment, Memo, MemoFolder } from '../db/types'
+import type { Attachment, Memo, MemoFolder, MemoInk } from '../db/types'
 import { cleanAttachments } from '../lib/attachments'
 import { nowIso } from '../lib/date'
-import { MAX_MEMO_TEXT, MAX_MEMO_TITLE, MEMO_FOLDER_COLORS, MAX_FOLDER_NAME } from '../lib/memo'
+import { MAX_MEMO_TEXT, MAX_MEMO_TITLE, MEMO_FOLDER_COLORS, MAX_FOLDER_NAME, cleanInk } from '../lib/memo'
 
 export class MemoFolderNameError extends Error {}
 
@@ -11,6 +11,7 @@ export interface MemoInput {
   text: string
   folderId?: number
   attachments?: Attachment[]
+  ink?: MemoInk[]
 }
 
 function checkFolderName(raw: string): string {
@@ -30,6 +31,8 @@ export function createMemoRepo(database: TidyDB = defaultDb) {
     if (input.folderId) out.folderId = input.folderId
     const files = cleanAttachments(input.attachments)
     if (files.length) out.attachments = files
+    const ink = cleanInk(input.ink)
+    if (ink.length) out.ink = ink
     return out
   }
 

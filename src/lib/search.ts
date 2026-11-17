@@ -1,7 +1,7 @@
 // 전체 검색: 가계부 · 할 일 · 일기 · 스크랩 · 메모 · 일정에서 내가 쓴 글을 찾는다.
 // 데이터는 기기 안(IndexedDB)에 있어서 서버 없이 바로 찾는다.
 import type { Bookmark, CalendarEvent, Diary, Memo, MemoFolder, Todo, Transaction } from '../db/types'
-import { memoTitle } from './memo'
+import { inkText, memoTitle } from './memo'
 
 export type SearchKind = 'money' | 'todo' | 'diary' | 'scrap' | 'memo' | 'event'
 
@@ -181,6 +181,7 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
       [
         ['제목', n.title],
         ['메모', n.text],
+        ['손글씨', inkText(n)],
         ['첨부 파일', fileNames(n.attachments)],
         ['파일집', folder?.name],
       ],

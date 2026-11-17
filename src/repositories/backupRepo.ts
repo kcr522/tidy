@@ -106,9 +106,12 @@ function isMemoFolder(v: unknown): v is MemoFolder {
   return isObj(v) && isId(v.id) && isStr(v.name) && isStr(v.color) && isNum(v.order) && isStr(v.createdAt)
 }
 
+const isInkList = (v: unknown) =>
+  v === undefined || (Array.isArray(v) && v.every((k) => isObj(k) && isDataUrl(k.src) && isOptStr(k.text) && isStr(k.at)))
+
 function isMemo(v: unknown): v is Memo {
   return (
-    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.text) && isId(v.folderId) && isAttachmentList(v.attachments) &&
+    isObj(v) && isId(v.id) && isStr(v.title) && isStr(v.text) && isId(v.folderId) && isAttachmentList(v.attachments) && isInkList(v.ink) &&
     (v.pinned === undefined || isFlag(v.pinned)) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }

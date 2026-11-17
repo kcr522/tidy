@@ -327,6 +327,16 @@ export interface MemoFolder {
   createdAt: string
 }
 
+/** 메모에 손으로 쓴 한 장 (사용자 요청 2026-11-17) */
+export interface MemoInk {
+  /** 흰 바탕 PNG data URL */
+  src: string
+  /** AI 가 읽은 글자 (검색에 쓴다). 아직 못 읽었으면 없음, 읽었는데 글자가 없으면 빈 글자 */
+  text?: string
+  /** 쓴 시각 (ISO) */
+  at: string
+}
+
 /** 메모 (스키마 11부터): 글 + 사진·영상·파일. 쓴 시각(createdAt)이 그대로 남아 시간순으로 보인다 */
 export interface Memo {
   id?: number
@@ -336,6 +346,8 @@ export interface Memo {
   folderId?: number
   /** 사진·영상·파일 (최대 10개) */
   attachments?: Attachment[]
+  /** 손글씨 (최대 10장, 쓴 순서) */
+  ink?: MemoInk[]
   /** 1이면 맨 위에 고정 */
   pinned?: 0 | 1
   /** 처음 쓴 시각 (ISO) */

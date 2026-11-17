@@ -129,3 +129,44 @@ describe('메모 위젯', () => {
     expect(locked).toMatchObject({ locked: true, rows: [] })
   })
 })
+
+describe('손글씨', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  it('읽은 글자 다듬기: 따옴표·코드 블록·"글자 없음"을 걷어 낸다', async () => {
+    const { cleanReading } = await import('../../src/lib/ai/handwriting')
+    expect(cleanReading('"장보기\n우유"')).toBe('장보기\n우유')
+    expect(cleanReading('```\n회의 3시\n```')).toBe('회의 3시')
+    expect(cleanReading('(글자 없음)')).toBe('')
+  })
+
+  it('Gemini로 읽고, AI가 꺼져 있으면 켜 달라고 한다', async () => {
+    const { readHandwriting, HandwritingError } = await import('../../src/lib/ai/handwriting')
+    let sent = ''
+    const f = (async (_url: string, init?: RequestInit) => {
+      sent = String(init?.body ?? '')
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '김치찌개 두부 넣기' }] } }] }))
+    }) as typeof fetch
+    await expect(readHandwriting(png, undefined, { engine: 'gemini', geminiKey: 'KEY', groqKey: 'G' } as never, f)).resolves.toBe('김치찌개 두부 넣기')
+    expect(sent).toContain('image/png')
+    await expect(readHandwriting(png, undefined, { engine: 'local' } as never, f)).rejects.toBeInstanceOf(HandwritingError)
+  })
+
+  it('손글씨에서 읽은 글자로 메모 검색·전체 검색이 되고, 제목이 없으면 그 글자가 제목', async () => {
+    const m = memo({ id: 9, ink: [{ src: png, text: '토요일 등산 준비', at: '2026-11-17T05:00:00.000Z' }] })
+    expect(memoTitle(m)).toBe('토요일 등산 준비')
+    expect(filterMemos([m], '등산').map((x) => x.id)).toEqual([9])
+    expect(searchAll({ memos: [m] }, '등산')[0]).toMatchObject({ kind: 'memo', field: '손글씨' })
+    expect(memoTitle(memo({ ink: [{ src: png, at: '2026-11-17T05:00:00.000Z' }] }))).toBe('손글씨 메모')
+  })
+
+  it('저장·백업에 손글씨가 들어간다 (그림이 아닌 것은 뺀다)', async () => {
+    db = new TidyDB('memo-test-ink')
+    const repo = createMemoRepo(db)
+    const id = await repo.add({ title: '', text: '', ink: [{ src: png, text: ' 메모 ', at: 'a' }, { src: 'nope', at: 'b' }] })
+    expect((await repo.get(id))?.ink).toEqual([{ src: png, text: '메모', at: 'a' }])
+    const backup = createBackupRepo(db, '0.1.0')
+    const text = JSON.stringify(await backup.exportAll())
+    await backup.importAll(text)
+    expect((await repo.get(id))?.ink?.[0].text).toBe('메모')
+  })
+})

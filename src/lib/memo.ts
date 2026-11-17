@@ -3,7 +3,8 @@
  * 글 + 사진·영상·파일을 남기고, 비슷한 것끼리 색깔 있는 파일집에 모은다.
  * 쓴 시각이 그대로 남아서 날짜별·시간순으로 보인다.
  */
-import type { Attachment, Memo } from '../db/types'
+import type { Attachment, Memo, MemoInk } from '../db/types'
+import { isDataUrl } from './attachments'
 import { toDateKey } from './date'
 
 export const MAX_MEMO_TITLE = 60
@@ -11,6 +12,21 @@ export const MAX_MEMO_TEXT = 10000
 export const MAX_FOLDER_NAME = 12
 /** 메모에 붙이는 파일 하나 최대 크기 (영상 때문에 일기·일정보다 크게) */
 export const MAX_MEMO_FILE_BYTES = 50 * 1024 * 1024
+/** 메모 하나에 손글씨 몇 장까지 */
+export const MAX_MEMO_INK = 10
+/** 손글씨에서 읽은 글자 최대 길이 */
+export const MAX_INK_TEXT = 2000
+
+/** 저장할 모양으로 다듬는다: 그림이 아닌 것은 빼고, 10장까지 */
+export function cleanInk(list: readonly MemoInk[] | undefined): MemoInk[] {
+  return (list ?? [])
+    .filter((k) => isDataUrl(k.src) && k.src.startsWith('data:image/') && typeof k.at === 'string')
+    .slice(0, MAX_MEMO_INK)
+    .map((k) => (typeof k.text === 'string' ? { src: k.src, text: k.text.trim().slice(0, MAX_INK_TEXT), at: k.at } : { src: k.src, at: k.at }))
+}
+
+/** 손글씨에서 읽은 글자를 한 덩어리로 (검색·제목용) */
+export const inkText = (m: Pick<Memo, 'ink'>) => (m.ink ?? []).map((k) => k.text ?? '').filter(Boolean).join('\n')
 
 /** 파일집 색 (밝은 화면·어두운 화면 둘 다 읽히는 중간 밝기) */
 export const MEMO_FOLDER_COLORS: { name: string; hex: string }[] = [
@@ -29,11 +45,12 @@ export const MEMO_FOLDER_COLORS: { name: string; hex: string }[] = [
 ]
 
 /** 목록에 보일 제목: 제목이 없으면 글 첫 줄 */
-export function memoTitle(m: Pick<Memo, 'title' | 'text' | 'attachments'>): string {
+export function memoTitle(m: Pick<Memo, 'title' | 'text' | 'attachments' | 'ink'>): string {
   const t = m.title.trim()
   if (t) return t
-  const line = m.text.split('\n').map((l) => l.trim()).find(Boolean)
+  const line = [m.text, inkText(m)].join('\n').split('\n').map((l) => l.trim()).find(Boolean)
   if (line) return line.length > 40 ? `${line.slice(0, 40)}…` : line
+  if (m.ink?.length) return '손글씨 메모'
   return m.attachments?.length ? '파일만 있는 메모' : '빈 메모'
 }
 
@@ -62,12 +79,12 @@ export function groupByDay(list: Memo[]): { key: string; memos: Memo[] }[] {
   return groups
 }
 
-/** 검색어 (띄어쓰기로 나눈 낱말이 모두 들어 있어야) 로 거른다. 제목·글·파일 이름에서 찾는다 */
+/** 검색어 (띄어쓰기로 나눈 낱말이 모두 들어 있어야) 로 거른다. 제목·글·손글씨·파일 이름에서 찾는다 */
 export function filterMemos(list: Memo[], query: string): Memo[] {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (!terms.length) return list
   return list.filter((m) => {
-    const hay = `${m.title}\n${m.text}\n${memoFileNames(m.attachments)}`.toLowerCase()
+    const hay = `${m.title}\n${m.text}\n${inkText(m)}\n${memoFileNames(m.attachments)}`.toLowerCase()
     return terms.every((t) => hay.includes(t))
   })
 }

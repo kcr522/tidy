@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeft, Folder, FolderPlus, Paperclip, Pencil, Pin, PinOff, Play, Plus, Search, X } from 'lucide-react'
+import { ArrowLeft, Folder, FolderPlus, Loader2, Paperclip, Pencil, Pin, PinOff, Play, Plus, RotateCw, Search, Signature, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AttachmentField from '../components/common/AttachmentField'
@@ -8,19 +8,25 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
+import HandwritingPad from '../components/memo/HandwritingPad'
 import MemoFolderForm from '../components/memo/MemoFolderForm'
-import type { Attachment, Memo, MemoFolder } from '../db/types'
+import type { Attachment, Memo, MemoFolder, MemoInk } from '../db/types'
+import { HandwritingError, readHandwriting } from '../lib/ai/handwriting'
 import { cleanAttachments, isImage, isVideo } from '../lib/attachments'
 import { dayTitle } from '../lib/calendar'
 import { nowIso, toDateKey } from '../lib/date'
 import {
+  MAX_INK_TEXT,
   MAX_MEMO_FILE_BYTES,
+  MAX_MEMO_INK,
+  cleanInk,
   MAX_MEMO_TEXT,
   MAX_MEMO_TITLE,
   MEMO_FOLDER_COLORS,
   clockLabel,
   filterMemos,
   fullWhen,
+  inkText,
   groupByDay,
   memoPreview,
   memoTitle,
@@ -289,8 +295,11 @@ function FolderChip({ label, count, color, active, onClick }: { label: string; c
 }
 
 function MemoRow({ memo, folder, showDate, active, onClick }: { memo: Memo; folder?: MemoFolder; showDate: boolean; active: boolean; onClick: () => void }) {
-  const preview = memoPreview(memo)
-  const media = memo.attachments?.find((a) => isImage(a) || isVideo(a))
+  const handwriting = inkText(memo)
+  const title = memoTitle(memo)
+  // 손글씨에서 읽은 글자가 제목이 됐으면 미리보기에 또 쓰지 않는다
+  const preview = memoPreview(memo) || (handwriting && !handwriting.startsWith(title.replace(/…$/, '')) ? handwriting.replace(/\n/g, ' ') : '')
+  const media = memo.attachments?.find((a) => isImage(a) || isVideo(a)) ?? (memo.ink?.[0] ? { name: '손글씨', type: 'image/png', size: 0, src: memo.ink[0].src } : undefined)
   const fileCount = memo.attachments?.length ?? 0
   return (
     <button
@@ -304,7 +313,7 @@ function MemoRow({ memo, folder, showDate, active, onClick }: { memo: Memo; fold
         {clockLabel(memo.createdAt)}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-bold text-slate-900">{memoTitle(memo)}</span>
+        <span className="block truncate text-[15px] font-bold text-slate-900">{title}</span>
         {preview && <span className="mt-0.5 line-clamp-2 text-sm break-all text-slate-500">{preview}</span>}
         {(folder || fileCount > 0) && (
           <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -335,7 +344,7 @@ function MemoRow({ memo, folder, showDate, active, onClick }: { memo: Memo; fold
               </span>
             </>
           ) : (
-            <img src={media.src} alt="" className="size-full object-cover" />
+            <img src={media.src} alt="" className={`size-full ${media.name === '손글씨' ? 'bg-white object-contain' : 'object-cover'}`} />
           )}
         </span>
       )}
@@ -360,19 +369,25 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
   const [text, setText] = useState(memo?.text ?? '')
   const [folderId, setFolderId] = useState<number | undefined>(memo?.folderId ?? initialFolderId)
   const [files, setFiles] = useState<Attachment[]>(memo?.attachments ?? [])
+  const [ink, setInk] = useState<MemoInk[]>(memo?.ink ?? [])
+  /** 손글씨 쓰기 창: 새로 쓰기('new') 또는 고칠 손글씨의 쓴 시각 */
+  const [pad, setPad] = useState<'new' | string | null>(null)
+  /** 글자로 읽는 중인 손글씨 (쓴 시각) / 못 읽은 이유 */
+  const [reading, setReading] = useState<Set<string>>(new Set())
+  const [readError, setReadError] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const idRef = useRef<number | undefined>(memo?.id)
   const textRef = useRef<HTMLTextAreaElement>(null)
   // 저장된 내용 (바뀐 게 있는지 비교용)
-  const saved = useRef(JSON.stringify([memo?.title ?? '', memo?.text ?? '', memo?.folderId, cleanAttachments(memo?.attachments)]))
+  const saved = useRef(JSON.stringify([memo?.title ?? '', memo?.text ?? '', memo?.folderId, cleanAttachments(memo?.attachments), cleanInk(memo?.ink)]))
 
-  const snapshot = JSON.stringify([title.trim(), text, folderId, cleanAttachments(files)])
+  const snapshot = JSON.stringify([title.trim(), text, folderId, cleanAttachments(files), cleanInk(ink)])
   const dirty = snapshot !== saved.current
-  const empty = !title.trim() && !text.trim() && files.length === 0
-  const latest = useRef({ title, text, folderId, files, snapshot, dirty, empty })
+  const empty = !title.trim() && !text.trim() && files.length === 0 && ink.length === 0
+  const latest = useRef({ title, text, folderId, files, ink, snapshot, dirty, empty })
   useEffect(() => {
-    latest.current = { title, text, folderId, files, snapshot, dirty, empty }
+    latest.current = { title, text, folderId, files, ink, snapshot, dirty, empty }
   })
   const running = useRef<Promise<void> | null>(null)
   const removed = useRef(false)
@@ -384,7 +399,7 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
     const job = (async () => {
       setSaving(true)
       try {
-        const input = { title: now.title, text: now.text, folderId: now.folderId, attachments: now.files }
+        const input = { title: now.title, text: now.text, folderId: now.folderId, attachments: now.files, ink: now.ink }
         if (idRef.current === undefined) {
           idRef.current = await memoRepo.add(input, startedAt)
           onCreated(idRef.current)
@@ -428,6 +443,49 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** 손글씨를 글자로 읽어 검색에 쓰이게 한다. 못 읽으면 이유를 남기고 '다시 읽기'로 다시 한다 */
+  async function recognize(item: MemoInk) {
+    setReading((r) => new Set(r).add(item.at))
+    setReadError(({ [item.at]: _, ...rest }) => rest)
+    try {
+      const read = await readHandwriting(item.src)
+      // 그 사이 다시 그렸으면(그림이 바뀌었으면) 버린다
+      setInk((list) => list.map((k) => (k.at === item.at && k.src === item.src ? { ...k, text: read } : k)))
+    } catch (err) {
+      setReadError((e) => ({ ...e, [item.at]: err instanceof HandwritingError ? err.message : '손글씨를 읽지 못했어요' }))
+    } finally {
+      setReading((r) => {
+        const next = new Set(r)
+        next.delete(item.at)
+        return next
+      })
+    }
+  }
+
+  // 열었을 때 아직 못 읽은 손글씨가 있으면 한 번 더 읽어 본다
+  useEffect(() => {
+    for (const k of memo?.ink ?? []) if (k.text === undefined) void recognize(k)
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function savePad(png: string) {
+    const editing = pad
+    setPad(null)
+    if (editing === 'new') {
+      if (ink.length >= MAX_MEMO_INK) return void toast(`손글씨는 ${MAX_MEMO_INK}장까지 넣을 수 있어요`, 'error')
+      const item: MemoInk = { src: png, at: nowIso() }
+      setInk((list) => [...list, item])
+      void recognize(item)
+    } else if (editing) {
+      const old = ink.find((k) => k.at === editing)
+      if (!old) return
+      const item: MemoInk = { src: png, at: old.at }
+      setInk((list) => list.map((k) => (k.at === editing ? item : k)))
+      void recognize(item)
+    }
+  }
 
   async function remove() {
     removed.current = true
@@ -515,6 +573,73 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
         className="mt-1 w-full resize-y rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
         aria-label="메모 내용"
       />
+
+      <div className="mt-3">
+        <span className="mb-1.5 block text-sm font-medium text-slate-600">손글씨 (선택)</span>
+        {ink.length > 0 && (
+          <ul className="mb-2 space-y-3" aria-label="손글씨">
+            {ink.map((k, i) => (
+              <li key={k.at} className="rounded-2xl bg-slate-100 p-2">
+                <div className="relative">
+                  <button type="button" onClick={() => setPad(k.at)} className="block w-full" aria-label={`${i + 1}번째 손글씨 고치기`}>
+                    <img src={k.src} alt={k.text || `${i + 1}번째 손글씨`} className="max-h-72 w-full rounded-xl bg-white object-contain" />
+                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1.5">
+                    <button type="button" onClick={() => setPad(k.at)} className="rounded-full bg-slate-900/60 p-1.5 text-white" aria-label={`${i + 1}번째 손글씨 이어서 쓰기`}>
+                      <Pencil className="size-4" aria-hidden />
+                    </button>
+                    <button type="button" onClick={() => setInk((list) => list.filter((x) => x.at !== k.at))} className="rounded-full bg-slate-900/60 p-1.5 text-white" aria-label={`${i + 1}번째 손글씨 빼기`}>
+                      <X className="size-4" strokeWidth={2.5} aria-hidden />
+                    </button>
+                  </div>
+                </div>
+                {reading.has(k.at) ? (
+                  <p className="mt-2 flex items-center gap-1.5 px-1 text-xs font-semibold text-slate-500">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    손글씨를 글자로 읽는 중…
+                  </p>
+                ) : k.text === undefined ? (
+                  <div className="mt-2 flex items-center gap-2 px-1">
+                    <p className="min-w-0 flex-1 text-xs text-slate-500">{readError[k.at] ?? '아직 글자로 읽지 못했어요'}</p>
+                    <button type="button" onClick={() => void recognize(k)} className="flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700">
+                      <RotateCw className="size-3.5" aria-hidden />
+                      다시 읽기
+                    </button>
+                  </div>
+                ) : (
+                  <label className="mt-2 block px-1">
+                    <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
+                      <Search className="size-3" aria-hidden />
+                      읽은 글자 (검색에 쓰여요. 틀리면 고쳐 주세요)
+                    </span>
+                    <textarea
+                      value={k.text}
+                      maxLength={MAX_INK_TEXT}
+                      rows={Math.min(4, Math.max(1, k.text.split('\n').length))}
+                      onChange={(e) => setInk((list) => list.map((x) => (x.at === k.at ? { ...x, text: e.target.value } : x)))}
+                      placeholder="읽은 글자가 없어요"
+                      className="w-full resize-none rounded-xl bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                      aria-label={`${i + 1}번째 손글씨에서 읽은 글자`}
+                    />
+                  </label>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {ink.length < MAX_MEMO_INK && (
+          <button
+            type="button"
+            onClick={() => setPad('new')}
+            className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            <Signature className="size-4" aria-hidden />
+            {ink.length ? `손글씨 더 쓰기 (${ink.length}/${MAX_MEMO_INK})` : '손글씨 쓰기'}
+          </button>
+        )}
+      </div>
+
+      {pad !== null && <HandwritingPad initial={pad === 'new' ? undefined : ink.find((k) => k.at === pad)?.src} onDone={savePad} onCancel={() => setPad(null)} />}
 
       <div className="mt-3">
         <span className="mb-1.5 block text-sm font-medium text-slate-600">사진·영상·파일 (선택)</span>
