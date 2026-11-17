@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 홈 화면 위젯 다섯 종류 (WidgetData.java) -->
+        <!-- 홈 화면 위젯 여섯 종류 (WidgetData.java) -->
         <receiver
             android:name=".TidyWidget"
             android:label="@string/widget_name_today"
@@ -72,6 +72,15 @@
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_habit_info" />
+        </receiver>
+        <receiver
+            android:name=".CalendarWidget"
+            android:label="@string/widget_name_calendar"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_info" />
         </receiver>
 
         <provider

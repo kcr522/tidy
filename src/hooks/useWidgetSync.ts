@@ -15,16 +15,19 @@ export function useWidgetExtras(today: string, enabled = true): WidgetExtras | u
   const [opacity, setOpacity] = useState(loadWidgetOpacity)
   useEffect(() => onWidgetSettingsChange(() => setOpacity(loadWidgetOpacity())), [])
   const last = format(addDays(parseDateKey(today), WIDGET_DAYS - 1), 'yyyy-MM-dd')
+  // 달력 위젯이 이번 달과 다음 달을 쓰므로 일정 · 일기는 그 범위로 읽는다
+  const [from, to] = widgetRange(today)
   const data = useLiveQuery(async () => {
     if (!enabled) return null
-    const [events, habits, checks, budgets] = await Promise.all([
-      db.events.where('startDate').belowOrEqual(last).filter((e) => e.endDate >= today).toArray(),
+    const [events, habits, checks, budgets, diaries] = await Promise.all([
+      db.events.where('startDate').below(to).filter((e) => e.endDate >= from).toArray(),
       db.habits.toArray(),
       db.habitChecks.where('date').between(today, last, true, true).toArray(),
       db.budgets.toArray(),
+      db.diaries.where('date').between(from, to, true, false).toArray(),
     ])
-    return { events, habits, checks, budgets }
-  }, [enabled, today, last])
+    return { events, habits, checks, budgets, diaries: diaries.map((d) => ({ date: d.date, color: d.color })) }
+  }, [enabled, today, last, from, to])
   return useMemo(() => (data ? { ...data, opacity } : undefined), [data, opacity])
 }
 
