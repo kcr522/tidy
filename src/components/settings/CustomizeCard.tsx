@@ -78,6 +78,8 @@ export default function CustomizeCard() {
   const fit = target === 'background' ? bg.fit : (sec?.fit ?? 'cover')
   const pos = target === 'background' ? bg.pos : (sec?.pos ?? 'center')
   const check = custom.check
+  /** 모두 같은 색일 때 가계부·할 일·스크랩은 대시보드 색을 따라간다 */
+  const following = custom.sameColor && (target === 'money' || target === 'todo' || target === 'scrap')
 
   const setBg = (patch: Partial<Customization['background']>) => setCustom((c) => ({ ...c, background: { ...c.background, ...patch } }))
   const setSec = (s: Section, patch: Partial<Customization['sections'][Section]>) =>
@@ -138,6 +140,20 @@ export default function CustomizeCard() {
     <section ref={card} className="card p-5">
       <h2 className="font-bold">꾸미기</h2>
       <p className="mb-4 text-sm text-slate-500">배경과 구역마다 색, 사진, 투명도를 골라요. 미리보기로 먼저 보고 적용할 수 있어요.</p>
+
+      {/* 메뉴 색: 모든 메뉴를 누를 때 같은 색이 되게 (사용자 요청 2026-11-16) */}
+      <p className="mb-2 text-sm font-bold text-slate-700">메뉴 색</p>
+      <Segmented
+        value={custom.sameColor ? 'same' : 'each'}
+        options={[
+          ['same', '모두 같은 색'],
+          ['each', '메뉴마다 다른 색'],
+        ]}
+        onChange={(v) => setCustom((c) => ({ ...c, sameColor: v === 'same' }))}
+      />
+      <p className="mt-2 mb-4 text-xs break-keep text-slate-500">
+        {custom.sameColor ? '대시보드, 가계부, 할 일, 일기, 캘린더, 스크랩, 설정 모두 대시보드 색으로 맞춰요' : '가계부, 할 일·일기, 스크랩이 각자 다른 색을 써요'}
+      </p>
 
       <div className="-mx-5 mb-4 flex gap-2 overflow-x-auto px-5 pb-1" role="tablist">
         {TARGETS.map((t) => (
@@ -252,6 +268,13 @@ export default function CustomizeCard() {
 
         {/* 색 */}
         <Label>색</Label>
+        {following ? (
+          <p className="mb-1 flex items-start gap-1 text-xs break-keep text-slate-500">
+            <Palette className="mt-px size-3.5 shrink-0" aria-hidden />
+            모든 메뉴가 대시보드와 같은 색이에요. 이 메뉴만 다른 색으로 하려면 위에서 &lsquo;메뉴마다 다른 색&rsquo;을 골라요
+          </p>
+        ) : (
+        <>
         {target === 'background' ? (
           <Segmented
             value={bg.color}
@@ -299,6 +322,8 @@ export default function CustomizeCard() {
               />
             ))}
           </div>
+        )}
+        </>
         )}
 
         {/* 사진: 여러 장 넣으면 앱을 켤 때마다 한 장씩 골라 보여 준다 */}
