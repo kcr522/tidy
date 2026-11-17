@@ -142,6 +142,9 @@ export default function WidgetCard() {
 }
 
 /** 컴퓨터(맥 · 윈도우)에서는 달력만 보이는 작은 창을 앱으로 설치해 바탕화면에 띄운다 (/widget) */
+/** 컴퓨터 위젯 앱 'Tidy 달력' 받는 곳 (desktop-widget/, GitHub Actions가 맥 · 윈도우용을 만들어 올린다) */
+const DESK_APP_URL = 'https://github.com/kcr522/tidy/releases/tag/desktop-widget-latest'
+
 function DesktopWidgetHelp() {
   const mac = /Mac/i.test(navigator.platform || navigator.userAgent)
   function open() {
@@ -150,13 +153,25 @@ function DesktopWidgetHelp() {
   return (
     <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm">
       <p className="font-bold">💻 컴퓨터 바탕화면에 띄우기</p>
-      <p className="mt-1 break-keep text-slate-500">달력만 보이는 작은 창을 앱으로 설치해 두면 맥북 · 노트북 화면 구석에 늘 띄워 둘 수 있어요. 창 크기를 키우면 글자와 일정 줄 수도 커져요.</p>
-      <ol className="mt-2 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
+      <p className="mt-1 break-keep text-slate-500">맥북 · 삼성 노트북 바탕화면에 달력을 늘 띄워 둘 수 있어요. 창 크기를 키우면 글자와 일정 줄 수도 커져요.</p>
+
+      <p className="mt-3 font-semibold">1. 'Tidy 달력' 위젯 앱 (투명도 조절 ✓)</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
+        <li>{mac ? "아래 버튼에서 'Tidy-Calendar-mac.dmg'를 받아 열고, 'Tidy 달력'을 응용 프로그램 폴더로 끌어 넣어요" : "아래 버튼에서 'Tidy-Calendar-windows.exe'를 받아 설치해요"}</li>
+        <li>{mac ? "처음 열 때 '확인되지 않은 개발자'가 나오면 시스템 설정 → 개인정보 보호 및 보안 → '그래도 열기'" : "'Windows의 PC 보호' 창이 나오면 '추가 정보' → '실행'"}</li>
+        <li>위젯 위에 마우스를 올리면 아래에 막대가 나와요: 끌어서 옮기기 · 투명도 · 닫기</li>
+        <li>처음 한 번 구글 로그인 (브라우저가 열려요). 컴퓨터를 켤 때마다 저절로 떠요</li>
+      </ol>
+      <a href={DESK_APP_URL} target="_blank" rel="noreferrer" className="tap mt-2 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 font-bold text-white">
+        {mac ? '맥용 위젯 앱 받기' : '윈도우용 위젯 앱 받기'}
+      </a>
+
+      <p className="mt-4 font-semibold">2. 설치 없이 브라우저 창으로 (불투명)</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
         <li>아래 버튼으로 위젯 창을 열어요 (크롬 · 엣지)</li>
         <li>주소창 오른쪽 설치 아이콘 또는 메뉴 ⋮ → '앱으로 설치' / '이 사이트를 앱으로 설치'</li>
         <li>{mac ? "독(Dock)의 'Tidy 달력' 아이콘을 오른쪽 클릭 → 옵션 → '로그인 시 열기'를 켜면 맥을 켤 때마다 떠요" : "작업 표시줄의 'Tidy 달력'을 고정해 두면 언제든 열 수 있어요"}</li>
       </ol>
-      <p className="mt-2 text-xs break-keep text-slate-400">컴퓨터 창은 뒤가 비치지 않아서 투명도는 폰 위젯에만 적용돼요.</p>
       <Button variant="secondary" className="mt-3 w-full" onClick={open}>
         위젯 창 열기
       </Button>

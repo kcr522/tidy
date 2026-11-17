@@ -22,6 +22,7 @@ const ReportPage = lazyPage(() => import('./pages/ReportPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage'))
 const WidgetWindowPage = lazyPage(() => import('./pages/WidgetWindowPage'))
+const WidgetLoginPage = lazyPage(() => import('./pages/WidgetLoginPage'))
 
 export default function App() {
   return (
@@ -38,6 +39,15 @@ export default function App() {
         element={
           <Suspense fallback={null}>
             <WidgetWindowPage />
+          </Suspense>
+        }
+      />
+      {/* 컴퓨터 위젯 앱의 구글 로그인 (기본 브라우저에서 열린다) */}
+      <Route
+        path="widget-login"
+        element={
+          <Suspense fallback={null}>
+            <WidgetLoginPage />
           </Suspense>
         }
       />

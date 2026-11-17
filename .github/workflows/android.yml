@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, 'feat/**', 'preview/**', 'claude/**']
-    paths-ignore: ['docs/**', '**/*.md']
+    paths-ignore: ['docs/**', '**/*.md', 'desktop-widget/**']
 
 permissions:
   contents: write
