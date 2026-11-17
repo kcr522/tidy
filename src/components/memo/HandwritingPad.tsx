@@ -1,4 +1,4 @@
-import { Eraser, Redo2, Trash2, Undo2, X } from 'lucide-react'
+import { Eraser, Highlighter, PenLine, Redo2, Trash2, Undo2, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -16,13 +16,31 @@ export const INK_SIZES = [
   { name: '보통', px: 6 },
   { name: '굵게', px: 12 },
 ]
+/** 형광펜 색 (반투명으로 칠해서 밑의 글씨 · 사진이 비쳐 보인다) */
+export const HL_COLORS = [
+  { name: '노랑', hex: '#ffe600' },
+  { name: '연두', hex: '#7ee000' },
+  { name: '분홍', hex: '#ff4f9a' },
+  { name: '하늘', hex: '#2fb8ff' },
+  { name: '주황', hex: '#ff9500' },
+]
+export const HL_SIZES = [
+  { name: '가늘게', px: 14 },
+  { name: '보통', px: 26 },
+  { name: '굵게', px: 44 },
+]
+/** 형광펜 진하기 */
+export const HL_ALPHA = 0.38
 const ERASER_PX = 36
 /** 저장하는 그림 너비 (높이는 화면 비율대로) */
 const OUT_WIDTH = 1000
+/** 사진 위에 그릴 때 사진 긴 쪽 최대 크기 */
+const PHOTO_MAX = 1600
 
 /** 점마다 굵기를 따로 둔다 (펜 누르는 힘) */
 type Pt = [x: number, y: number, w: number]
-type Stroke = { color: string; width: number; points: Pt[] }
+type Tool = 'pen' | 'hl' | 'erase'
+type Stroke = { tool: Tool; color: string; width: number; points: Pt[] }
 
 /** 펜 누르는 힘(0~1) → 굵기 배율. 살살 쓰면 가늘게, 세게 누르면 굵게 */
 export function pressureScale(pressure: number): number {
@@ -36,26 +54,47 @@ export function pressureScale(pressure: number): number {
  */
 export const isPenEraser = (pointerType: string, buttons: number) => pointerType === 'pen' && (buttons & (2 | 32)) !== 0
 
-
 interface Props {
-  /** 고칠 때: 이전에 쓴 손글씨 (그 위에 이어서 쓴다) */
+  /** 고칠 때: 이전에 쓴 손글씨 (그 위에 이어서 쓴다. 지우개로 지울 수 있다) */
   initial?: string
-  onDone: (png: string) => void
+  /** 사진 위에 그리기: 이 사진 위에 그린다 (지우개는 그린 것만 지우고 사진은 그대로) */
+  photo?: string
+  title?: string
+  onDone: (src: string) => void
   onCancel: () => void
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('그림을 열지 못했어요'))
+    img.src = src
+  })
+}
+
 /**
- * 손글씨 쓰기 (사용자 요청 2026-11-17): 손가락·펜·마우스로 쓰고, 색·굵기·지우개·되돌리기.
- * 흰 바탕 PNG 로 돌려준다 (어두운 화면에서도 같은 그림이 되고, AI 가 글자를 읽기 쉽다).
+ * 손글씨 쓰기 (사용자 요청 2026-11-17): 손가락·펜·마우스로 쓰고, 색·굵기·형광펜·지우개·되돌리기.
+ * 손글씨는 흰 바탕 PNG 로 돌려준다 (어두운 화면에서도 같은 그림이 되고, AI 가 글자를 읽기 쉽다).
+ * photo 를 주면 사진 위에 그리기: 펜 · 형광펜으로 표시한 사진을 JPEG 로 돌려준다.
+ *
+ * 그리는 것은 따로 한 장(ink)에 모으고, 화면에는 바탕(흰색 또는 사진) 위에 겹쳐 보인다.
+ * 그래서 지우개는 그린 것만 지우고, 형광펜은 한 번 그은 줄이 겹쳐도 얼룩지지 않는다.
  */
-export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
+export default function HandwritingPad({ initial, photo, title, onDone, onCancel }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const baseRef = useRef<HTMLImageElement | null>(null)
+  const photoRef = useRef<HTMLImageElement | null>(null)
+  const inkRef = useRef<HTMLCanvasElement | null>(null)
+  /** 형광펜을 긋기 전 모습 (그을 때마다 다시 그려서 겹침 얼룩이 없게) */
+  const beforeRef = useRef<HTMLCanvasElement | null>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState(INK_COLORS[0].hex)
+  const [hlColor, setHlColor] = useState(HL_COLORS[0].hex)
   const [width, setWidth] = useState(INK_SIZES[1].px)
-  const [erasing, setErasing] = useState(false)
+  const [hlWidth, setHlWidth] = useState(HL_SIZES[1].px)
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [undone, setUndone] = useState<Stroke[]>([])
   const [cleared, setCleared] = useState(false)
@@ -64,33 +103,72 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
   const active = useRef<number | null>(null)
   /** 펜으로 쓴 적이 있으면 손가락·손바닥 터치는 무시한다 (손을 화면에 대고 써도 되게) */
   const [penMode, setPenMode] = useState(false)
+  /** 굵기 배율: 사진이 크면 같은 굵기로 보이게 */
+  const scale = size ? size.w / OUT_WIDTH : 1
 
-  // 캔버스 크기: 너비 OUT_WIDTH, 높이는 화면 칸 비율. 고칠 때는 원래 그림 비율
+  // 캔버스 크기: 너비 OUT_WIDTH, 높이는 화면 칸 비율. 고칠 때는 원래 그림 비율, 사진은 사진 비율
   useLayoutEffect(() => {
     const box = wrapRef.current?.getBoundingClientRect()
     const ratio = box && box.width > 0 ? box.height / box.width : 1.3
-    if (!initial) {
+    let alive = true
+    if (photo) {
+      loadImage(photo)
+        .then((img) => {
+          if (!alive) return
+          photoRef.current = img
+          const k = Math.min(1, PHOTO_MAX / Math.max(img.naturalWidth, img.naturalHeight))
+          setSize({ w: Math.round(img.naturalWidth * k), h: Math.round(img.naturalHeight * k) })
+        })
+        .catch(() => alive && onCancel())
+    } else if (!initial) {
       setSize({ w: OUT_WIDTH, h: Math.round(OUT_WIDTH * Math.min(Math.max(ratio, 0.5), 2)) })
-      return
+    } else {
+      loadImage(initial)
+        .then((img) => {
+          if (!alive) return
+          baseRef.current = img
+          setSize({ w: OUT_WIDTH, h: Math.round((OUT_WIDTH * img.naturalHeight) / Math.max(img.naturalWidth, 1)) })
+        })
+        .catch(() => alive && setSize({ w: OUT_WIDTH, h: Math.round(OUT_WIDTH * ratio) }))
     }
-    const img = new Image()
-    img.onload = () => {
-      baseRef.current = img
-      setSize({ w: OUT_WIDTH, h: Math.round((OUT_WIDTH * img.naturalHeight) / Math.max(img.naturalWidth, 1)) })
+    return () => {
+      alive = false
     }
-    img.onerror = () => setSize({ w: OUT_WIDTH, h: Math.round(OUT_WIDTH * ratio) })
-    img.src = initial
-  }, [initial])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial, photo])
+
+  /** 화면 = 바탕(흰색 또는 사진) + 그린 것 */
+  function compose() {
+    const c = canvasRef.current
+    const ctx = c?.getContext('2d')
+    const ink = inkRef.current
+    if (!c || !ctx || !ink) return
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.globalAlpha = 1
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, c.width, c.height)
+    if (photoRef.current) ctx.drawImage(photoRef.current, 0, 0, c.width, c.height)
+    ctx.drawImage(ink, 0, 0)
+  }
 
   // 전체 다시 그리기 (되돌리기·지우기 뒤)
   useEffect(() => {
-    const c = canvasRef.current
-    const ctx = c?.getContext('2d')
-    if (!c || !ctx || !size) return
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, c.width, c.height)
-    if (baseRef.current && !cleared) ctx.drawImage(baseRef.current, 0, 0, c.width, c.height)
+    if (!size) return
+    let ink = inkRef.current
+    if (!ink || ink.width !== size.w || ink.height !== size.h) {
+      ink = document.createElement('canvas')
+      ink.width = size.w
+      ink.height = size.h
+      inkRef.current = ink
+    }
+    const ctx = ink.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, ink.width, ink.height)
+    // 이어 쓰는 손글씨: 이전 그림도 지우개로 지울 수 있게 그린 것 쪽에 넣는다
+    if (baseRef.current && !cleared) ctx.drawImage(baseRef.current, 0, 0, ink.width, ink.height)
     for (const s of strokes) paint(ctx, s)
+    compose()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strokes, size, cleared])
 
   // 쓰는 동안 화면이 밀리지 않게
@@ -105,10 +183,10 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
     }
   }, [onCancel])
 
-  /** 화면 좌표 → 캔버스 점. 펜이면 누르는 힘으로 굵기를 바꾼다 (지우개는 그대로) */
-  function point(c: HTMLCanvasElement, ev: { clientX: number; clientY: number; pressure: number; pointerType: string }, s: Pick<Stroke, 'width' | 'color'>): Pt {
+  /** 화면 좌표 → 캔버스 점. 펜이면 누르는 힘으로 굵기를 바꾼다 (형광펜 · 지우개는 그대로) */
+  function point(c: HTMLCanvasElement, ev: { clientX: number; clientY: number; pressure: number; pointerType: string }, s: Pick<Stroke, 'width' | 'tool'>): Pt {
     const r = c.getBoundingClientRect()
-    const w = ev.pointerType === 'pen' && s.color !== '#ffffff' ? s.width * pressureScale(ev.pressure) : s.width
+    const w = ev.pointerType === 'pen' && s.tool === 'pen' ? s.width * pressureScale(ev.pressure) : s.width
     return [((ev.clientX - r.left) / r.width) * c.width, ((ev.clientY - r.top) / r.height) * c.height, w]
   }
 
@@ -118,29 +196,52 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
     // 펜으로 쓰는 중이면 손바닥·손가락은 무시, 이미 긋는 중이면 두 번째 손가락도 무시
     if (penMode && e.pointerType === 'touch') return
     if (active.current !== null) return
+    const ink = inkRef.current
+    const ctx = ink?.getContext('2d')
+    if (!ink || !ctx) return
     active.current = e.pointerId
     e.currentTarget.setPointerCapture(e.pointerId)
-    const rub = erasing || isPenEraser(e.pointerType, e.buttons)
-    const s: Stroke = { color: rub ? '#ffffff' : color, width: rub ? ERASER_PX : width, points: [] }
+    const t: Tool = isPenEraser(e.pointerType, e.buttons) ? 'erase' : tool
+    const s: Stroke =
+      t === 'erase' ? { tool: t, color: '#000', width: ERASER_PX * scale, points: [] } : t === 'hl' ? { tool: t, color: hlColor, width: hlWidth * scale, points: [] } : { tool: t, color, width: width * scale, points: [] }
     s.points.push(point(e.currentTarget, e, s))
     drawing.current = s
-    const ctx = e.currentTarget.getContext('2d')
-    if (ctx) paint(ctx, s)
+    if (t === 'hl') {
+      const before = beforeRef.current ?? document.createElement('canvas')
+      before.width = ink.width
+      before.height = ink.height
+      before.getContext('2d')?.drawImage(ink, 0, 0)
+      beforeRef.current = before
+    }
+    paint(ctx, s)
+    compose()
   }
 
   function move(e: ReactPointerEvent<HTMLCanvasElement>) {
     const s = drawing.current
     if (!s || e.pointerId !== active.current) return
     const c = e.currentTarget
-    const ctx = c.getContext('2d')
+    const ctx = inkRef.current?.getContext('2d')
+    if (!ctx) return
     // 빠르게 그을 때 놓친 점까지
     const events = 'getCoalescedEvents' in e.nativeEvent ? e.nativeEvent.getCoalescedEvents() : []
     const list = (events.length ? events : [e.nativeEvent]).map((ev) => point(c, ev, s))
-    for (const p of list) {
-      const last = s.points[s.points.length - 1]
-      s.points.push(p)
-      if (ctx) segment(ctx, s.color, last, p)
+    if (s.tool === 'hl') {
+      s.points.push(...list)
+      // 그은 줄 전체를 한 번에 다시 칠한다 (반투명이 겹쳐 얼룩지지 않게)
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.globalAlpha = 1
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+      if (beforeRef.current) ctx.drawImage(beforeRef.current, 0, 0)
+      paint(ctx, s)
+    } else {
+      for (const p of list) {
+        const last = s.points[s.points.length - 1]
+        s.points.push(p)
+        segment(ctx, s, last, p)
+      }
     }
+    compose()
   }
 
   function up(e: ReactPointerEvent<HTMLCanvasElement>) {
@@ -169,33 +270,38 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
     setCleared(true)
   }
 
-  const empty = strokes.length === 0 && (!initial || cleared)
+  const empty = photo ? false : strokes.length === 0 && (!initial || cleared)
   const changed = strokes.length > 0 || cleared
 
   function done() {
     const c = canvasRef.current
     if (!c || empty) return
-    if (!changed && initial) return onCancel()
+    if (!changed && (initial || photo)) return onCancel()
+    if (photo) return onDone(c.toDataURL('image/jpeg', 0.9))
     onDone(trimmed(c, initial && !cleared ? null : strokes))
   }
 
-  const tool = (on: boolean) => `flex size-10 shrink-0 items-center justify-center rounded-full transition ${on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`
+  const toolCls = (on: boolean) => `flex size-10 shrink-0 items-center justify-center rounded-full transition ${on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`
+  const colors = tool === 'hl' ? HL_COLORS : INK_COLORS
+  const sizes = tool === 'hl' ? HL_SIZES : INK_SIZES
+  const curColor = tool === 'hl' ? hlColor : color
+  const curWidth = tool === 'hl' ? hlWidth : width
 
-  // 카드 안(흐림 효과 등)에 갇히지 않게 화면 맨 위에 띄운다
+  // 카드 안(흐림 효과 등)에 갇히지 않게 화면 맨 위에 띄운다 (사진 자르기 창 위에도)
   return createPortal(
-    <div className="fixed inset-0 z-[57] flex flex-col bg-slate-100 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" role="dialog" aria-modal="true" aria-label="손글씨 쓰기">
+    <div className="fixed inset-0 z-[71] flex flex-col bg-slate-100 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" role="dialog" aria-modal="true" aria-label={title ?? '손글씨 쓰기'}>
       <div className="flex items-center gap-2 bg-white px-3 py-2 shadow-sm">
         <button type="button" onClick={onCancel} className="tap rounded-full p-2 text-slate-500 hover:bg-slate-100" aria-label="닫기">
           <X className="size-5" aria-hidden />
         </button>
-        <h2 className="flex-1 text-[17px] font-bold">손글씨</h2>
+        <h2 className="flex-1 truncate text-[17px] font-bold">{title ?? '손글씨'}</h2>
         <button type="button" onClick={undo} disabled={!strokes.length} className="tap rounded-full p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30" aria-label="되돌리기">
           <Undo2 className="size-5" aria-hidden />
         </button>
         <button type="button" onClick={redo} disabled={!undone.length} className="tap rounded-full p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30" aria-label="다시 하기">
           <Redo2 className="size-5" aria-hidden />
         </button>
-        <button type="button" onClick={clearAll} disabled={empty} className="tap rounded-full p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30" aria-label="모두 지우기">
+        <button type="button" onClick={clearAll} disabled={photo ? !strokes.length : empty} className="tap rounded-full p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30" aria-label={photo ? '그린 것 모두 지우기' : '모두 지우기'}>
           <Trash2 className="size-5" aria-hidden />
         </button>
         <button type="button" onClick={done} disabled={empty} className="bg-grad on-grad ml-1 min-h-10 rounded-full px-4 text-sm font-bold disabled:opacity-40">
@@ -215,76 +321,107 @@ export default function HandwritingPad({ initial, onDone, onCancel }: Props) {
             onPointerCancel={up}
             onContextMenu={(e) => e.preventDefault()}
             className="max-h-full max-w-full touch-none rounded-2xl bg-white shadow-sm"
-            style={{ aspectRatio: `${size.w} / ${size.h}`, cursor: erasing ? 'cell' : 'crosshair' }}
-            aria-label="손글씨 쓰는 곳"
+            style={{ aspectRatio: `${size.w} / ${size.h}`, cursor: tool === 'erase' ? 'cell' : 'crosshair' }}
+            aria-label={photo ? '사진 위에 그리는 곳' : '손글씨 쓰는 곳'}
           />
         )}
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto bg-white px-3 py-2.5">
-        {INK_COLORS.map((c) => (
-          <button
-            key={c.hex}
-            type="button"
-            onClick={() => {
-              setColor(c.hex)
-              setErasing(false)
-            }}
-            className={`size-9 shrink-0 rounded-full transition ${!erasing && color === c.hex ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-white' : ''}`}
-            style={{ background: c.hex }}
-            aria-label={`${c.name} 펜`}
-            aria-pressed={!erasing && color === c.hex}
-          />
-        ))}
-        <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden />
-        {INK_SIZES.map((s) => (
-          <button
-            key={s.px}
-            type="button"
-            onClick={() => {
-              setWidth(s.px)
-              setErasing(false)
-            }}
-            className={tool(!erasing && width === s.px)}
-            aria-label={`${s.name} 쓰기`}
-            aria-pressed={!erasing && width === s.px}
-          >
-            <span className="rounded-full bg-current" style={{ width: s.px + 2, height: s.px + 2 }} aria-hidden />
+      <div className="bg-white px-3 py-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <button type="button" onClick={() => setTool('pen')} className={toolCls(tool === 'pen')} aria-label="펜" aria-pressed={tool === 'pen'}>
+            <PenLine className="size-5" aria-hidden />
           </button>
-        ))}
-        <button type="button" onClick={() => setErasing((v) => !v)} className={tool(erasing)} aria-label="지우개" aria-pressed={erasing}>
-          <Eraser className="size-5" aria-hidden />
-        </button>
-        {penMode && <span className="shrink-0 pl-1 text-xs whitespace-nowrap text-slate-500">S펜: 버튼 누르고 그으면 지우개 · 손은 화면에 대도 돼요</span>}
+          <button type="button" onClick={() => setTool('hl')} className={toolCls(tool === 'hl')} aria-label="형광펜" aria-pressed={tool === 'hl'}>
+            <Highlighter className="size-5" aria-hidden />
+          </button>
+          <button type="button" onClick={() => setTool('erase')} className={toolCls(tool === 'erase')} aria-label="지우개" aria-pressed={tool === 'erase'}>
+            <Eraser className="size-5" aria-hidden />
+          </button>
+          <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden />
+          {sizes.map((s) => (
+            <button
+              key={s.px}
+              type="button"
+              onClick={() => {
+                if (tool === 'hl') setHlWidth(s.px)
+                else {
+                  setWidth(s.px)
+                  setTool('pen')
+                }
+              }}
+              className={toolCls(tool !== 'erase' && curWidth === s.px)}
+              aria-label={`${tool === 'hl' ? '형광펜' : '펜'} ${s.name}`}
+              aria-pressed={tool !== 'erase' && curWidth === s.px}
+            >
+              <span className="rounded-full bg-current" style={{ width: Math.min(22, (tool === 'hl' ? s.px / 2 : s.px) + 2), height: Math.min(22, (tool === 'hl' ? s.px / 2 : s.px) + 2) }} aria-hidden />
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center gap-2 overflow-x-auto">
+          {colors.map((c) => (
+            <button
+              key={c.hex}
+              type="button"
+              onClick={() => {
+                if (tool === 'hl') setHlColor(c.hex)
+                else {
+                  setColor(c.hex)
+                  setTool('pen')
+                }
+              }}
+              className={`size-9 shrink-0 rounded-full transition ${tool !== 'erase' && curColor === c.hex ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-white' : ''}`}
+              style={{ background: c.hex, opacity: tool === 'hl' ? 0.7 : 1 }}
+              aria-label={`${c.name} ${tool === 'hl' ? '형광펜' : '펜'}`}
+              aria-pressed={tool !== 'erase' && curColor === c.hex}
+            />
+          ))}
+          {penMode && <span className="shrink-0 pl-1 text-xs whitespace-nowrap text-slate-500">S펜: 버튼 누르고 그으면 지우개 · 손은 화면에 대도 돼요</span>}
+        </div>
       </div>
     </div>,
     document.body,
   )
 }
 
+/** 한 줄 그리기: 펜은 토막마다 굵기가 다르고, 형광펜은 한 번에 반투명으로, 지우개는 그린 것을 지운다 */
 function paint(ctx: CanvasRenderingContext2D, s: Stroke) {
   if (!s.points.length) return
+  ctx.save()
+  ctx.globalCompositeOperation = s.tool === 'erase' ? 'destination-out' : 'source-over'
+  ctx.globalAlpha = s.tool === 'hl' ? HL_ALPHA : 1
+  ctx.strokeStyle = s.color
+  ctx.fillStyle = s.color
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
   if (s.points.length === 1) {
     const [x, y, w] = s.points[0]
-    ctx.fillStyle = s.color
     ctx.beginPath()
     ctx.arc(x, y, w / 2, 0, Math.PI * 2)
     ctx.fill()
-    return
+  } else if (s.tool === 'hl') {
+    ctx.lineWidth = s.width
+    ctx.beginPath()
+    ctx.moveTo(s.points[0][0], s.points[0][1])
+    for (const [x, y] of s.points.slice(1)) ctx.lineTo(x, y)
+    ctx.stroke()
+  } else {
+    for (let i = 1; i < s.points.length; i++) {
+      const a = s.points[i - 1]
+      const b = s.points[i]
+      ctx.lineWidth = (a[2] + b[2]) / 2
+      ctx.beginPath()
+      ctx.moveTo(a[0], a[1])
+      ctx.lineTo(b[0], b[1])
+      ctx.stroke()
+    }
   }
-  for (let i = 1; i < s.points.length; i++) segment(ctx, s.color, s.points[i - 1], s.points[i])
+  ctx.restore()
 }
 
-/** 두 점 사이 한 토막 (굵기는 두 점의 가운데) */
-function segment(ctx: CanvasRenderingContext2D, color: string, a: Pt, b: Pt) {
-  ctx.strokeStyle = color
-  ctx.lineWidth = (a[2] + b[2]) / 2
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(a[0], a[1])
-  ctx.lineTo(b[0], b[1])
-  ctx.stroke()
+/** 두 점 사이 한 토막 (쓰는 중에 이어 그리기, 굵기는 두 점의 가운데) */
+function segment(ctx: CanvasRenderingContext2D, s: Stroke, a: Pt, b: Pt) {
+  paint(ctx, { ...s, points: [a, b] })
 }
 
 /**
@@ -295,7 +432,7 @@ function trimmed(c: HTMLCanvasElement, strokes: Stroke[] | null): string {
   if (!strokes?.length) return c.toDataURL('image/png')
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
   for (const s of strokes) {
-    if (s.color === '#ffffff') continue
+    if (s.tool === 'erase') continue
     for (const [x, y, w] of s.points) {
       x0 = Math.min(x0, x - w)
       y0 = Math.min(y0, y - w)

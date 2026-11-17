@@ -1,9 +1,10 @@
-import { Bold, Crop, Highlighter, ImagePlus, Italic, List, ListOrdered, Loader2, Palette, Redo2, Strikethrough, Trash2, Underline, Undo2 } from 'lucide-react'
+import { Bold, Brush, Crop, Highlighter, ImagePlus, Italic, List, ListOrdered, Loader2, Palette, Redo2, Strikethrough, Trash2, Underline, Undo2 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '../common/Toast'
 import { shrinkImage } from '../../lib/image'
 import { HIGHLIGHT_COLORS, MAX_MEMO_PICS, TEXT_COLORS, clampWidth, fromEditorHtml, htmlToText, newPicId, sanitizeHtml } from '../../lib/richText'
 import type { MemoPic } from '../../db/types'
+import HandwritingPad from './HandwritingPad'
 import ImageCropper from './ImageCropper'
 
 export interface RichValue {
@@ -50,6 +51,8 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
   const [picWidth, setPicWidth] = useState(100)
   const [grip, setGrip] = useState<{ left: number; top: number } | null>(null)
   const [cropping, setCropping] = useState<HTMLImageElement | null>(null)
+  /** 사진 위에 그리기 (펜 · 형광펜) */
+  const [marking, setMarking] = useState<HTMLImageElement | null>(null)
   const [adding, setAdding] = useState(false)
 
   // 처음 한 번만 글을 넣는다 (그다음부터는 브라우저가 직접 고친다)
@@ -250,6 +253,9 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
             ))}
             <input type="range" min={15} max={100} value={picWidth} onChange={(e) => setWidth(Number(e.target.value))} className="w-24 accent-brand-600" aria-label="사진 크기 (%)" />
             <span className="flex-1" />
+            <Tool label="사진 위에 그리기 (펜 · 형광펜)" onClick={() => setMarking(pic)}>
+              <Brush className="size-[18px]" aria-hidden />
+            </Tool>
             <Tool label="사진 자르기" onClick={() => setCropping(pic)}>
               <Crop className="size-[18px]" aria-hidden />
             </Tool>
@@ -363,6 +369,19 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
           e.target.value = ''
         }}
       />
+
+      {marking && (
+        <HandwritingPad
+          photo={marking.src}
+          title="사진 위에 그리기"
+          onCancel={() => setMarking(null)}
+          onDone={(src) => {
+            marking.src = src
+            setMarking(null)
+            changed()
+          }}
+        />
+      )}
 
       {cropping && (
         <ImageCropper

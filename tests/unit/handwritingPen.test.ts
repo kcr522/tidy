@@ -17,3 +17,13 @@ describe('S펜', () => {
     expect(isPenEraser('touch', 2)).toBe(false)
   })
 })
+
+describe('형광펜', () => {
+  it('반투명이라 밑의 글씨 · 사진이 비친다', async () => {
+    const { HL_ALPHA, HL_COLORS, HL_SIZES } = await import('../../src/components/memo/HandwritingPad')
+    expect(HL_ALPHA).toBeGreaterThan(0.2)
+    expect(HL_ALPHA).toBeLessThan(0.6)
+    expect(HL_COLORS).toHaveLength(5)
+    expect(HL_SIZES.map((s) => s.px)).toEqual([...HL_SIZES.map((s) => s.px)].sort((a, b) => a - b))
+  })
+})
