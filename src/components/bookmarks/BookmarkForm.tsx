@@ -16,6 +16,8 @@ export interface BookmarkFormValue {
   input: BookmarkInput
   /** 새로 받아 온 썸네일 (없으면 그대로) */
   thumb?: Blob
+  /** 제목을 사용자가 직접 썼는지 (같은 게시물을 합칠 때 직접 쓴 제목만 바꾼다) */
+  titleByUser?: boolean
 }
 
 interface BookmarkFormProps {
@@ -24,7 +26,7 @@ interface BookmarkFormProps {
   prefill?: { url: string; title?: string }
   categories: ScrapCategory[]
   defaultCategoryId: number | null
-  /** 같은 URL이 이미 있으면 true */
+  /** 같은 게시물이 이미 있으면 true (새로 저장할 때는 하나로 합친다고 알려 주고, 수정할 때는 한 번 더 묻는다) */
   isDuplicate: (url: string) => Promise<boolean>
   onSubmit: (value: BookmarkFormValue) => Promise<void>
   onDelete?: () => void
@@ -52,6 +54,24 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
 
   const normalized = normalizeUrl(url)
   const target = normalized.ok ? normalized.value : null
+  /** 새로 저장하는데 같은 게시물이 이미 있음 → 저장하면 그 스크랩을 최신 내용으로 바꾼다 */
+  const [sameFor, setSameFor] = useState<string | null>(null)
+  const sameExists = !initial && !!target && sameFor === target
+  const isDuplicateRef = useRef(isDuplicate)
+  useEffect(() => {
+    isDuplicateRef.current = isDuplicate
+  })
+
+  useEffect(() => {
+    if (initial || !target) return
+    let alive = true
+    isDuplicateRef.current(target)
+      .then((v) => alive && setSameFor(v ? target : null))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [target, initial])
 
   // 주소를 쓰고 잠깐 멈추면 미리보기를 가져온다 (수정 화면에서 주소를 안 바꿨으면 다시 안 가져온다)
   useEffect(() => {
@@ -89,8 +109,8 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
     setErrors(next)
     if (!u.ok || !m.ok || Object.keys(next).length > 0) return
 
-    // 중복 URL 확인 (FR-033)
-    if (dupConfirmedFor !== u.value && (await isDuplicate(u.value))) {
+    // 중복 URL 확인 (FR-033). 새로 저장할 때는 묻지 않고 기존 스크랩을 최신 내용으로 바꾼다 (bookmarkRepo.addOrMerge)
+    if (initial && dupConfirmedFor !== u.value && (await isDuplicate(u.value))) {
       setDupWarning(true)
       setDupConfirmedFor(u.value)
       return
@@ -110,6 +130,7 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
           ...(p ? { description: p.description, siteName: p.siteName, isVideo: !!p.isVideo } : {}),
         },
         thumb: p?.thumb,
+        titleByUser: !!t && titleTouched.current,
       })
     } finally {
       setSaving(false)
@@ -166,6 +187,12 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
           className={`${inputClass(!!errors.memo)} py-2`}
         />
       </Field>
+
+      {sameExists && (
+        <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700" role="status">
+          이미 저장한 게시물이에요. 저장하면 새로 만들지 않고 그 스크랩을 지금 내용으로 바꿔요. 전에 적어 둔 메모 · 제목은 비워 두면 그대로 남아요.
+        </p>
+      )}
 
       {dupWarning && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700" role="alert">
