@@ -1,8 +1,9 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Attachment, Memo, MemoFolder, MemoInk } from '../db/types'
-import { cleanAttachments } from '../lib/attachments'
+import type { Attachment, Memo, MemoFolder, MemoInk, MemoPic } from '../db/types'
+import { cleanAttachments, isDataUrl } from '../lib/attachments'
 import { nowIso } from '../lib/date'
-import { MAX_MEMO_TEXT, MAX_MEMO_TITLE, MEMO_FOLDER_COLORS, MAX_FOLDER_NAME, cleanInk } from '../lib/memo'
+import { MAX_MEMO_HTML, MAX_MEMO_TEXT, MAX_MEMO_TITLE, MEMO_FOLDER_COLORS, MAX_FOLDER_NAME, cleanInk } from '../lib/memo'
+import { MAX_MEMO_PICS } from '../lib/richText'
 
 export class MemoFolderNameError extends Error {}
 
@@ -12,6 +13,9 @@ export interface MemoInput {
   folderId?: number
   attachments?: Attachment[]
   ink?: MemoInk[]
+  /** 꾸민 글 (편집 화면에서 다듬어 넘긴다) */
+  html?: string
+  pics?: MemoPic[]
 }
 
 function checkFolderName(raw: string): string {
@@ -33,6 +37,12 @@ export function createMemoRepo(database: TidyDB = defaultDb) {
     if (files.length) out.attachments = files
     const ink = cleanInk(input.ink)
     if (ink.length) out.ink = ink
+    if (input.html) {
+      out.html = input.html.slice(0, MAX_MEMO_HTML)
+      // html 에 실제로 있는 사진만 남긴다
+      const pics = (input.pics ?? []).filter((p) => /^[\w-]{1,40}$/.test(p.id) && isDataUrl(p.src) && out.html!.includes(`data-pic="${p.id}"`)).slice(0, MAX_MEMO_PICS)
+      if (pics.length) out.pics = pics.map((p) => ({ id: p.id, src: p.src }))
+    }
     return out
   }
 

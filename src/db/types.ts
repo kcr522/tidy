@@ -338,6 +338,13 @@ export interface MemoInk {
 }
 
 /** 메모 (스키마 11부터): 글 + 사진·영상·파일. 쓴 시각(createdAt)이 그대로 남아 시간순으로 보인다 */
+/** 메모 글 사이에 넣은 사진 (크기 · 자르기는 html 쪽 / src 쪽에 남는다) */
+export interface MemoPic {
+  id: string
+  /** 사진 data URL (자르면 자른 사진으로 바뀐다) */
+  src: string
+}
+
 export interface Memo {
   id?: number
   title: string
@@ -348,6 +355,10 @@ export interface Memo {
   attachments?: Attachment[]
   /** 손글씨 (최대 10장, 쓴 순서) */
   ink?: MemoInk[]
+  /** 꾸민 글 (굵게 · 밑줄 · 형광펜 · 글머리 기호 · 글 사이 사진). 없으면 text 가 그대로 본문. text 는 이것에서 꾸밈을 뺀 글자 */
+  html?: string
+  /** 글 사이 사진 (html 의 <img data-pic="id"> 자리에 들어간다) */
+  pics?: MemoPic[]
   /** 1이면 맨 위에 고정 */
   pinned?: 0 | 1
   /** 처음 쓴 시각 (ISO) */

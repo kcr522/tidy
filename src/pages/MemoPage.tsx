@@ -10,6 +10,7 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import HandwritingPad from '../components/memo/HandwritingPad'
 import MemoFolderForm from '../components/memo/MemoFolderForm'
+import RichTextEditor, { type RichValue } from '../components/memo/RichTextEditor'
 import type { Attachment, Memo, MemoFolder, MemoInk } from '../db/types'
 import { HandwritingError, readHandwriting } from '../lib/ai/handwriting'
 import { cleanAttachments, isImage, isVideo } from '../lib/attachments'
@@ -20,7 +21,6 @@ import {
   MAX_MEMO_FILE_BYTES,
   MAX_MEMO_INK,
   cleanInk,
-  MAX_MEMO_TEXT,
   MAX_MEMO_TITLE,
   MEMO_FOLDER_COLORS,
   clockLabel,
@@ -31,6 +31,7 @@ import {
   memoPreview,
   memoTitle,
 } from '../lib/memo'
+import { isPlainHtml, toEditorHtml } from '../lib/richText'
 import { memoRepo } from '../repositories/memoRepo'
 
 /** 입력을 멈추고 이만큼 지나면 자동 저장 */
@@ -299,7 +300,7 @@ function MemoRow({ memo, folder, showDate, active, onClick }: { memo: Memo; fold
   const title = memoTitle(memo)
   // 손글씨에서 읽은 글자가 제목이 됐으면 미리보기에 또 쓰지 않는다
   const preview = memoPreview(memo) || (handwriting && !handwriting.startsWith(title.replace(/…$/, '')) ? handwriting.replace(/\n/g, ' ') : '')
-  const media = memo.attachments?.find((a) => isImage(a) || isVideo(a)) ?? (memo.ink?.[0] ? { name: '손글씨', type: 'image/png', size: 0, src: memo.ink[0].src } : undefined)
+  const media = memo.attachments?.find((a) => isImage(a) || isVideo(a)) ?? (memo.pics?.[0] ? { name: '사진', type: 'image/jpeg', size: 0, src: memo.pics[0].src } : undefined) ?? (memo.ink?.[0] ? { name: '손글씨', type: 'image/png', size: 0, src: memo.ink[0].src } : undefined)
   const fileCount = memo.attachments?.length ?? 0
   return (
     <button
@@ -366,7 +367,11 @@ interface EditorProps {
 function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onClose }: EditorProps) {
   const toast = useToast()
   const [title, setTitle] = useState(memo?.title ?? '')
-  const [text, setText] = useState(memo?.text ?? '')
+  // 본문은 꾸민 글 편집 칸이 직접 들고 있다. 바뀔 때마다 번호만 올리고, 저장할 때 읽는다
+  const [initialBody] = useState(() => toEditorHtml(memo?.html, memo?.text ?? '', memo?.pics))
+  const [bodyRev, setBodyRev] = useState(0)
+  const [bodyEmpty, setBodyEmpty] = useState(() => !(memo?.text ?? '').trim() && !memo?.pics?.length)
+  const readBody = useRef<(() => RichValue) | null>(null)
   const [folderId, setFolderId] = useState<number | undefined>(memo?.folderId ?? initialFolderId)
   const [files, setFiles] = useState<Attachment[]>(memo?.attachments ?? [])
   const [ink, setInk] = useState<MemoInk[]>(memo?.ink ?? [])
@@ -378,16 +383,15 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const idRef = useRef<number | undefined>(memo?.id)
-  const textRef = useRef<HTMLTextAreaElement>(null)
   // 저장된 내용 (바뀐 게 있는지 비교용)
-  const saved = useRef(JSON.stringify([memo?.title ?? '', memo?.text ?? '', memo?.folderId, cleanAttachments(memo?.attachments), cleanInk(memo?.ink)]))
+  const saved = useRef(JSON.stringify([memo?.title ?? '', 0, memo?.folderId, cleanAttachments(memo?.attachments), cleanInk(memo?.ink)]))
 
-  const snapshot = JSON.stringify([title.trim(), text, folderId, cleanAttachments(files), cleanInk(ink)])
+  const snapshot = JSON.stringify([title.trim(), bodyRev, folderId, cleanAttachments(files), cleanInk(ink)])
   const dirty = snapshot !== saved.current
-  const empty = !title.trim() && !text.trim() && files.length === 0 && ink.length === 0
-  const latest = useRef({ title, text, folderId, files, ink, snapshot, dirty, empty })
+  const empty = !title.trim() && bodyEmpty && files.length === 0 && ink.length === 0
+  const latest = useRef({ title, folderId, files, ink, snapshot, dirty, empty })
   useEffect(() => {
-    latest.current = { title, text, folderId, files, ink, snapshot, dirty, empty }
+    latest.current = { title, folderId, files, ink, snapshot, dirty, empty }
   })
   const running = useRef<Promise<void> | null>(null)
   const removed = useRef(false)
@@ -399,7 +403,10 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
     const job = (async () => {
       setSaving(true)
       try {
-        const input = { title: now.title, text: now.text, folderId: now.folderId, attachments: now.files, ink: now.ink }
+        const body = readBody.current?.() ?? { html: memo?.html ?? '', pics: memo?.pics ?? [], text: memo?.text ?? '' }
+        // 꾸밈 없는 글이면 html 을 따로 두지 않는다 (옛 메모와 같은 모양)
+        const rich = !isPlainHtml(body.html) || body.pics.length > 0
+        const input = { title: now.title, text: body.text, folderId: now.folderId, attachments: now.files, ink: now.ink, html: rich ? body.html : undefined, pics: body.pics }
         if (idRef.current === undefined) {
           idRef.current = await memoRepo.add(input, startedAt)
           onCreated(idRef.current)
@@ -435,7 +442,6 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
     }
     document.addEventListener('visibilitychange', onHide)
     window.addEventListener('pagehide', onHide)
-    if (!memo) textRef.current?.focus()
     return () => {
       document.removeEventListener('visibilitychange', onHide)
       window.removeEventListener('pagehide', onHide)
@@ -563,15 +569,15 @@ function MemoEditor({ memo, startedAt, initialFolderId, folders, onCreated, onCl
         className="w-full bg-transparent px-1 py-2 text-xl font-extrabold tracking-tight outline-none placeholder:text-slate-300"
         aria-label="메모 제목"
       />
-      <textarea
-        ref={textRef}
-        value={text}
-        maxLength={MAX_MEMO_TEXT}
-        onChange={(e) => setText(e.target.value)}
+      <RichTextEditor
+        initial={initialBody}
         placeholder="생각나는 것, 기억할 것을 적어 두세요"
-        rows={10}
-        className="mt-1 w-full resize-y rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
-        aria-label="메모 내용"
+        autoFocus={!memo}
+        bindRead={(read) => (readBody.current = read)}
+        onInput={(e) => {
+          setBodyEmpty(e)
+          setBodyRev((n) => n + 1)
+        }}
       />
 
       <div className="mt-3">

@@ -9,6 +9,8 @@ import { toDateKey } from './date'
 
 export const MAX_MEMO_TITLE = 60
 export const MAX_MEMO_TEXT = 10000
+/** 꾸민 글 html 최대 길이 (사진은 따로라 글자 · 꾸밈만) */
+export const MAX_MEMO_HTML = 200000
 export const MAX_FOLDER_NAME = 12
 /** 메모에 붙이는 파일 하나 최대 크기 (영상 때문에 일기·일정보다 크게) */
 export const MAX_MEMO_FILE_BYTES = 50 * 1024 * 1024

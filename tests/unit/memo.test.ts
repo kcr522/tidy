@@ -49,6 +49,20 @@ describe('메모 글자', () => {
 })
 
 describe('memoRepo', () => {
+  it('꾸민 글: html 에 있는 사진만 남기고, 백업에도 들어간다', async () => {
+    db = new TidyDB(`memo-rich-${Math.random()}`)
+    const repo = createMemoRepo(db)
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    const id = await repo.add({ title: '', text: '• 우유', html: '<ul><li><mark>우유</mark></li></ul><img data-pic="p1" alt="">', pics: [{ id: 'p1', src: png }, { id: 'gone', src: png }] })
+    const m = await repo.get(id)
+    expect(m?.pics).toEqual([{ id: 'p1', src: png }])
+    expect(m?.text).toBe('• 우유')
+    const backup = await createBackupRepo(db).exportAll()
+    expect(backup.memos[0].html).toContain('<mark>')
+    await repo.update(id, { title: '', text: '그냥 글' })
+    expect((await repo.get(id))?.html).toBeUndefined()
+  })
+
   it('새 메모는 쓰기 시작한 시각이 남고, 고쳐도 그대로다', async () => {
     db = new TidyDB('memo-test-1')
     const repo = createMemoRepo(db)
