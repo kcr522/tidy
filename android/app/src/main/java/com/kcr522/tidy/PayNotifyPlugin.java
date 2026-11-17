@@ -150,6 +150,13 @@ public class PayNotifyPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void setFilter(PluginCall call) {
+        String json = call.getString("filter", "");
+        prefs().edit().putString(PayNotifyService.KEY_FILTER, json == null ? "" : json).apply();
+        call.resolve();
+    }
+
+    @PluginMethod
     public void takeOpen(PluginCall call) {
         JSObject out = new JSObject();
         out.put("open", openPending);

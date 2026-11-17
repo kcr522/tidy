@@ -8,6 +8,7 @@
 import type { PaymentGuess } from './ai/assistant'
 import { toDateKey } from './date'
 import { findAccount, parseBankText } from './ocr/bankText'
+import { blockReason, type PayFilter } from './payNotifyFilter'
 
 /** PayNotifyService.java 가 모아 둔 알림 하나 */
 export interface PayNotification {
@@ -83,13 +84,13 @@ export interface PayCandidate {
 /** 같은 결제를 여러 앱이 알려 주는 일이 많다: 금액·종류가 같고 3분 안이면 하나로 */
 const SAME_WINDOW = 3 * 60 * 1000
 
-/** 모아 둔 알림들 → 가계부 후보 목록 (결제가 아닌 알림의 id 는 skipped 로) */
-export function buildCandidates(items: PayNotification[]): { candidates: PayCandidate[]; skipped: string[] } {
+/** 모아 둔 알림들 → 가계부 후보 목록 (결제가 아니거나 거르기에 걸린 알림의 id 는 skipped 로) */
+export function buildCandidates(items: PayNotification[], filter?: PayFilter): { candidates: PayCandidate[]; skipped: string[] } {
   const candidates: PayCandidate[] = []
   const skipped: string[] = []
   for (const n of [...items].sort((a, b) => a.postedAt - b.postedAt)) {
     const guess = parsePayNotification(n)
-    if (!guess) {
+    if (!guess || (filter && blockReason(filter, n, guess))) {
       skipped.push(n.id)
       continue
     }

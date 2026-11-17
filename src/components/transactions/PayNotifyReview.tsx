@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { refinePayments } from '../../lib/assistant/learn'
 import { formatTimeLabel } from '../../lib/format'
 import type { PayCandidate } from '../../lib/payNotify'
+import { addApp, addWord, loadPayFilter, savePayFilter } from '../../lib/payNotifyFilter'
 import { removePayNotifications } from '../../platform/payNotify'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
@@ -11,6 +12,8 @@ import PaymentDraftCard, { type DraftPatch, type DraftRow } from './PaymentDraft
 
 interface Row extends DraftRow {
   candidate: PayCandidate
+  /** "다시 묻지 않기"로 거르기에 더한 것 (되돌릴 때 쓴다) */
+  muted: { kind: 'word' | 'app'; label: string } | null
 }
 
 interface Props {
@@ -41,7 +44,7 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
         transactions,
         aliases,
       )
-      setRows(drafts.map((d, i) => ({ ...d, key: i, checked: !d.duplicate, realName: '', candidate: candidates[i] })))
+      setRows(drafts.map((d, i) => ({ ...d, key: i, checked: !d.duplicate, realName: '', candidate: candidates[i], muted: null })))
     })
     return () => {
       alive = false
@@ -50,8 +53,23 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function update(key: number, patch: DraftPatch) {
+  function update(key: number, patch: DraftPatch<Row>) {
     setRows((rs) => rs && rs.map((r) => (r.key === key ? { ...r, ...(typeof patch === 'function' ? patch(r) : patch) } : r)))
+  }
+
+  /** 이 가게(또는 앱) 알림은 앞으로 기록하지 않기. 다시 누르면 되돌린다 */
+  function mute(r: Row, kind: 'word' | 'app') {
+    const f = loadPayFilter()
+    const { guess, source } = r.candidate
+    if (r.muted) {
+      const m = r.muted
+      savePayFilter(m.kind === 'word' ? { ...f, words: f.words.filter((w) => w !== m.label) } : { ...f, apps: f.apps.filter((a) => a.pkg !== source.pkg) })
+      update(r.key, { muted: null, checked: !r.duplicate })
+      return
+    }
+    if (kind === 'word') savePayFilter(addWord(f, guess.merchant))
+    else savePayFilter(addApp(f, source.pkg, source.app))
+    update(r.key, { muted: { kind, label: kind === 'word' ? guess.merchant : source.app || '이 앱' }, checked: false })
   }
 
   async function finish(save: boolean) {
@@ -91,7 +109,7 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
           <p className="mb-3 text-sm break-keep text-slate-500">결제 알림 {rows.length}건을 찾았어요. 맞는지 확인하고 저장할 것만 골라 주세요.</p>
           <ul className="space-y-2.5">
             {rows.map((r) => (
-              <PaymentDraftCard key={r.key} row={r} onChange={(p) => update(r.key, p)} note={<SourceNote candidate={r.candidate} />} />
+              <PaymentDraftCard key={r.key} row={r} onChange={(p) => update(r.key, p)} note={<SourceNote row={r} onMute={(kind) => mute(r, kind)} />} />
             ))}
           </ul>
           <p className="mt-3 text-xs text-slate-400">체크하지 않은 알림은 저장하지 않고 목록에서 지워요.</p>
@@ -113,11 +131,24 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
   )
 }
 
-function SourceNote({ candidate }: { candidate: PayCandidate }) {
+function SourceNote({ row, onMute }: { row: Row; onMute: (kind: 'word' | 'app') => void }) {
+  const candidate = row.candidate
   const s = candidate.source
+  const generic = /^(결제|입금)$/.test(candidate.guess.merchant)
   const d = new Date(s.postedAt)
   const time = formatTimeLabel(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
   const body = `${s.title} ${s.text}`.replace(/\s+/g, ' ').trim()
+  if (row.muted)
+    return (
+      <p className="mt-2 flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-500">
+        <span className="min-w-0 flex-1">
+          🚫 앞으로 &lsquo;{row.muted.label}&rsquo; {row.muted.kind === 'app' ? '알림은 모으지 않아요' : '결제는 묻지 않아요'}
+        </span>
+        <button type="button" onClick={() => onMute(row.muted!.kind)} className="shrink-0 font-semibold text-brand-600">
+          되돌리기
+        </button>
+      </p>
+    )
   return (
     <details className="mt-2 text-[11px] text-slate-400">
       <summary className="cursor-pointer truncate">
@@ -125,6 +156,18 @@ function SourceNote({ candidate }: { candidate: PayCandidate }) {
         {candidate.ids.length > 1 && ` · 알림 ${candidate.ids.length}개를 하나로`}
       </summary>
       <p className="mt-1 rounded-lg bg-slate-50 px-2 py-1.5 break-all whitespace-pre-wrap">{body}</p>
+      {!row.muted && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {!generic && (
+            <button type="button" onClick={() => onMute('word')} className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 hover:bg-slate-200">
+              🚫 &lsquo;{candidate.guess.merchant}&rsquo; 다시 묻지 않기
+            </button>
+          )}
+          <button type="button" onClick={() => onMute('app')} className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 hover:bg-slate-200">
+            🚫 {s.app || '이 앱'} 알림 빼기
+          </button>
+        </div>
+      )}
     </details>
   )
 }

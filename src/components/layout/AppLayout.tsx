@@ -10,7 +10,8 @@ import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
 import { useGooglePush } from '../../hooks/useGooglePush'
 import { syncAlarms } from '../../platform/alarms'
-import { listenPayNotify } from '../../platform/payNotify'
+import { loadPayFilter, onPayFilterChange } from '../../lib/payNotifyFilter'
+import { listenPayNotify, syncPayNotifyFilter } from '../../platform/payNotify'
 import { listenForShares } from '../../platform/shareIntent'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -47,6 +48,12 @@ export default function AppLayout() {
       ),
     [navigate],
   )
+  // 기록하지 않을 알림 규칙을 폰 쪽에도 맞춰 둔다 (켤 때 + 바꿀 때)
+  useEffect(() => {
+    const sync = () => void syncPayNotifyFilter(loadPayFilter())
+    sync()
+    return onPayFilterChange(sync)
+  }, [])
 
   // 앱을 켜거나 날짜가 바뀌면 오늘까지의 정기 내역을 가계부에 기록한다
   useEffect(() => {

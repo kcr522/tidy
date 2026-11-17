@@ -35,6 +35,8 @@ public class PayNotifyService extends NotificationListenerService {
     static final String KEY_PENDING = "pending";
     static final String KEY_RECENT = "recent";
     static final String KEY_ALERT = "alert";
+    /** 기록하지 않을 알림 규칙 (앱 화면에서 보낸 JSON: words, pkgs, minAmount, skipDeposit) */
+    static final String KEY_FILTER = "filter";
     static final String CHANNEL = "tidy_pay_notify";
     static final int ALERT_ID = 7301;
     static final String ACTION_OPEN = "com.kcr522.tidy.OPEN_PAY_NOTIFY";
@@ -85,6 +87,8 @@ public class PayNotifyService extends NotificationListenerService {
 
         Context ctx = getApplicationContext();
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        // 사용자가 빼기로 한 알림은 모으지도, 알리지도 않는다
+        if (blocked(prefs.getString(KEY_FILTER, ""), pkg, all)) return;
         long now = System.currentTimeMillis();
         String key = pkg + "|" + all.trim();
 
@@ -123,6 +127,39 @@ public class PayNotifyService extends NotificationListenerService {
     static boolean isPayment(String pkg, String all) {
         boolean fin = FIN_PKG.matcher(pkg).find() || (MESSENGERS.contains(pkg) && FIN_NAME.matcher(all).find());
         return fin && MONEY.matcher(all).find() && VERB.matcher(all).find() && !AD.matcher(all).find();
+    }
+
+    private static final Pattern FIRST_AMOUNT = Pattern.compile("(\\d{1,3}(?:,\\d{3})+|\\d{3,9})\\s*원|[₩￦]\\s*(\\d{1,3}(?:,\\d{3})+|\\d{1,9})");
+    private static final Pattern BALANCE = Pattern.compile("(잔액|잔고|누적|한도)\\s*:?\\s*[\\d,]+\\s*원?");
+
+    /** 앱 화면의 payNotifyFilter.ts blockReason 과 같은 규칙 (금액은 잔액·누적을 뺀 첫 금액) */
+    static boolean blocked(String json, String pkg, String all) {
+        if (json == null || json.isEmpty()) return false;
+        try {
+            JSONObject f = new JSONObject(json);
+            JSONArray pkgs = f.optJSONArray("pkgs");
+            if (pkgs != null) for (int i = 0; i < pkgs.length(); i++) if (pkg.equals(pkgs.optString(i))) return true;
+            String flat = all.replaceAll("\\s+", "").toLowerCase();
+            JSONArray words = f.optJSONArray("words");
+            if (words != null) {
+                for (int i = 0; i < words.length(); i++) {
+                    String w = words.optString(i).replaceAll("\\s+", "").toLowerCase();
+                    if (!w.isEmpty() && flat.contains(w)) return true;
+                }
+            }
+            long min = f.optLong("minAmount", 0);
+            if (min > 0) {
+                java.util.regex.Matcher m = FIRST_AMOUNT.matcher(BALANCE.matcher(all).replaceAll(" "));
+                if (m.find()) {
+                    String num = m.group(1) != null ? m.group(1) : m.group(2);
+                    if (Long.parseLong(num.replace(",", "")) < min) return true;
+                }
+            }
+            if (f.optBoolean("skipDeposit", false) && all.contains("입금") && !Pattern.compile("출금|승인|결제").matcher(all).find()) return true;
+        } catch (Exception ignored) {
+            // 규칙을 못 읽으면 거르지 않는다 (앱 화면에서 한 번 더 거른다)
+        }
+        return false;
     }
 
     private String appLabel(String pkg) {

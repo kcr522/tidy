@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildCandidates, parsePayNotification, type PayNotification } from '../../src/lib/payNotify'
+import { addApp, addWord, EMPTY_FILTER, type PayFilter } from '../../src/lib/payNotifyFilter'
 
 const at = (hm: string, day = '2026-11-17') => new Date(`${day}T${hm}:00`).getTime()
 const note = (pkg: string, app: string, title: string, text: string, time = '14:35'): PayNotification => ({ id: `${pkg}-${time}-${title}`, pkg, app, title, text, postedAt: at(time) })
@@ -66,5 +67,32 @@ describe('buildCandidates (같은 결제를 두 앱이 알려 주면 하나로)'
     const a = note('com.shcard.smartpay', '신한 SOL페이', '신한카드 승인', '4,500원 스타벅스', '09:00')
     const b = note('com.shcard.smartpay', '신한 SOL페이', '신한카드 승인', '4,500원 스타벅스', '15:00')
     expect(buildCandidates([a, b]).candidates).toHaveLength(2)
+  })
+})
+
+describe('거르기 (기록하지 않을 알림)', () => {
+  const card = note('com.shcard.smartpay', '신한 SOL페이', '신한카드 승인', '6,100원 일시불 11/17 14:35 스타벅스강남R점 누적 123,400원', '14:35')
+  const small = note('com.shcard.smartpay', '신한 SOL페이', '신한카드 승인', '800원 일시불 11/17 15:00 CU역삼점', '15:00')
+  const toss = note('viva.republica.toss', '토스', '결제 완료', '올리브영에서 23,800원 결제했어요', '16:00')
+  const deposit = note('com.kakaobank.channel', '카카오뱅크', '입금 2,500,000원', '(주)타이디 급여', '17:00')
+  const all = [card, small, toss, deposit]
+  const left = (f: Partial<PayFilter>) => buildCandidates(all, { ...EMPTY_FILTER, ...f }).candidates.map((c) => c.source.id)
+
+  it('낱말: 띄어쓰기·대소문자 상관없이 가게 이름이나 알림 글에 있으면 뺀다', () => {
+    expect(left({ words: ['스타 벅스'] })).toEqual([small.id, toss.id, deposit.id])
+    expect(left({ words: ['신한카드'] })).toEqual([toss.id, deposit.id])
+  })
+  it('앱 · 적은 금액 · 입금', () => {
+    expect(left({ apps: [{ pkg: 'viva.republica.toss', name: '토스' }] })).toEqual([card.id, small.id, deposit.id])
+    expect(left({ minAmount: 1000 })).toEqual([card.id, toss.id, deposit.id])
+    expect(left({ skipDeposit: true })).toEqual([card.id, small.id, toss.id])
+  })
+  it('걸린 알림은 skipped 로 (확인 화면을 닫을 때 같이 지운다)', () => {
+    expect(buildCandidates(all, { ...EMPTY_FILTER, minAmount: 1000 }).skipped).toEqual([small.id])
+  })
+  it('규칙 더하기는 같은 낱말 · 앱을 두 번 넣지 않는다', () => {
+    const f = addApp(addWord(addWord(EMPTY_FILTER, '스타벅스'), ' 스타 벅스 '), 'a.b', 'AB')
+    expect(f.words).toEqual(['스타벅스'])
+    expect(addApp(f, 'a.b', 'AB').apps).toHaveLength(1)
   })
 })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { buildCandidates, type PayCandidate } from '../lib/payNotify'
+import { loadPayFilter, onPayFilterChange } from '../lib/payNotifyFilter'
 import { listPayNotifications, listenPayNotify, payNotifyAvailable, payNotifyStatus } from '../platform/payNotify'
 
 export interface PayNotifyState {
@@ -27,8 +28,11 @@ export function usePayNotify(onOpen?: () => void): PayNotifyState {
       setGranted(s?.granted ?? null)
       if (s) setAlert(s.alert)
     })
-    listPayNotifications().then((items) => setFound(buildCandidates(items)))
+    listPayNotifications().then((items) => setFound(buildCandidates(items, loadPayFilter())))
   }, [available])
+
+  // 거르기 규칙을 바꾸면 다시 거른다
+  useEffect(() => onPayFilterChange(refresh), [refresh])
 
   useEffect(() => {
     refresh()

@@ -2,6 +2,7 @@ import { BellRing } from 'lucide-react'
 import { useState } from 'react'
 import { usePayNotify } from '../../hooks/usePayNotify'
 import { setPayNotifyAlert } from '../../platform/payNotify'
+import PayFilterEditor from '../payNotify/PayFilterEditor'
 import PayNotifyGuide from '../payNotify/PayNotifyGuide'
 
 /** 설정 > 결제 알림으로 가계부 기록 (갤럭시 앱만): 권한 상태, 켜는 방법, "기록할까요?" 알림 켜고 끄기 */
@@ -45,6 +46,7 @@ export default function PayNotifyCard() {
               </button>
             </label>
           )}
+          <PayFilterEditor />
         </>
       ) : (
         <p className="text-center text-xs text-slate-400">갤럭시(안드로이드) 앱에서 쓸 수 있어요. 웹과 아이폰은 다른 앱 알림을 읽을 수 없어요.</p>

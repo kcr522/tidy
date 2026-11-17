@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core'
 import type { PayNotification } from '../lib/payNotify'
+import type { PayFilter } from '../lib/payNotifyFilter'
 
 /** 안드로이드 쪽 PayNotifyPlugin.java + PayNotifyService.java */
 interface PayNotifyPlugin {
@@ -10,6 +11,8 @@ interface PayNotifyPlugin {
   list(): Promise<{ items: PayNotification[] }>
   remove(options: { ids: string[] }): Promise<void>
   takeOpen(): Promise<{ open: boolean }>
+  /** 기록하지 않을 알림 규칙 (JSON). 폰 쪽에서 미리 걸러 알림을 모으지도 띄우지도 않는다 */
+  setFilter(options: { filter: string }): Promise<void>
   addListener(event: 'posted' | 'open', cb: () => void): Promise<PluginListenerHandle>
 }
 
@@ -48,6 +51,12 @@ export async function listPayNotifications(): Promise<PayNotification[]> {
   } catch {
     return []
   }
+}
+
+/** 거르기 규칙을 폰 쪽(PayNotifyService)에도 보낸다. 옛 앱이면 조용히 넘어간다 (화면에서는 그대로 걸러진다) */
+export async function syncPayNotifyFilter(f: PayFilter): Promise<void> {
+  if (!payNotifyAvailable()) return
+  await PayNotify.setFilter({ filter: JSON.stringify({ words: f.words, pkgs: f.apps.map((a) => a.pkg), minAmount: f.minAmount, skipDeposit: f.skipDeposit }) }).catch(() => undefined)
 }
 
 export async function removePayNotifications(ids: string[]): Promise<void> {
