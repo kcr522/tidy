@@ -101,8 +101,14 @@ export default function HandwritingPad({ initial, photo, title, onDone, onCancel
   const drawing = useRef<Stroke | null>(null)
   /** 지금 긋고 있는 손가락·펜 (다른 손가락·손바닥은 무시) */
   const active = useRef<number | null>(null)
-  /** 펜으로 쓴 적이 있으면 손가락·손바닥 터치는 무시한다 (손을 화면에 대고 써도 되게) */
-  const [penMode, setPenMode] = useState(false)
+  /** 펜만 쓰기: 펜으로 쓴 적이 있으면 손가락·손바닥 터치는 무시한다 (손을 화면에 대고 써도 되게). 다음에 열 때도 기억 */
+  const [penMode, setPenModeState] = useState(loadPenOnly)
+  const setPenMode = (on: boolean) => {
+    setPenModeState(on)
+    savePenOnly(on)
+  }
+  /** 지금 긋는 줄이 손가락(터치)으로 시작했는지: 펜이 닿으면 그 줄은 손바닥이었던 것으로 보고 버린다 */
+  const touchStroke = useRef(false)
   /** 굵기 배율: 사진이 크면 같은 굵기로 보이게 */
   const scale = size ? size.w / OUT_WIDTH : 1
 
@@ -152,7 +158,9 @@ export default function HandwritingPad({ initial, photo, title, onDone, onCancel
   }
 
   // 전체 다시 그리기 (되돌리기·지우기 뒤)
-  useEffect(() => {
+  useEffect(() => rebuild(), [strokes, size, cleared]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function rebuild() {
     if (!size) return
     let ink = inkRef.current
     if (!ink || ink.width !== size.w || ink.height !== size.h) {
@@ -168,8 +176,7 @@ export default function HandwritingPad({ initial, photo, title, onDone, onCancel
     if (baseRef.current && !cleared) ctx.drawImage(baseRef.current, 0, 0, ink.width, ink.height)
     for (const s of strokes) paint(ctx, s)
     compose()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strokes, size, cleared])
+  }
 
   // 쓰는 동안 화면이 밀리지 않게
   useEffect(() => {
@@ -192,10 +199,19 @@ export default function HandwritingPad({ initial, photo, title, onDone, onCancel
 
   function down(e: ReactPointerEvent<HTMLCanvasElement>) {
     e.preventDefault()
-    if (e.pointerType === 'pen' && !penMode) setPenMode(true)
-    // 펜으로 쓰는 중이면 손바닥·손가락은 무시, 이미 긋는 중이면 두 번째 손가락도 무시
-    if (penMode && e.pointerType === 'touch') return
+    const pen = e.pointerType === 'pen'
+    if (pen && !penMode) setPenMode(true)
+    // 펜만 쓰기: 손바닥·손가락은 무시
+    if ((penMode || pen) && e.pointerType === 'touch') return
+    // 손바닥이 먼저 닿아 줄이 그어지던 중에 펜이 닿으면: 그 줄은 버리고 펜으로
+    if (pen && active.current !== null && touchStroke.current) {
+      active.current = null
+      drawing.current = null
+      rebuild()
+    }
+    // 이미 긋는 중이면 두 번째 손가락도 무시
     if (active.current !== null) return
+    touchStroke.current = e.pointerType === 'touch'
     const ink = inkRef.current
     const ctx = ink?.getContext('2d')
     if (!ink || !ctx) return
@@ -376,12 +392,35 @@ export default function HandwritingPad({ initial, photo, title, onDone, onCancel
               aria-pressed={tool !== 'erase' && curColor === c.hex}
             />
           ))}
-          {penMode && <span className="shrink-0 pl-1 text-xs whitespace-nowrap text-slate-500">S펜: 버튼 누르고 그으면 지우개 · 손은 화면에 대도 돼요</span>}
+          {penMode && (
+            <button type="button" onClick={() => setPenMode(false)} className="flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-slate-900 px-3 text-xs font-bold whitespace-nowrap text-white" aria-pressed="true" title="누르면 손가락으로도 쓸 수 있어요">
+              펜만 인식 중 · 끄기
+            </button>
+          )}
+
         </div>
+        {penMode && <p className="mt-1.5 text-xs text-slate-500">펜만 인식해요. 손가락·손바닥이 닿아도 괜찮아요 · S펜 버튼을 누르고 그으면 지우개</p>}
       </div>
     </div>,
     document.body,
   )
+}
+
+const PEN_ONLY_KEY = 'tidy.penOnly'
+function loadPenOnly(): boolean {
+  try {
+    return localStorage.getItem(PEN_ONLY_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function savePenOnly(on: boolean) {
+  try {
+    if (on) localStorage.setItem(PEN_ONLY_KEY, '1')
+    else localStorage.removeItem(PEN_ONLY_KEY)
+  } catch {
+    // 저장 못 해도 이번에는 그대로
+  }
 }
 
 /** 한 줄 그리기: 펜은 토막마다 굵기가 다르고, 형광펜은 한 번에 반투명으로, 지우개는 그린 것을 지운다 */

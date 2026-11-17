@@ -27,3 +27,14 @@ describe('형광펜', () => {
     expect(HL_SIZES.map((s) => s.px)).toEqual([...HL_SIZES.map((s) => s.px)].sort((a, b) => a - b))
   })
 })
+
+describe('손글씨로 쓰기 → 칸에 붙이기', () => {
+  it('여러 줄 칸은 줄바꿈, 한 줄 칸은 띄어쓰기로 붙이고 최대 길이를 지킨다', async () => {
+    const { appendHandwritten } = await import('../../src/components/common/HandwriteButton')
+    expect(appendHandwritten('', '오늘은\n맑음', true)).toBe('오늘은\n맑음')
+    expect(appendHandwritten('아침', '점심', true)).toBe('아침\n점심')
+    expect(appendHandwritten('우유', '계란\n빵', false)).toBe('우유 계란 빵')
+    expect(appendHandwritten('abc', 'defg', false, 5)).toBe('abc d')
+    expect(appendHandwritten('그대로', '  ', true)).toBe('그대로')
+  })
+})

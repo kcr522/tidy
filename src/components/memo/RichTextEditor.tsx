@@ -6,6 +6,7 @@ import { HIGHLIGHT_COLORS, MAX_MEMO_PICS, TEXT_COLORS, clampWidth, fromEditorHtm
 import type { MemoPic } from '../../db/types'
 import HandwritingPad from './HandwritingPad'
 import ImageCropper from './ImageCropper'
+import HandwriteButton from '../common/HandwriteButton'
 
 export interface RichValue {
   html: string
@@ -294,6 +295,16 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
               <Tool label="번호 매기기" on={active.has('insertOrderedList')} onClick={() => exec('insertOrderedList')}>
                 <ListOrdered className="size-[18px]" aria-hidden />
               </Tool>
+              <HandwriteButton
+                compact
+                label="메모 본문"
+                className="!size-9 !rounded-xl !bg-transparent"
+                onText={(t) => {
+                  restore()
+                  document.execCommand('insertText', false, t)
+                  changed()
+                }}
+              />
               <Tool label="글 사이에 사진 넣기" onClick={() => fileInput.current?.click()}>
                 {adding ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <ImagePlus className="size-[18px]" aria-hidden />}
               </Tool>
