@@ -383,11 +383,9 @@ export function calendarWidgetView(s: WidgetSummary | null, today: string, mode:
   return { stale: !month, locked: s?.locked ?? false, monthLabel, sum, weeks }
 }
 
-/** 한 칸의 일정 줄: 줄이 모자라면 마지막 줄 뒤에 "+남은 수" */
+/** 한 칸의 일정 줄: 넘치면 마지막 줄을 "+남은 수"로 (줄이 하나뿐이면 첫 제목만) */
 export function eventLines(entry: [number, ...string[]], max: number): string[] {
   const [count, ...titles] = entry
-  const shown = titles.slice(0, max)
-  const rest = count - shown.length
-  if (rest > 0 && shown.length > 0) shown[shown.length - 1] = `${shown[shown.length - 1]} +${rest}`
-  return shown
+  if (count <= max || max < 2) return titles.slice(0, max)
+  return [...titles.slice(0, max - 1), `+${count - (max - 1)}`]
 }

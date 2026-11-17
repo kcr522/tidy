@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.TypedValue;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
@@ -102,7 +103,7 @@ public class CalendarWidget extends TidyBaseWidget {
 
     /** 칸이 좁아서 제목이 다음 줄로 넘어가지 않게 앞 몇 글자만 */
     private static String clip(String title, int max) {
-        return title.codePointCount(0, title.length()) <= max ? title : title.substring(0, title.offsetByCodePoints(0, max)) + "…";
+        return title.codePointCount(0, title.length()) <= max ? title : title.substring(0, title.offsetByCodePoints(0, max));
     }
 
     private static String trim(double v) {
@@ -121,8 +122,10 @@ public class CalendarWidget extends TidyBaseWidget {
         String mode = modeOf(context, appWidgetId);
         int size = sizeOf(context, appWidgetId);
         float daySp = size == 0 ? 11f : size == 1 ? 12f : 14f;
-        // 작게 1개, 보통 2개, 크게 4개 (CAL_EVENT_LINES). 크게일 때는 제목이 두 줄로 넘어가도 된다
+        // 작게 1개, 보통 2개, 크게 4개 (CAL_EVENT_LINES). 제목은 한 줄에 몇 글자만 (칸을 넘어 다음 줄로 가지 않게)
         int eventLines = size == 2 ? 4 : size + 1;
+        float eventScale = 10f / daySp;
+        int eventTint = context.getColor(R.color.widget_today);
         v.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, size == 2 ? 17f : 15f);
         JSONObject summary = WidgetData.summary(context);
         WidgetData.applyOpacity(v, summary, kind());
@@ -189,7 +192,7 @@ public class CalendarWidget extends TidyBaseWidget {
             int id = CELL_IDS[i];
             v.setInt(id, "setBackgroundResource", 0);
             v.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, daySp);
-            v.setInt(id, "setMaxLines", size == 2 ? 1 + eventLines * 2 : 1 + eventLines);
+            v.setInt(id, "setMaxLines", 1 + eventLines);
             if (day < 1 || day > days) {
                 v.setTextViewText(id, "");
                 continue;
@@ -207,16 +210,25 @@ public class CalendarWidget extends TidyBaseWidget {
                     b.setSpan(new ForegroundColorSpan(red), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     b.setSpan(new RelativeSizeSpan(0.82f), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("event".equals(mode) && events != null && events.has(k)) {
-                    // [일정 수, 제목1, 제목2, 제목3] → 크기만큼 줄, 모자라면 마지막 줄에 "+남은 수"
+                    // [일정 수, 제목…] → 크기만큼 줄. 넘치면 마지막 줄은 "+남은 수" (widgetSummary.ts 의 eventLines)
                     JSONArray e = events.optJSONArray(k);
                     int count = e == null ? 0 : e.optInt(0, 0);
-                    int shown = e == null ? 0 : Math.min(eventLines, e.length() - 1);
+                    int titles = e == null ? 0 : e.length() - 1;
+                    boolean more = count > eventLines && eventLines >= 2;
+                    int shown = Math.min(more ? eventLines - 1 : eventLines, titles);
                     for (int t = 0; t < shown; t++) {
-                        b.append("\n").append(clip(e.optString(t + 1, ""), size == 2 ? 10 : 5));
-                        if (t == shown - 1 && count > shown) b.append(" +").append(String.valueOf(count - shown));
+                        b.append("\n");
+                        int ls = b.length();
+                        b.append(clip(e.optString(t + 1, ""), 4));
+                        b.setSpan(new BackgroundColorSpan(eventTint), ls, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
-                    b.setSpan(new ForegroundColorSpan(text), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    b.setSpan(new RelativeSizeSpan(0.82f), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    if (more) {
+                        b.append("\n");
+                        int ls = b.length();
+                        b.append("+").append(String.valueOf(count - shown));
+                        b.setSpan(new ForegroundColorSpan(muted), ls, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                    b.setSpan(new RelativeSizeSpan(eventScale), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("diary".equals(mode) && diaries != null && diaries.has(k)) {
                     int color = brand;
                     try {

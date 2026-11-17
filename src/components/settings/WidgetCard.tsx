@@ -100,7 +100,7 @@ export default function WidgetCard() {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 크게 늘리면 글자가 커지고 하루에 일정이 4개까지, 제목도 길게 보여요.</p>
+          <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 크게 늘리면 글자가 커지고 하루에 일정이 4개까지 보여요.</p>
         </div>
       )}
       <Wallpaper tall={kind === 'calendar' && calSize === 'large'}>
@@ -380,7 +380,7 @@ const WEEK_HEAD = ['일', '월', '화', '수', '목', '금', '토']
 const CAL_LOOK: Record<CalendarSize, { frame: string; day: string; line: string; dot: string }> = {
   small: { frame: 'h-64', day: 'text-[11px]', line: 'text-[9px]', dot: 'size-2' },
   medium: { frame: 'h-[22rem]', day: 'text-[12px]', line: 'text-[9.5px]', dot: 'size-2.5' },
-  large: { frame: 'h-full', day: 'text-[14px]', line: 'text-[10.5px]', dot: 'size-3' },
+  large: { frame: 'h-full', day: 'text-[14px]', line: 'text-[10px]', dot: 'size-3' },
 }
 
 /** '달력' 위젯 (widget_calendar.xml): 위의 버튼으로 돈 · 일기 · 일정 달력을 바꿔 본다 */
@@ -428,7 +428,10 @@ function CalendarWidgetPreview({ summary, today, opacity, size }: { summary: Wid
                     <span className={`mt-0.5 ${look.dot} rounded-full`} style={{ background: c.dot }} />
                   ) : (
                     c.lines.map((l, n) => (
-                      <span key={n} className={`w-full px-0.5 ${look.line} leading-tight ${size === 'large' ? 'mt-0.5 line-clamp-2 break-all' : 'truncate'} ${mode === 'money' ? 'text-[#f04452]' : ''}`}>
+                      <span
+                        key={n}
+                        className={`w-full overflow-hidden whitespace-nowrap ${look.line} leading-tight ${mode === 'money' ? 'text-[#f04452]' : l.startsWith('+') ? `mt-px ${MUTED}` : 'mt-px rounded-[3px] bg-[#1d8fe1]/15 px-0.5 text-left'}`}
+                      >
                         {l}
                       </span>
                     ))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent, Habit, Todo, Transaction } from '../../src/db/types'
-import { buildWidgetSummary, calendarSizeOf, calendarWidgetView, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
+import { buildWidgetSummary, calendarSizeOf, calendarWidgetView, eventLines, eventWidgetView, habitWidgetView, moneyWidgetView, todoWidgetView, widgetRange, widgetView, WIDGET_DAYS } from '../../src/lib/widgetSummary'
 
 const todo = (title: string, dueDate: string | null, done = false): Todo => ({
   title,
@@ -164,11 +164,16 @@ describe('달력 위젯', () => {
   it('돈 · 일기 · 일정 모드마다 칸 글자가 바뀐다', () => {
     const cell = (mode: 'money' | 'diary' | 'event', day: number, size?: 'small' | 'medium' | 'large') => calendarWidgetView(s, '2026-11-10', mode, size).weeks.flat().find((c) => c?.day === day)
     expect(cell('money', 10)?.lines).toEqual(['1.2만'])
-    expect(cell('event', 10, 'small')?.lines).toEqual(['여행 +1'])
+    expect(cell('event', 10, 'small')?.lines).toEqual(['여행'])
     expect(cell('event', 10, 'large')?.lines).toEqual(['여행', '회의'])
     expect(cell('diary', 3)?.dot).toBe('#ffb3c7')
     expect(cell('money', 10)?.today).toBe(true)
     expect(calendarWidgetView(s, '2026-11-10', 'money').sum).toBe('지출 2.9만원')
+  })
+
+  it('일정이 줄보다 많으면 마지막 줄은 +남은 수', () => {
+    expect(eventLines([5, 'a', 'b', 'c', 'd'], 2)).toEqual(['a', '+4'])
+    expect(eventLines([4, 'a', 'b', 'c', 'd'], 4)).toEqual(['a', 'b', 'c', 'd'])
   })
 
   it('위젯 높이로 크기를 고른다', () => {
