@@ -35,11 +35,12 @@ final class WidgetData {
         if ("money".equals(kind)) return MoneyWidget.class;
         if ("event".equals(kind)) return EventWidget.class;
         if ("habit".equals(kind)) return HabitWidget.class;
+        if ("memo".equals(kind)) return MemoWidget.class;
         return TidyWidget.class;
     }
 
     static TidyBaseWidget[] all() {
-        return new TidyBaseWidget[] {new TidyWidget(), new TodoWidget(), new MoneyWidget(), new EventWidget(), new HabitWidget()};
+        return new TidyBaseWidget[] {new TidyWidget(), new TodoWidget(), new MoneyWidget(), new EventWidget(), new HabitWidget(), new MemoWidget()};
     }
 
     static String todayKey() {

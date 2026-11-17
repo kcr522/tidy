@@ -11,6 +11,8 @@
     <string name="widget_name_money">가계부</string>
     <string name="widget_name_event">일정</string>
     <string name="widget_name_habit">습관</string>
+    <string name="widget_name_memo">메모</string>
+    <string name="widget_memo_description">최근 메모를 보고 바로 새 메모를 써요</string>
     <string name="widget_todo_description">오늘 할 일 목록을 홈 화면에서 봐요</string>
     <string name="widget_money_description">이번 달 지출과 남은 예산을 봐요</string>
     <string name="widget_event_description">오늘부터 일주일 일정을 봐요</string>

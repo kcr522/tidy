@@ -1,6 +1,7 @@
 import { addDays, format } from 'date-fns'
-import type { Budget, CalendarEvent, Habit, HabitCheck, Todo, Transaction } from '../db/types'
+import type { Budget, CalendarEvent, Habit, HabitCheck, Memo, MemoFolder, Todo, Transaction } from '../db/types'
 import { parseDateKey } from './date'
+import { memoTitle, sortMemos } from './memo'
 import { isDueOn } from './savings'
 import { todayTodos } from './summary'
 import { DEFAULT_OPACITY, WIDGET_KINDS, type WidgetOpacity } from './widgetSettings'
@@ -15,6 +16,21 @@ export const WIDGET_TODO_ITEMS = 8
 export const WIDGET_EVENTS = 5
 /** 요약에 담아 두는 하루 습관 수 */
 export const WIDGET_HABITS = 8
+/** 요약에 담아 두는 최근 메모 수 ('메모' 위젯) */
+export const WIDGET_MEMOS = 5
+
+/** 위젯에 담는 메모 하나 */
+export interface WidgetMemo {
+  id: number
+  /** 제목 (없으면 첫 줄). 잠금 중이면 비어 있다 */
+  t: string
+  /** 쓴 때: ISO (위젯이 오늘이면 시각, 아니면 날짜로 보여 준다) */
+  at: string
+  /** 파일집 색 (#rrggbb). 파일집 밖이면 빈 글자 */
+  c: string
+  /** 고정한 메모면 1 */
+  p: 0 | 1
+}
 
 /** 위젯에 담는 일정 하나 */
 export interface WidgetEvent {
@@ -66,6 +82,10 @@ export interface WidgetSummary {
   budget: number | null
   /** 위젯 종류마다 바탕 투명도 (%) */
   opacity: WidgetOpacity
+  /** 최근 메모 (고정 먼저, 그다음 최근에 쓴 것). 잠금 중이면 제목을 비운다 */
+  memos: WidgetMemo[]
+  /** 메모 전체 수 */
+  memon: number
 }
 
 /** 할 일, 지출 말고 다른 위젯이 쓰는 것들 (없으면 빈 칸) */
@@ -77,6 +97,8 @@ export interface WidgetExtras {
   checks?: HabitCheck[]
   budgets?: Budget[]
   opacity?: WidgetOpacity
+  memos?: Memo[]
+  memoFolders?: MemoFolder[]
 }
 
 const defaultOpacity = (): WidgetOpacity => Object.fromEntries(WIDGET_KINDS.map(({ kind }) => [kind, DEFAULT_OPACITY])) as WidgetOpacity
@@ -123,7 +145,11 @@ export function buildWidgetSummary(todos: Todo[], transactions: Transaction[], t
     }
   }
   const total = extras.budgets?.find((b) => b.category === '')
-  return { v: 2, locked, days, months, budget: locked || !total ? null : total.amount, opacity: extras.opacity ?? defaultOpacity() }
+  const folderColor = new Map((extras.memoFolders ?? []).map((f) => [f.id, f.color]))
+  const memos = sortMemos(extras.memos ?? [])
+    .slice(0, WIDGET_MEMOS)
+    .map((m) => ({ id: m.id ?? 0, t: locked ? '' : memoTitle(m), at: m.createdAt, c: (m.folderId && folderColor.get(m.folderId)) || '', p: (m.pinned ? 1 : 0) as 0 | 1 }))
+  return { v: 2, locked, days, months, budget: locked || !total ? null : total.amount, opacity: extras.opacity ?? defaultOpacity(), memos, memon: extras.memos?.length ?? 0 }
 }
 
 /** 위젯용 내역을 읽을 범위: [이번 달 1일, 오늘 + WIDGET_DAYS일) */
@@ -257,4 +283,27 @@ export function habitWidgetView(s: WidgetSummary | null, today: string): HabitWi
   const day = s?.days[today]
   if (!s || !day) return { stale: true, locked: s?.locked ?? false, done: 0, total: 0, items: [] }
   return { stale: false, locked: s.locked, done: day.hbd ?? 0, total: day.hbn ?? 0, items: day.hb ?? [] }
+}
+
+/** '메모' 위젯: 최근 메모. 안드로이드 MemoWidget.java 도 같은 규칙으로 그린다 */
+export interface MemoWidgetView {
+  locked: boolean
+  total: number
+  rows: { id: number; t: string; when: string; c: string; p: 0 | 1 }[]
+}
+
+/** 메모 위젯에 보여 줄 줄 수 */
+export const WIDGET_MEMO_ROWS = 4
+
+/** 오늘 쓴 것은 "오후 2:05", 아니면 "11/14" */
+export function memoWhen(iso: string, today: string): string {
+  const d = new Date(iso)
+  if (format(d, 'yyyy-MM-dd') === today) return d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+export function memoWidgetView(s: WidgetSummary | null, today: string): MemoWidgetView {
+  if (!s) return { locked: false, total: 0, rows: [] }
+  const rows = s.locked ? [] : (s.memos ?? []).slice(0, WIDGET_MEMO_ROWS).map((m) => ({ id: m.id, t: m.t, when: memoWhen(m.at, today), c: m.c, p: m.p }))
+  return { locked: s.locked, total: s.memon ?? 0, rows }
 }
