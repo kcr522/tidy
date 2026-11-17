@@ -265,3 +265,11 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .animate-splash-pop { animation: none; }
 }
+
+/* 컴퓨터 위젯 앱(Tidy 달력): 창 바탕을 비워 바탕화면이 비치게 (src/pages/WidgetWindowPage.tsx) */
+html.desk-widget,
+html.desk-widget body,
+html.desk-widget #root {
+  background: transparent !important;
+  background-image: none !important;
+}
