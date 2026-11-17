@@ -10,6 +10,7 @@ import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
 import { useGooglePush } from '../../hooks/useGooglePush'
 import { syncAlarms } from '../../platform/alarms'
+import { listenPayNotify } from '../../platform/payNotify'
 import { listenForShares } from '../../platform/shareIntent'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
@@ -36,6 +37,16 @@ export default function AppLayout() {
 
   // 안드로이드 앱: 인스타그램·X 에서 "공유 → Tidy" 로 들어온 링크를 스크랩 저장 창으로
   useEffect(() => listenForShares((path) => navigate(path)), [navigate])
+
+  // 안드로이드 앱: "가계부에 기록할까요?" 알림을 누르면 가계부의 결제 알림 확인 화면으로
+  useEffect(
+    () =>
+      listenPayNotify(
+        () => undefined,
+        () => navigate('/money', { state: { payNotify: true } }),
+      ),
+    [navigate],
+  )
 
   // 앱을 켜거나 날짜가 바뀌면 오늘까지의 정기 내역을 가계부에 기록한다
   useEffect(() => {
