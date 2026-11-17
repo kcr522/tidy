@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import LoginScreen from './components/account/LoginScreen'
 import SyncChoiceDialog from './components/account/SyncChoiceDialog'
@@ -20,6 +21,7 @@ const SearchPage = lazyPage(() => import('./pages/SearchPage'))
 const ReportPage = lazyPage(() => import('./pages/ReportPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage'))
+const WidgetWindowPage = lazyPage(() => import('./pages/WidgetWindowPage'))
 
 export default function App() {
   return (
@@ -30,6 +32,15 @@ export default function App() {
     <SyncChoiceDialog />
     <AppUpdatePrompt />
     <Routes>
+      {/* 컴퓨터 바탕화면용 달력 위젯 창 (메뉴 · 탭 없이 달력만) */}
+      <Route
+        path="widget"
+        element={
+          <Suspense fallback={null}>
+            <WidgetWindowPage />
+          </Suspense>
+        }
+      />
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="money" element={<TransactionsPage />} />

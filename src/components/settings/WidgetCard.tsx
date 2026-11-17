@@ -129,6 +129,7 @@ export default function WidgetCard() {
       </label>
       {native && <p className="mt-1 text-xs text-slate-400">바꾸면 홈 화면에 놓인 &apos;{info.name}&apos; 위젯에 바로 적용돼요.</p>}
 
+      {kind === 'calendar' && !native && <DesktopWidgetHelp />}
       {native ? (
         <Button className="mt-4 w-full" onClick={add}>
           &apos;{info.name}&apos; 위젯 홈 화면에 추가
@@ -140,7 +141,30 @@ export default function WidgetCard() {
   )
 }
 
-/** 투명도가 보이도록 홈 화면 배경처럼 깔아 두는 그림 */
+/** 컴퓨터(맥 · 윈도우)에서는 달력만 보이는 작은 창을 앱으로 설치해 바탕화면에 띄운다 (/widget) */
+function DesktopWidgetHelp() {
+  const mac = /Mac/i.test(navigator.platform || navigator.userAgent)
+  function open() {
+    window.open('/widget', 'tidy-widget', 'popup,width=420,height=480')
+  }
+  return (
+    <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm">
+      <p className="font-bold">💻 컴퓨터 바탕화면에 띄우기</p>
+      <p className="mt-1 break-keep text-slate-500">달력만 보이는 작은 창을 앱으로 설치해 두면 맥북 · 노트북 화면 구석에 늘 띄워 둘 수 있어요. 창 크기를 키우면 글자와 일정 줄 수도 커져요.</p>
+      <ol className="mt-2 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
+        <li>아래 버튼으로 위젯 창을 열어요 (크롬 · 엣지)</li>
+        <li>주소창 오른쪽 설치 아이콘 또는 메뉴 ⋮ → '앱으로 설치' / '이 사이트를 앱으로 설치'</li>
+        <li>{mac ? "독(Dock)의 'Tidy 달력' 아이콘을 오른쪽 클릭 → 옵션 → '로그인 시 열기'를 켜면 맥을 켤 때마다 떠요" : "작업 표시줄의 'Tidy 달력'을 고정해 두면 언제든 열 수 있어요"}</li>
+      </ol>
+      <p className="mt-2 text-xs break-keep text-slate-400">컴퓨터 창은 뒤가 비치지 않아서 투명도는 폰 위젯에만 적용돼요.</p>
+      <Button variant="secondary" className="mt-3 w-full" onClick={open}>
+        위젯 창 열기
+      </Button>
+    </div>
+  )
+}
+
+/** 달력 위젯 미리보기 크기 */
 const CAL_SIZES: { size: CalendarSize; label: string }[] = [
   { size: 'small', label: '작게 4×3' },
   { size: 'medium', label: '보통 4×4' },
@@ -186,9 +210,9 @@ const MUTED = 'text-[#6b7684] dark:text-[#9aa4b1]'
 const STALE = '앱을 한 번 열면 새로 고쳐져요'
 
 /** 안드로이드 위젯과 같은 모양의 틀. 바탕만 opacity를 따르고 글자는 그대로 (widget_*.xml 의 widget_bg_img) */
-function Frame({ wide, opacity, label, children }: { wide?: boolean; opacity: number; label: string; children: ReactNode }) {
+function Frame({ wide, fill, opacity, label, children }: { wide?: boolean; fill?: boolean; opacity: number; label: string; children: ReactNode }) {
   return (
-    <div className={`relative overflow-hidden rounded-[22px] text-[#191f28] dark:text-[#eef1f5] ${wide ? 'h-full w-full max-w-sm' : 'aspect-square w-44'}`} aria-label={label}>
+    <div className={`relative overflow-hidden text-[#191f28] dark:text-[#eef1f5] ${fill ? 'h-full w-full rounded-none' : wide ? 'h-full w-full max-w-sm rounded-[22px]' : 'aspect-square w-44 rounded-[22px]'}`} aria-label={label}>
       <div className="absolute inset-0 bg-[#ffffff] dark:bg-[#1c1f26]" style={{ opacity: opacity / 100 }} aria-hidden />
       <div className={`relative h-full ${wide ? 'p-4' : 'p-3.5'}`}>{children}</div>
     </div>
@@ -384,14 +408,33 @@ const CAL_LOOK: Record<CalendarSize, { frame: string; day: string; line: string;
 }
 
 /** '달력' 위젯 (widget_calendar.xml): 위의 버튼으로 돈 · 일기 · 일정 달력을 바꿔 본다 */
-function CalendarWidgetPreview({ summary, today, opacity, size }: { summary: WidgetSummary; today: string; opacity: number; size: CalendarSize }) {
-  const [mode, setMode] = useState<CalendarMode>('money')
+/**
+ * 달력 위젯 그림. 설정 미리보기와 컴퓨터용 위젯 창(/widget, fill)이 같이 쓴다.
+ * modeKey 를 주면 고른 모드를 이 기기에 기억한다.
+ */
+export function CalendarWidgetPreview({ summary, today, opacity, size, fill, modeKey }: { summary: WidgetSummary; today: string; opacity: number; size: CalendarSize; fill?: boolean; modeKey?: string }) {
+  const [mode, setModeState] = useState<CalendarMode>(() => {
+    try {
+      const saved = modeKey ? localStorage.getItem(modeKey) : null
+      return saved === 'diary' || saved === 'event' ? saved : 'money'
+    } catch {
+      return 'money'
+    }
+  })
+  function setMode(m: CalendarMode) {
+    setModeState(m)
+    try {
+      if (modeKey) localStorage.setItem(modeKey, m)
+    } catch {
+      // 기억 못 해도 지금은 바뀐다
+    }
+  }
   const view = calendarWidgetView(summary, today, mode, size)
   const look = CAL_LOOK[size]
   const dayColor = (weekday: number, holiday: boolean) => (weekday === 0 || holiday ? 'text-[#f04452]' : weekday === 6 ? 'text-[#3182f6]' : '')
   return (
-    <div className={`w-full max-w-sm ${look.frame}`}>
-      <Frame wide opacity={opacity} label="달력 위젯 미리보기">
+    <div className={fill ? 'h-full w-full' : `w-full max-w-sm ${look.frame}`}>
+      <Frame wide fill={fill} opacity={opacity} label="달력 위젯 미리보기">
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between gap-2">
             <p className={`${size === 'large' ? 'text-[17px]' : 'text-[15px]'} font-bold`}>{view.monthLabel}</p>
