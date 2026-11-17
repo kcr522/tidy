@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { LayoutGrid, List, Settings2 } from 'lucide-react'
+import { LayoutGrid, List, Settings2, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
@@ -9,6 +9,7 @@ import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
 import CategoryManager from '../components/bookmarks/CategoryManager'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
+import ScrapClassifyDialog from '../components/bookmarks/ScrapClassifyDialog'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -17,6 +18,7 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
+import { isUnsortedInstagram } from '../lib/scrap/classify'
 import { detectSource } from '../lib/scrap/link'
 import { enrichScrap, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
@@ -59,6 +61,7 @@ export default function BookmarksPage() {
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
+  const [classifying, setClassifying] = useState(false)
   const [view, setViewState] = useState<View>(readView)
   function setView(v: View) {
     setViewState(v)
@@ -92,6 +95,8 @@ export default function BookmarksPage() {
     const inCat = (all ?? []).filter((b) => cat === 'all' || (cat === 'none' ? b.categoryId == null : b.categoryId === cat))
     return { all: inCat.length, unread: inCat.filter((b) => b.isRead === 0).length, byCat }
   }, [all, cat])
+  // 미분류로 남은 인스타 스크랩 → 캡션 보고 나누기
+  const unsortedIg = useMemo(() => (all ?? []).filter(isUnsortedInstagram), [all])
   const catName = (id: number | undefined) => categories.find((c) => c.id === id)?.name
 
   // 예전에 저장한 "Instagram의 OO님 : …" 제목을 한 번 짧게 정리한다
@@ -204,6 +209,17 @@ export default function BookmarksPage() {
           관리
         </button>
       </div>
+
+      {unsortedIg.length > 0 && (cat === 'all' || cat === 'none') && (
+        <button type="button" onClick={() => setClassifying(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
+          <Sparkles className="size-5 shrink-0 text-brand-600" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-800">미분류 인스타 스크랩 {unsortedIg.length}개</span>
+            <span className="block text-xs text-slate-500">캡션 보고 꿀팁 · 자취를 위해 모으기 · 나중에 만들 거로 나눠 볼까요?</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">분류하기</span>
+        </button>
+      )}
 
       <div className="mb-4 flex items-center gap-2">
       <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs md:flex-none md:basis-80" role="tablist">
@@ -319,6 +335,8 @@ export default function BookmarksPage() {
       <AutoShotDialog bookmarkId={autoShot?.id ?? null} url={autoShot?.url} onClose={() => setAutoShot(null)} />
 
       <CaptureAskDialog bookmarkId={askCapture?.id ?? null} url={askCapture?.url} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
+
+      <ScrapClassifyDialog open={classifying} items={unsortedIg} onClose={() => setClassifying(false)} />
 
       <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} />
 
