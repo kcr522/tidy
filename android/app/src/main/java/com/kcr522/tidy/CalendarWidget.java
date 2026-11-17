@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Bundle;
+import android.util.TypedValue;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -64,6 +66,22 @@ public class CalendarWidget extends TidyBaseWidget {
         super.onReceive(context, intent);
     }
 
+    /** 홈 화면에서 크기를 바꾸면 글자 크기와 일정 줄 수를 다시 맞춘다 */
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        manager.updateAppWidget(id, build(context, id));
+    }
+
+    /** 0 = 작게, 1 = 보통, 2 = 크게 (src/lib/widgetSummary.ts 의 calendarSizeOf: 300dp 미만, 450dp 미만, 그 이상) */
+    private static int sizeOf(Context context, int id) {
+        if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return 1;
+        Bundle o = AppWidgetManager.getInstance(context).getAppWidgetOptions(id);
+        // 세로 화면에서는 MAX_HEIGHT 가 실제 높이
+        int h = o == null ? 0 : o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        if (h <= 0) return 1;
+        return h < 300 ? 0 : h < 450 ? 1 : 2;
+    }
+
     @Override
     public void onDeleted(Context context, int[] ids) {
         android.content.SharedPreferences.Editor edit = context.getSharedPreferences(WidgetData.PREFS, Context.MODE_PRIVATE).edit();
@@ -82,6 +100,11 @@ public class CalendarWidget extends TidyBaseWidget {
         return (eok < 10 ? trim(Math.round(eok * 10) / 10.0) : String.valueOf(Math.round(eok))) + "억";
     }
 
+    /** 칸이 좁아서 제목이 다음 줄로 넘어가지 않게 앞 몇 글자만 */
+    private static String clip(String title, int max) {
+        return title.codePointCount(0, title.length()) <= max ? title : title.substring(0, title.offsetByCodePoints(0, max)) + "…";
+    }
+
     private static String trim(double v) {
         return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
     }
@@ -96,6 +119,11 @@ public class CalendarWidget extends TidyBaseWidget {
         RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.widget_calendar);
         WidgetData.openAppOnTap(context, v);
         String mode = modeOf(context, appWidgetId);
+        int size = sizeOf(context, appWidgetId);
+        float daySp = size == 0 ? 11f : size == 1 ? 12f : 14f;
+        // 작게 1개, 보통 2개, 크게 4개 (CAL_EVENT_LINES). 크게일 때는 제목이 두 줄로 넘어가도 된다
+        int eventLines = size == 2 ? 4 : size + 1;
+        v.setTextViewTextSize(R.id.widget_title, TypedValue.COMPLEX_UNIT_SP, size == 2 ? 17f : 15f);
         JSONObject summary = WidgetData.summary(context);
         WidgetData.applyOpacity(v, summary, kind());
 
@@ -160,6 +188,8 @@ public class CalendarWidget extends TidyBaseWidget {
             int day = i - lead + 1;
             int id = CELL_IDS[i];
             v.setInt(id, "setBackgroundResource", 0);
+            v.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, daySp);
+            v.setInt(id, "setMaxLines", size == 2 ? 1 + eventLines * 2 : 1 + eventLines);
             if (day < 1 || day > days) {
                 v.setTextViewText(id, "");
                 continue;
@@ -177,10 +207,14 @@ public class CalendarWidget extends TidyBaseWidget {
                     b.setSpan(new ForegroundColorSpan(red), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     b.setSpan(new RelativeSizeSpan(0.82f), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("event".equals(mode) && events != null && events.has(k)) {
+                    // [일정 수, 제목1, 제목2, 제목3] → 크기만큼 줄, 모자라면 마지막 줄에 "+남은 수"
                     JSONArray e = events.optJSONArray(k);
-                    String title = e == null ? "" : e.optString(0, "");
-                    int count = e == null ? 1 : e.optInt(1, 1);
-                    b.append("\n").append(count > 1 ? title + " +" + (count - 1) : title);
+                    int count = e == null ? 0 : e.optInt(0, 0);
+                    int shown = e == null ? 0 : Math.min(eventLines, e.length() - 1);
+                    for (int t = 0; t < shown; t++) {
+                        b.append("\n").append(clip(e.optString(t + 1, ""), size == 2 ? 10 : 5));
+                        if (t == shown - 1 && count > shown) b.append(" +").append(String.valueOf(count - shown));
+                    }
                     b.setSpan(new ForegroundColorSpan(text), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     b.setSpan(new RelativeSizeSpan(0.82f), start, b.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("diary".equals(mode) && diaries != null && diaries.has(k)) {

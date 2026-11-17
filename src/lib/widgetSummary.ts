@@ -76,8 +76,8 @@ export interface WidgetSummary {
 export interface WidgetCalMonth {
   /** 그날 지출. 잠금 중이면 비어 있다 */
   s: Record<string, number>
-  /** 그날 일정: [첫 일정 제목, 일정 수]. 잠금 중이면 비어 있다 */
-  e: Record<string, [string, number]>
+  /** 그날 일정: [일정 수, 앞 일정 제목 3개까지]. 잠금 중이면 비어 있다 */
+  e: Record<string, [number, ...string[]]>
   /** 일기 쓴 날: 일기 색. 잠금 중이면 비어 있다 */
   d: Record<string, string>
   /** 공휴일인 날 */
@@ -167,7 +167,7 @@ function buildCal(transactions: Transaction[], events: CalendarEvent[], diaries:
     for (let day = 1; day <= n; day++) {
       const key = `${ym}-${String(day).padStart(2, '0')}`
       const on = events.filter((e) => e.startDate <= key && e.endDate >= key)
-      if (on.length > 0) month.e[String(day)] = [on[0].title, on.length]
+      if (on.length > 0) month.e[String(day)] = [on.length, ...on.slice(0, CAL_EVENT_LINES.large).map((e) => e.title)]
     }
   }
   return cal
@@ -310,6 +310,17 @@ export function habitWidgetView(s: WidgetSummary | null, today: string): HabitWi
 /** 달력 위젯에서 보는 것 */
 export type CalendarMode = 'money' | 'diary' | 'event'
 
+/** 달력 위젯 크기: 위젯 높이로 고른다 (안드로이드 CalendarWidget.sizeOf 와 같은 기준) */
+export type CalendarSize = 'small' | 'medium' | 'large'
+
+/** 크기마다 한 칸에 보여 줄 일정 줄 수 */
+export const CAL_EVENT_LINES: Record<CalendarSize, number> = { small: 1, medium: 2, large: 4 }
+
+/** 위젯 높이(dp)로 크기를 고른다: 300 미만 작게, 450 미만 보통, 그 이상 크게 (폰 화면 가득) */
+export function calendarSizeOf(heightDp: number): CalendarSize {
+  return heightDp < 300 ? 'small' : heightDp < 450 ? 'medium' : 'large'
+}
+
 export const CALENDAR_MODES: { mode: CalendarMode; label: string }[] = [
   { mode: 'money', label: '💰 돈' },
   { mode: 'diary', label: '📔 일기' },
@@ -322,8 +333,8 @@ export interface CalendarCell {
   /** 0 = 일요일 ~ 6 = 토요일 */
   weekday: number
   holiday: boolean
-  /** 칸 아래 글자 (지출 금액, 일정 제목). 없으면 '' */
-  text: string
+  /** 칸 아래 글자 줄 (지출 금액 한 줄, 일정 제목 여러 줄). 없으면 빈 배열 */
+  lines: string[]
   /** 일기 모드: 일기 색 (쓴 날만) */
   dot: string | null
 }
@@ -339,7 +350,7 @@ export interface CalendarWidgetView {
   weeks: (CalendarCell | null)[][]
 }
 
-export function calendarWidgetView(s: WidgetSummary | null, today: string, mode: CalendarMode): CalendarWidgetView {
+export function calendarWidgetView(s: WidgetSummary | null, today: string, mode: CalendarMode, size: CalendarSize = 'medium'): CalendarWidgetView {
   const ym = today.slice(0, 7)
   const first = parseDateKey(`${ym}-01`)
   const monthLabel = `${first.getMonth() + 1}월`
@@ -350,14 +361,14 @@ export function calendarWidgetView(s: WidgetSummary | null, today: string, mode:
   const cells: (CalendarCell | null)[] = Array.from({ length: lead }, () => null)
   for (let day = 1; day <= n; day++) {
     const k = String(day)
-    let text = ''
+    let lines: string[] = []
     let dot: string | null = null
     if (month && !s!.locked) {
-      if (mode === 'money' && month.s[k]) text = cellWon(month.s[k])
-      if (mode === 'event' && month.e[k]) text = month.e[k][1] > 1 ? `${month.e[k][0]} +${month.e[k][1] - 1}` : month.e[k][0]
+      if (mode === 'money' && month.s[k]) lines = [cellWon(month.s[k])]
+      if (mode === 'event' && month.e[k]) lines = eventLines(month.e[k], CAL_EVENT_LINES[size])
       if (mode === 'diary') dot = month.d[k] ?? null
     }
-    cells.push({ day, today: day === todayNum, weekday: (lead + day - 1) % 7, holiday: month?.h.includes(day) ?? false, text, dot })
+    cells.push({ day, today: day === todayNum, weekday: (lead + day - 1) % 7, holiday: month?.h.includes(day) ?? false, lines, dot })
   }
   while (cells.length % 7 !== 0) cells.push(null)
   const weeks: (CalendarCell | null)[][] = []
@@ -370,4 +381,13 @@ export function calendarWidgetView(s: WidgetSummary | null, today: string, mode:
     if (mode === 'event') sum = `일정 있는 날 ${Object.keys(month.e).length}일`
   }
   return { stale: !month, locked: s?.locked ?? false, monthLabel, sum, weeks }
+}
+
+/** 한 칸의 일정 줄: 줄이 모자라면 마지막 줄 뒤에 "+남은 수" */
+export function eventLines(entry: [number, ...string[]], max: number): string[] {
+  const [count, ...titles] = entry
+  const shown = titles.slice(0, max)
+  const rest = count - shown.length
+  if (rest > 0 && shown.length > 0) shown[shown.length - 1] = `${shown[shown.length - 1]} +${rest}`
+  return shown
 }
