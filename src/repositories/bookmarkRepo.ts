@@ -1,5 +1,6 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
 import type { Bookmark } from '../db/types'
+import { instagramPost, type SavedPost } from '../lib/scrap/instagramSaved'
 import { nowIso } from '../lib/date'
 
 /** 화면에서 입력받는 값 (url은 normalizeUrl을 거친 값, title은 비어 있지 않은 값) */
@@ -89,6 +90,57 @@ export function createBookmarkRepo(database: TidyDB = defaultDb) {
     async findByUrl(url: string, exceptId?: number): Promise<Bookmark | undefined> {
       const list = await database.bookmarks.where('url').equals(url).toArray()
       return list.find((b) => b.id !== exceptId)
+    },
+
+    /**
+     * 인스타 "저장됨" 목록 한꺼번에 넣기. 이미 있는 게시물은 건너뛴다.
+     * withCollections 면 인스타 컬렉션 이름과 같은 스크랩 카테고리에 넣는다 (없으면 만든다, 12자까지)
+     */
+    async importInstagram(posts: SavedPost[], withCollections = true): Promise<{ added: number[]; skipped: number }> {
+      return database.transaction('rw', database.bookmarks, database.scrapCategories, async () => {
+        const have = new Set<string>()
+        for (const b of await database.bookmarks.toArray()) {
+          const p = instagramPost(b.url)
+          if (p) have.add(p.code)
+        }
+        const cats = new Map((await database.scrapCategories.toArray()).map((c) => [c.name, c.id as number]))
+        let order = ((await database.scrapCategories.orderBy('order').last())?.order ?? -1) + 1
+        const categoryFor = async (raw?: string): Promise<number | undefined> => {
+          const name = raw?.trim().replace(/\s+/g, ' ').slice(0, 12)
+          if (!withCollections || !name || name === '전체' || name === '미분류') return undefined
+          const found = cats.get(name)
+          if (found != null) return found
+          const id = (await database.scrapCategories.add({ name, order: order++, createdAt: nowIso() })) as number
+          cats.set(name, id)
+          return id
+        }
+        const added: number[] = []
+        let skipped = 0
+        // 오래된 것부터 넣어서 최근 저장한 게시물이 목록 위로
+        for (const p of [...posts].reverse()) {
+          if (have.has(p.code)) {
+            skipped++
+            continue
+          }
+          have.add(p.code)
+          const at = p.savedAt ?? nowIso()
+          const rec: Bookmark = {
+            url: p.url,
+            title: p.author ? `@${p.author}의 게시물` : 'Instagram 게시물',
+            memo: '',
+            isRead: 0,
+            createdAt: at,
+            updatedAt: nowIso(),
+            source: 'instagram',
+            siteName: 'Instagram',
+            isVideo: p.url.includes('/reel/') ? 1 : 0,
+          }
+          const categoryId = await categoryFor(p.collection)
+          if (categoryId != null) rec.categoryId = categoryId
+          added.push((await database.bookmarks.add(rec)) as number)
+        }
+        return { added, skipped }
+      })
     },
 
     /** 최근 저장 순 (FR-034), 필터 (FR-037) */

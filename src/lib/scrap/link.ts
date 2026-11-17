@@ -100,6 +100,20 @@ export interface LinkMeta {
 /**
  * 인스타그램 설명 앞에 붙는 "좋아요 1,234개, 댓글 56개 - 아이디님, 날짜: " 부분과 따옴표를 빼고 본문만
  */
+/** 게시물 캡션만 남기기: "좋아요 12개 · 아이디 · 날짜:" 머리말, 끝의 t.co · pic.twitter.com 링크, 바깥 따옴표를 뗀다 */
+export function cleanCaption(text: string | undefined): string {
+  if (!text) return ''
+  const t = (tidyDescription(text) ?? '')
+    .replace(/\s*(?:https?:\/\/t\.co\/\w+|pic\.twitter\.com\/\w+)/g, '')
+    .replace(/^["“]([\s\S]*)["”]$/, '$1')
+  return t
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export function tidyDescription(desc: string | undefined): string | undefined {
   if (!desc) return desc
   const m = desc.match(/^[\d,.\s]*(?:likes?|좋아요)[^:]{0,120}:\s*["“]?([\s\S]*?)["”]?\.?$/i)

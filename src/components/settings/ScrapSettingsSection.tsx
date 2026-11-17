@@ -1,4 +1,7 @@
+import { BookmarkPlus, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 import { useAskCapture, useAutoCapture } from '../../lib/scrap/settings'
+import InstagramImportDialog from '../bookmarks/InstagramImportDialog'
 
 function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -12,6 +15,7 @@ function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 export default function ScrapSettingsSection() {
   const [auto, setAuto] = useAutoCapture()
   const [ask, setAsk] = useAskCapture()
+  const [importing, setImporting] = useState(false)
   return (
     <section className="card overflow-hidden">
       <h2 className="px-5 pt-5 pb-1 font-bold">스크랩</h2>
@@ -31,6 +35,15 @@ export default function ScrapSettingsSection() {
           <Switch on={ask} onToggle={() => setAsk(!ask)} />
         </label>
       )}
+      <button type="button" onClick={() => setImporting(true)} className="tap flex min-h-16 w-full items-center gap-3 border-t border-slate-100 px-5 py-3 text-left">
+        <BookmarkPlus className="size-5 shrink-0 text-pink-500" aria-hidden />
+        <span className="flex-1">
+          <span className="block text-[15px] font-semibold text-slate-800">인스타 저장 목록 가져오기</span>
+          <span className="block text-xs text-slate-500">인스타에서 저장(북마크)한 게시물을 한꺼번에 스크랩으로 넣어요. 컬렉션은 카테고리로</span>
+        </span>
+        <ChevronRight className="size-4 text-slate-400" aria-hidden />
+      </button>
+      <InstagramImportDialog open={importing} onClose={() => setImporting(false)} />
       <p className="border-t border-slate-100 px-5 py-4 text-xs leading-relaxed text-slate-500">
         인스타그램·네이버·X에서 <b>공유 → Tidy에 스크랩</b>을 누르면 바로 저장 창이 열려요. 안드로이드 앱을 깔았으면 공유 목록에 Tidy가 떠요(처음엔 목록 맨 끝 “더보기”에 있을 수 있어요). 웹만 쓸 때는 안드로이드 크롬에서 Tidy를 “홈 화면에 추가(앱 설치)” 해 두면 떠요. 아이폰은 아직 안 돼요. 링크를 복사해서 붙여 넣으면 돼요.
       </p>
