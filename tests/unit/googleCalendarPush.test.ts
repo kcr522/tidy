@@ -77,13 +77,27 @@ afterEach(async () => {
 })
 
 describe('구글 캘린더에 Tidy 일정 보내기', () => {
-  it('연결하면 Tidy 캘린더를 만들고 일정과 할 일을 넣는다 (구글에서 가져온 일정과 끝낸 할 일은 빼고)', async () => {
+  it('연결하면 Tidy 캘린더를 만들고 일정만 넣는다 (할 일은 기본으로 안 보냄, 구글에서 가져온 일정도 뺌)', async () => {
     await db.events.bulkAdd([ev('엄마 생신', '2026-11-15'), ev('구글 일정', '2026-11-16', { source: 'google' })])
     await db.todos.bulkAdd([todo('보고서', '2026-11-12'), todo('끝냄', '2026-11-12', { isCompleted: 1 })])
-    expect(await connectGooglePush()).toBe(2)
+    expect(await connectGooglePush()).toBe(1)
     const s = loadGooglePush()!
-    expect(s).toMatchObject({ calendarId: 'cal1@group.calendar.google.com', email: 'me@example.com', todos: true, count: 2 })
-    expect(live(s.calendarId)).toEqual(['☐ 보고서', '엄마 생신'])
+    expect(s).toMatchObject({ calendarId: 'cal1@group.calendar.google.com', email: 'me@example.com', todos: false, count: 1 })
+    expect(live(s.calendarId)).toEqual(['엄마 생신'])
+  })
+
+  it('"할 일도 보내기"를 켜면 끝내지 않은 할 일도 보낸다', async () => {
+    await db.events.add(ev('엄마 생신', '2026-11-15'))
+    await db.todos.bulkAdd([todo('보고서', '2026-11-12'), todo('끝냄', '2026-11-12', { isCompleted: 1 })])
+    await connectGooglePush()
+    setPushTodos(true)
+    expect(await pushNow()).toBe(2)
+    expect(live(loadGooglePush()!.calendarId)).toEqual(['☐ 보고서', '엄마 생신'])
+  })
+
+  it('예전에 저장된 설정(todos: true)은 끔으로 바뀐다', () => {
+    localStorage.setItem('tidy-google-push', JSON.stringify({ calendarId: 'x', todos: true }))
+    expect(loadGooglePush()?.todos).toBe(false)
   })
 
   it('고치고 지우면 그대로 따라가고, 바뀐 게 없으면 다시 보내지 않는다', async () => {

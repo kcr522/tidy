@@ -66,9 +66,10 @@ export default function DashboardPage() {
 
   const saveMoney = (input: TransactionInput) => run(() => transactionRepo.add(input), '저장했어요')
   const scrapCategories = useLiveQuery(() => scrapCategoryRepo.list(), []) ?? []
-  const saveScrap = ({ input, thumb }: BookmarkFormValue) =>
+  const saveScrap = ({ input, thumb, titleByUser }: BookmarkFormValue) =>
     run(async () => {
-      const id = await bookmarkRepo.add(input)
+      // 같은 게시물이 이미 있으면 그 스크랩을 최신 내용으로 바꾼다
+      const { id } = await bookmarkRepo.addOrMerge(input, { titleByUser })
       if (thumb) await scrapMediaRepo.setThumb(id, thumb).catch(() => undefined)
     }, '저장했어요')
   const saveTodo = (input: TodoInput) =>
@@ -148,7 +149,7 @@ export default function DashboardPage() {
           <RecurringManager today={today} preset={sheet.fresh ? { type: 'INCOME', category: '월급', memo: '월급' } : undefined} />
         )}
         {sheet?.kind === 'habit' && <HabitForm onSubmit={saveHabit} />}
-        {sheet?.kind === 'scrap' && <BookmarkForm categories={scrapCategories} defaultCategoryId={null} isDuplicate={async (url) => !!(await bookmarkRepo.findByUrl(url))} onSubmit={saveScrap} />}
+        {sheet?.kind === 'scrap' && <BookmarkForm categories={scrapCategories} defaultCategoryId={null} isDuplicate={async (url) => !!(await bookmarkRepo.findSame(url))} onSubmit={saveScrap} />}
       </Modal>
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />

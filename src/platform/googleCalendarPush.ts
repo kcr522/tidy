@@ -13,7 +13,7 @@ export interface GooglePushSettings {
   /** 구글에 만든 Tidy 캘린더 id */
   calendarId: string
   email?: string
-  /** 마감일 있는 할 일도 보낼지 */
+  /** 마감일 있는 할 일도 보낼지 (기본 끔. 2026-11-17 사용자 요청으로 할 일은 캘린더와 따로) */
   todos: boolean
   last?: string
   count?: number
@@ -31,7 +31,8 @@ export function loadGooglePush(): GooglePushSettings | null {
     if (!v || typeof v.calendarId !== 'string') return null
     return {
       calendarId: v.calendarId,
-      todos: v.todos !== false,
+      // 예전에 저장된 'todos' 는 기본이 켬이었다. 새 키 'sendTodos' 로 바꾸고 기본은 끔
+      todos: (v as { sendTodos?: unknown }).sendTodos === true,
       ...(typeof v.email === 'string' && { email: v.email }),
       ...(typeof v.last === 'string' && { last: v.last }),
       ...(typeof v.count === 'number' && { count: v.count }),
@@ -43,8 +44,10 @@ export function loadGooglePush(): GooglePushSettings | null {
 }
 
 function save(v: GooglePushSettings | null) {
-  if (v) localStorage.setItem(KEY, JSON.stringify(v))
-  else localStorage.removeItem(KEY)
+  if (v) {
+    const { todos, ...rest } = v
+    localStorage.setItem(KEY, JSON.stringify({ ...rest, sendTodos: todos }))
+  } else localStorage.removeItem(KEY)
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
@@ -185,7 +188,7 @@ function errorText(err: unknown): string {
 }
 
 /** 처음 연결: 구글 계정 고르기 → Tidy 캘린더 만들기 → 지금 내용 보내기 */
-export async function connectGooglePush(todos = true): Promise<number> {
+export async function connectGooglePush(todos = false): Promise<number> {
   const token = await getGoogleToken(true)
   if (!token) throw new GoogleAuthError('구글 권한을 받지 못했어요')
   const old = loadGooglePush()
