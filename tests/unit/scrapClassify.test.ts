@@ -1,8 +1,12 @@
 import 'fake-indexeddb/auto'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TidyDB } from '../../src/db/database'
 import { classifyScraps, classifyText, isUnsortedInstagram, parseClassifyJson, ruleClassify } from '../../src/lib/scrap/classify'
 import { createBookmarkRepo } from '../../src/repositories/bookmarkRepo'
+
+const ai = vi.hoisted(() => ({ gemini: vi.fn(), groq: vi.fn() }))
+vi.mock('../../src/lib/ai/gemini', () => ({ callGemini: ai.gemini }))
+vi.mock('../../src/lib/ai/groq', () => ({ callGroq: ai.groq }))
 
 const dbs: TidyDB[] = []
 afterEach(async () => {
@@ -20,6 +24,13 @@ describe('인스타 캡션으로 나누기 (낱말 규칙)', () => {
     expect(ruleClassify('원룸 수납 정리 꿀팁 🏠')).toBe('living')
     expect(ruleClassify('화장실 곰팡이 청소 이렇게 하세요')).toBe('living')
   })
+  it('사고 싶은 물건은 나중에 살 것', () => {
+    expect(ruleClassify('올겨울 코트 하울 🛍️ 구매처는 프로필 링크')).toBe('buy')
+    expect(ruleClassify('품절 대란 쿠션 재입고됐어요')).toBe('buy')
+    // 자취방에 쓸 물건은 자취 쪽
+    expect(ruleClassify('자취방 필수템 구매 리스트')).toBe('living')
+    expect(parseClassifyJson('{"results":[{"n":1,"c":"buy"}]}', 1)).toEqual(['buy'])
+  })
   it('그 밖의 정보는 꿀팁, 아무 낱말도 없으면 null', () => {
     expect(ruleClassify('엑셀 단축키 모르면 손해')).toBe('tip')
     expect(ruleClassify('적금 통장 쪼개기 방법')).toBe('tip')
@@ -29,6 +40,16 @@ describe('인스타 캡션으로 나누기 (낱말 규칙)', () => {
   it('"@아이디의 게시물" 자동 제목은 분류 글에서 뺀다', () => {
     expect(classifyText({ title: '@cook_kim의 게시물', description: '', memo: '' })).toBe('')
     expect(classifyText({ title: '계란 덮밥', description: '레시피', memo: '' })).toBe('계란 덮밥\n레시피')
+  })
+  it('폰에서 그대로 남던 캡션도 나눈다', () => {
+    expect(ruleClassify('븐보다 두껍고 더 바삭한 고구마 맛탕 나왔어요! 바삭아니고 빠삭')).toBe('make')
+    expect(ruleClassify('19,000원의 행복 이거다.. 편의점 3곳 돌아서 겨우 구한 복담주')).toBe('tip')
+    expect(ruleClassify('전재산 다 걸고 내돈내산임')).toBe('buy')
+    expect(ruleClassify('좁은 방 공간 활용 선반 추천')).toBe('living')
+  })
+  it('잘리거나 모양이 다른 AI 답도 읽을 수 있는 만큼 읽는다', () => {
+    expect(parseClassifyJson('{"results":[{"n":1,"c":"tip"},{"n":2,"c":"make"},{"n":3,"c":"liv', 3)).toEqual(['tip', 'make', null])
+    expect(parseClassifyJson('1: make\n2: living\n3: none', 3)).toEqual(['make', 'living', null])
   })
   it('AI 답(JSON)을 읽는다', () => {
     expect(parseClassifyJson('```json\n{"results":[{"n":1,"c":"make"},{"n":3,"c":"none"},{"n":2,"c":"living"},{"n":9,"c":"tip"}]}\n```', 3)).toEqual(['make', 'living', null])
@@ -42,6 +63,32 @@ describe('인스타 캡션으로 나누기 (낱말 규칙)', () => {
     ])
     expect(out.engine).toBe('local')
     expect([...out.result.entries()]).toEqual(expect.arrayContaining([[1, 'make'], [2, null], [3, 'living']]))
+  })
+})
+
+describe('AI로 나누기', () => {
+  it('Gemini 사용량이 다 떨어지면 남은 건 Groq 로 (JSON 모드 없이), 한 번에 20개씩', async () => {
+    ai.gemini.mockReset().mockRejectedValue(new Error('오늘 무료 사용량을 다 썼어요'))
+    ai.groq.mockReset().mockImplementation(async (_k: string, req: { user: string; json?: boolean }) => {
+      expect(req.json).toBeUndefined()
+      const n = (req.user.match(/^\[\d+\]$/gm) ?? []).length
+      return { text: JSON.stringify({ results: Array.from({ length: n }, (_, i) => ({ n: i + 1, c: 'living' })) }), model: 'm' }
+    })
+    const items = Array.from({ length: 45 }, (_, i) => ({ id: i + 1, text: `글 ${i}` }))
+    const out = await classifyScraps({ engine: 'gemini', geminiKey: 'g', groqKey: 'q' }, items)
+    expect(ai.gemini).toHaveBeenCalledTimes(1)
+    expect(ai.groq).toHaveBeenCalledTimes(3)
+    expect(out.engine).toBe('groq')
+    expect(out.error).toBeUndefined()
+    expect([...out.result.values()].every((c) => c === 'living')).toBe(true)
+  })
+  it('Groq 도 막히면 낱말 규칙으로, 이유는 한 번씩', async () => {
+    ai.gemini.mockReset().mockRejectedValue(new Error('A'))
+    ai.groq.mockReset().mockRejectedValue(new Error('B'))
+    const out = await classifyScraps({ engine: 'gemini', geminiKey: 'g', groqKey: 'q' }, [{ id: 1, text: '쿠키 레시피' }])
+    expect(out.result.get(1)).toBe('make')
+    expect(out.error).toBe('A · 예비 AI(Groq)도 안 됐어요: B')
+    expect(out.engine).toBe('local')
   })
 })
 

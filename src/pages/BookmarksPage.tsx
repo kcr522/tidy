@@ -215,7 +215,7 @@ export default function BookmarksPage() {
           <Sparkles className="size-5 shrink-0 text-brand-600" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-slate-800">미분류 인스타 스크랩 {unsortedIg.length}개</span>
-            <span className="block text-xs text-slate-500">캡션 보고 꿀팁 · 자취를 위해 모으기 · 나중에 만들 거로 나눠 볼까요?</span>
+            <span className="block text-xs text-slate-500">캡션 보고 꿀팁 · 자취 · 만들 거 · 살 것으로 나눠 볼까요?</span>
           </span>
           <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">분류하기</span>
         </button>
