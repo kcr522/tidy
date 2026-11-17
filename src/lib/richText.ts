@@ -217,3 +217,15 @@ export function isPlainHtml(html: string): boolean {
 
 /** 사진 이름 (메모 안에서만 겹치지 않으면 된다) */
 export const newPicId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+
+/**
+ * 다른 앱(삼성 노트 등)에서 '공유 → Tidy 메모'로 받은 글 · 사진 → 새 메모 본문.
+ * 글 아래에 사진을 차례로 넣는다 (사진은 글 사이 사진이 되어 크기 · 자르기를 할 수 있다)
+ */
+export function sharedMemoBody(text: string, images: string[], makeId: () => string = newPicId): { html?: string; pics: MemoPic[]; text: string } {
+  const body = text.replace(/\r\n?/g, '\n').trim()
+  const pics = images.slice(0, MAX_MEMO_PICS).map((src) => ({ id: makeId(), src }))
+  if (!pics.length) return { text: body, pics: [] }
+  const html = textToHtml(body) + pics.map((p) => `<div><img data-pic="${p.id}" alt="" style="width:100%"></div>`).join('')
+  return { html, pics, text: body }
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { fromEditorHtml, htmlToText, isPlainHtml, sanitizeHtml, textToHtml, toEditorHtml } from '../../src/lib/richText'
+import { fromEditorHtml, htmlToText, isPlainHtml, sanitizeHtml, sharedMemoBody, textToHtml, toEditorHtml } from '../../src/lib/richText'
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo='
 
@@ -40,5 +40,16 @@ describe('메모 꾸민 글', () => {
     expect(isPlainHtml('<div>그냥 글</div><div><br></div>')).toBe(true)
     expect(isPlainHtml('<div><u>밑줄</u></div>')).toBe(false)
     expect(isPlainHtml('<ul><li>a</li></ul>')).toBe(false)
+  })
+})
+
+describe('공유 → Tidy 메모', () => {
+  it('글만 오면 그냥 글 메모, 사진이 오면 글 아래에 사진을 넣는다', () => {
+    expect(sharedMemoBody('회의 메모\r\n- 예산', [])).toEqual({ text: '회의 메모\n- 예산', pics: [] })
+    let n = 0
+    const r = sharedMemoBody('사진 두 장', [PNG, PNG], () => `s${++n}`)
+    expect(r.pics.map((p) => p.id)).toEqual(['s1', 's2'])
+    expect(r.html).toBe('<div>사진 두 장</div><div><img data-pic="s1" alt="" style="width:100%"></div><div><img data-pic="s2" alt="" style="width:100%"></div>')
+    expect(fromEditorHtml(toEditorHtml(r.html, r.text, r.pics)).pics).toHaveLength(2)
   })
 })

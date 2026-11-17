@@ -20,4 +20,5 @@
     <string name="widget_event_description">오늘부터 일주일 일정을 봐요</string>
     <string name="widget_habit_description">오늘 할 습관과 체크를 봐요</string>
     <string name="share_label">Tidy에 스크랩</string>
+    <string name="share_memo_label">Tidy 메모</string>
 </resources>

@@ -13,7 +13,7 @@ import MemoFolderForm from '../components/memo/MemoFolderForm'
 import RichTextEditor, { type RichValue } from '../components/memo/RichTextEditor'
 import type { Attachment, Memo, MemoFolder, MemoInk } from '../db/types'
 import { HandwritingError, readHandwriting } from '../lib/ai/handwriting'
-import { cleanAttachments, isImage, isVideo } from '../lib/attachments'
+import { MAX_ATTACHMENTS, cleanAttachments, fileToAttachment, isImage, isVideo } from '../lib/attachments'
 import { dayTitle } from '../lib/calendar'
 import { nowIso, toDateKey } from '../lib/date'
 import {
@@ -31,7 +31,9 @@ import {
   memoPreview,
   memoTitle,
 } from '../lib/memo'
-import { isPlainHtml, toEditorHtml } from '../lib/richText'
+import { shrinkImage } from '../lib/image'
+import { MAX_MEMO_PICS, isPlainHtml, sharedMemoBody, toEditorHtml } from '../lib/richText'
+import { sharedFileToFile, takeMemoShare, type Shared } from '../platform/shareIntent'
 import { memoRepo } from '../repositories/memoRepo'
 
 /** 입력을 멈추고 이만큼 지나면 자동 저장 */
@@ -39,6 +41,30 @@ const AUTOSAVE_MS = 800
 
 /** 전체 / 파일집 밖 / 파일집 하나 */
 type FolderFilter = 'all' | 'none' | number
+
+/** 공유받은 글 · 사진 · 파일 → 새 메모 (사진은 글 사이 사진, 나머지는 첨부 파일) */
+async function saveSharedMemo(shared: Shared): Promise<{ id: number; skipped: number }> {
+  const images: string[] = []
+  const files: Attachment[] = []
+  let skipped = 0
+  for (const f of shared.files ?? []) {
+    try {
+      const file = f.tooBig ? null : await sharedFileToFile(f)
+      if (!file) {
+        skipped++
+        continue
+      }
+      if (file.type.startsWith('image/') && !file.type.includes('gif') && images.length < MAX_MEMO_PICS) images.push(await shrinkImage(file, 1600, 0.85))
+      else if (files.length < MAX_ATTACHMENTS) files.push(await fileToAttachment(file, (x) => shrinkImage(x, 1600, 0.85), MAX_MEMO_FILE_BYTES))
+      else skipped++
+    } catch {
+      skipped++
+    }
+  }
+  const body = sharedMemoBody(shared.text ?? '', images)
+  const id = await memoRepo.add({ title: (shared.title ?? '').trim(), text: body.text, html: body.html, pics: body.pics, attachments: files })
+  return { id, skipped }
+}
 
 /** 지금 쓰고 있는 메모. 새 메모는 처음 저장할 때 id 가 생긴다 */
 type Editing = { key: string; id?: number; startedAt: string; folderId?: number; fromLink?: boolean }
@@ -59,13 +85,26 @@ export default function MemoPage() {
   // 다른 곳에서 들어올 때: 전체 검색(state.memoId), 홈 화면 메모 위젯(?id=3 은 그 메모, ?new=1 은 새 메모)
   useEffect(() => {
     const params = new URLSearchParams(location.search)
+    // 삼성 노트 등에서 '공유 → Tidy 메모': 받은 글 · 사진 · 파일로 새 메모를 만들어 연다
+    if (params.get('share') === '1') {
+      navigate(location.pathname, { replace: true, state: null })
+      const shared = takeMemoShare()
+      if (!shared) return
+      void saveSharedMemo(shared)
+        .then(({ id, skipped }) => {
+          setEditing({ key: `e${nextKey++}`, id, startedAt: nowIso() })
+          toast(skipped ? `공유받은 내용을 새 메모로 저장했어요 (너무 크거나 못 읽은 파일 ${skipped}개는 빠졌어요)` : '공유받은 내용을 새 메모로 저장했어요')
+        })
+        .catch(() => toast('공유받은 내용을 메모로 저장하지 못했어요', 'error'))
+      return
+    }
     const id = (location.state as { memoId?: number } | null)?.memoId ?? (Number(params.get('id')) || undefined)
     const fresh = params.get('new') === '1'
     if (!id && !fresh) return
     if (id) setEditing({ key: `e${nextKey++}`, id, startedAt: nowIso(), fromLink: true })
     else setEditing({ key: `e${nextKey++}`, startedAt: nowIso() })
     navigate(location.pathname, { replace: true, state: null })
-  }, [location.search, location.state, location.pathname, navigate])
+  }, [location.search, location.state, location.pathname, navigate, toast])
 
   const folderById = useMemo(() => new Map((folders ?? []).map((f) => [f.id!, f])), [folders])
   const counts = useMemo(() => {
