@@ -21,4 +21,5 @@
     <string name="widget_habit_description">오늘 할 습관과 체크를 봐요</string>
     <string name="share_label">Tidy에 스크랩</string>
     <string name="share_memo_label">Tidy 메모</string>
+    <string name="pay_notify_label">Tidy 결제 알림 기록</string>
 </resources>
