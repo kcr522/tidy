@@ -280,6 +280,10 @@
 
 <img src="docs/screenshots/irregular-pay-2-on.png" width="240"> <img src="docs/screenshots/irregular-pay-3-prompt.png" width="240"> <img src="docs/screenshots/irregular-pay-4-recorded.png" width="240">
 
+**결제 알림으로 가계부 자동 기록 (갤럭시 앱: 안내 → 알림 접근 허용 → 모인 알림 → 확인하고 저장 → 기록하지 않을 알림 거르기)**
+
+<img src="docs/screenshots/pay-notify-2-guide.png" width="240"> <img src="docs/screenshots/pay-notify-5-banner.png" width="240"> <img src="docs/screenshots/pay-notify-6-review.png" width="240"> <img src="docs/screenshots/pay-notify-4-settings-on.png" width="240"> <img src="docs/screenshots/pay-filter-2-review-muted.png" width="240"> <img src="docs/screenshots/pay-filter-3-settings.png" width="240">
+
 <details><summary>예전 디자인 (Day 5까지)</summary>
 
 <img src="docs/screenshots/day5-dashboard.png" width="240"> <img src="docs/screenshots/day5-desktop.png" width="420">

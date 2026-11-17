@@ -11,6 +11,7 @@ import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
 import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
 import WidgetCard from '../components/settings/WidgetCard'
+import PayNotifyCard from '../components/settings/PayNotifyCard'
 import { inputClass } from '../components/common/formStyles'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
@@ -118,6 +119,8 @@ export default function SettingsPage() {
         <AppLockCard />
 
         <WidgetCard />
+
+        <PayNotifyCard />
 
         <CustomizeCard />
 
