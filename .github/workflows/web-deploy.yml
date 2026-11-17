@@ -1,0 +1,47 @@
+# 웹 배포 확인: PR을 preview/all-features 에 합치면 Vercel 이 실제 사이트(tidy-gules.vercel.app)를 새로 만든다.
+# 이 작업은 그게 정말 됐는지 확인만 한다. 사이트의 /version.json 커밋이 방금 합친 커밋과 같아질 때까지 기다리고,
+# 15분이 지나도 안 바뀌면 빨간 X 로 알려 준다 (GitHub 이 메일로도 알려 준다).
+# 실패하면 대개 Vercel 의 Production 브랜치가 preview/all-features 가 아니거나, Vercel 빌드가 실패한 것이다.
+name: Web deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['preview/all-features']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 사이트에 새 버전이 올라왔는지 확인
+        env:
+          SITE: https://tidy-gules.vercel.app
+          WANT: ${{ github.sha }}
+        run: |
+          for i in $(seq 1 45); do
+            got=$(curl -fsS -H 'Cache-Control: no-cache' "$SITE/version.json?t=$(date +%s)" 2>/dev/null | grep -oE '"commit":"[0-9a-f]*"' | cut -d'"' -f4 || true)
+            if [ "$got" = "$WANT" ]; then
+              echo "웹 배포 끝: $SITE 에 ${WANT:0:7} 이 올라갔어요 ($((i * 20))초 안)"
+              echo "### ✅ 웹 배포 끝" >> "$GITHUB_STEP_SUMMARY"
+              echo "$SITE 에 \`${WANT:0:7}\` 이(가) 올라갔어요. 웹·컴퓨터 앱은 다시 열면 새 버전이 돼요." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "기다리는 중 ($i/45): 지금 사이트 커밋 = ${got:-알 수 없음}"
+            sleep 20
+          done
+          {
+            echo "### ❌ 15분이 지나도 사이트가 새 버전으로 안 바뀌었어요"
+            echo "- 지금 사이트 커밋: \`${got:-알 수 없음}\`, 기다린 커밋: \`${WANT:0:7}\`"
+            echo "- Vercel → tidy 프로젝트 → Deployments 에서 이 커밋의 빌드가 실패했는지 봐 주세요."
+            echo "- 빌드가 'Preview' 로만 만들어졌다면 Settings → Environments → Production → Branch Tracking 을 \`preview/all-features\` 로 바꿔 주세요."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::사이트가 ${WANT:0:7} 로 바뀌지 않았어요 (지금: ${got:-알 수 없음})"
+          exit 1
