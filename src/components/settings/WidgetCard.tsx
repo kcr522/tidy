@@ -115,7 +115,7 @@ export default function WidgetCard() {
       <label className="mt-4 block">
         <span className="mb-1 flex items-center justify-between text-sm">
           <span className="font-semibold">바탕 투명도</span>
-          <span className="tabular-nums text-slate-500">{opacity[kind] === 100 ? '불투명' : opacity[kind] === 0 ? '완전 투명' : `${opacity[kind]}%`}</span>
+          <span className="tabular-nums text-slate-500">{opacity[kind] === 100 ? '불투명' : opacity[kind] === 0 ? '완전 투명' : `${100 - opacity[kind]}% 투명`}</span>
         </span>
         <input
           type="range"
@@ -124,7 +124,8 @@ export default function WidgetCard() {
           step={5}
           value={opacity[kind]}
           onChange={(e) => saveWidgetOpacity(kind, Number(e.target.value))}
-          className="w-full accent-(--color-brand-500)"
+          // 폰에서 손가락으로 끌 때 화면이 같이 스크롤되지 않게 (사용자 요청 2026-11-18)
+          className="h-9 w-full touch-none accent-(--color-brand-500)"
           aria-label={`${info.name} 위젯 바탕 투명도`}
         />
         <span className="flex justify-between text-xs text-slate-400">
@@ -132,6 +133,20 @@ export default function WidgetCard() {
           <span>불투명</span>
         </span>
       </label>
+      {/* 한 번에 고르기 */}
+      <div className="mt-2 grid grid-cols-5 gap-1.5" role="group" aria-label="투명도 바로 고르기">
+        {[0, 25, 50, 75, 100].map((v) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={opacity[kind] === v}
+            onClick={() => saveWidgetOpacity(kind, v)}
+            className={`rounded-xl py-2 text-xs font-semibold whitespace-nowrap tabular-nums transition ${opacity[kind] === v ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600'}`}
+          >
+            {v === 0 ? '완전 투명' : v === 100 ? '불투명' : v === 50 ? '반투명' : `${100 - v}% 투명`}
+          </button>
+        ))}
+      </div>
       {native && <p className="mt-1 text-xs text-slate-400">바꾸면 홈 화면에 놓인 &apos;{info.name}&apos; 위젯에 바로 적용돼요.</p>}
 
       {kind === 'calendar' && !native && <DesktopWidgetHelp />}
