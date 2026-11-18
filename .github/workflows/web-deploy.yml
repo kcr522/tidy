@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
   push:
     branches: ['preview/all-features']
+    # 문서만 바뀐 커밋은 Vercel 이 빌드하지 않는다 (vercel.json 의 ignoreCommand)
+    paths-ignore: ['docs/**', '**/*.md']
 
 permissions:
   contents: read
