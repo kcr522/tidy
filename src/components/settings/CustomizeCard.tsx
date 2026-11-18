@@ -11,6 +11,8 @@ import {
   photoRefs,
   saveCustomization,
   shrinkPhoto,
+  SPLASH_LOGO_CLEAR_MAX,
+  SPLASH_LOGO_POS,
   SPLASH_SECONDS,
   type Customization,
 } from '../../lib/customize'
@@ -174,7 +176,7 @@ export default function CustomizeCard() {
 
       {target === 'splash' ? (
         <>
-          <p className="mb-1 text-sm text-slate-600">앱을 켜면 고른 사진을 잘리지 않게 보여 주고, 시간이 지나면 저절로 넘어가요. 누르면 바로 넘어가요.</p>
+          <p className="mb-1 text-sm text-slate-600">앱을 켜면 고른 사진을 폰 화면에 꽉 차게 보여 주고, 시간이 지나면 저절로 넘어가요. 누르면 바로 넘어가요.</p>
           <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
           <PhotoGrid photos={photos} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} palettes={splash.palettes} />
           {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
@@ -196,6 +198,17 @@ export default function CustomizeCard() {
           )}
           {photos.length > 0 && (
             <>
+              <Label>TIDY: 로고 자리</Label>
+              <Segmented value={splash.logoPos} options={SPLASH_LOGO_POS} onChange={(v) => setSplash({ logoPos: v })} />
+              {splash.logoPos !== 'hide' && (
+                <Slider
+                  label="로고 투명도"
+                  value={splash.logoClear}
+                  max={SPLASH_LOGO_CLEAR_MAX}
+                  onChange={(v) => setSplash({ logoClear: v })}
+                  hint="높을수록 로고가 흐려져서 사진이 더 잘 보여요"
+                />
+              )}
               <Label>보여 주는 시간</Label>
               <Segmented
                 value={String(splash.seconds)}
