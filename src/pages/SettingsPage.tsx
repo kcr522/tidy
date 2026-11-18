@@ -3,6 +3,7 @@ import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
 import AccountCard from '../components/settings/AccountCard'
+import AdminCard from '../components/settings/AdminCard'
 import AppLockCard from '../components/settings/AppLockCard'
 import AppUpdateCard from '../components/settings/AppUpdateCard'
 import AutoBackupCard from '../components/settings/AutoBackupCard'
@@ -115,6 +116,8 @@ export default function SettingsPage() {
         </section>
 
         <AccountCard />
+
+        <AdminCard />
 
         <AppLockCard />
 
