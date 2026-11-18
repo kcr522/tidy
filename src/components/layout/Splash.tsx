@@ -49,7 +49,7 @@ function BasicSplash({ leaving, onSkip }: { leaving: boolean; onSkip: () => void
  * 시작 화면 (꾸미기 > 시작 화면에서 사진을 넣었을 때. 사진이 없으면 기본 시작 화면)
  * 사진은 화면을 꽉 채운다 (테두리 없이, 넘치는 쪽만 잘린다). TIDY: 로고는 사진 위에 겹쳐서
  * 고른 자리(위 · 가운데 · 아래)에 고른 투명도로 올린다. 사진 크기와 상관없이 로고 자리는 그대로다.
- * 로고는 고른 효과(흐림 걷히기 등)로 사진이 뜬 뒤 나타나서, 넘어가기 전에 사라진다 (src/index.css logo-fx-*).
+ * 로고는 고른 효과(기본 빛 지나가기)로 사진이 뜬 뒤 나타나서, 넘어가기 전에 사라진다 (src/index.css logo-fx-*).
  * 정한 시간이 지나면 저절로 넘어가고, 아무 데나 누르면 바로 넘어간다.
  */
 export default function Splash() {
