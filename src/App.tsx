@@ -4,6 +4,7 @@ import LoginScreen from './components/account/LoginScreen'
 import SyncChoiceDialog from './components/account/SyncChoiceDialog'
 import AppLayout from './components/layout/AppLayout'
 import AppUpdatePrompt from './components/layout/AppUpdatePrompt'
+import GuideTour from './components/guide/GuideTour'
 import LockScreen from './components/layout/LockScreen'
 import Splash from './components/layout/Splash'
 import DashboardPage from './pages/DashboardPage'
@@ -33,6 +34,7 @@ export default function App() {
     <LoginScreen />
     <SyncChoiceDialog />
     <AppUpdatePrompt />
+    <GuideTour />
     <Routes>
       {/* 컴퓨터 바탕화면용 달력 위젯 창 (메뉴 · 탭 없이 달력만) */}
       <Route
