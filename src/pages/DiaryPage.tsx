@@ -142,7 +142,7 @@ function unsavedText(date: string, entry: Diary | null): string | null {
 /** 저장 시각을 "오후 1:05" 처럼 */
 const savedTime = (iso: string) => new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })
 
-/** 일기 보기 방식: 사진 순서(예전 그대로) / 시간별 (1시간에 한 칸). 이 기기에 기억한다 */
+/** 일기 보기 방식: 시간별 (1시간에 한 칸, 기본) / 사진 순서(예전 그대로). 이 기기에 기억한다 */
 type DiaryView = 'photo' | 'hour'
 const VIEW_KEY = 'tidy.diaryView'
 const ALL_HOURS_KEY = 'tidy.diaryAllHours'
@@ -184,7 +184,7 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
   )
   const [files, setFiles] = useState<Attachment[]>(() => entry?.attachments ?? [])
   const [hourVals, setHourVals] = useState<Record<number, HourValue>>(() => hoursToMap(entry?.hours))
-  const [view, setViewState] = useState<DiaryView>(() => (readPref(VIEW_KEY) === 'hour' ? 'hour' : 'photo'))
+  const [view, setViewState] = useState<DiaryView>(() => (readPref(VIEW_KEY) === 'photo' ? 'photo' : 'hour'))
   const [showAll, setShowAllState] = useState(() => readPref(ALL_HOURS_KEY) === '1')
   // 직접 더한 빈 시간 칸. 오늘이면 지금 시간 칸을 하나 열어 둔다
   const [extra, setExtra] = useState<number[]>(() => (date === today ? [new Date().getHours()] : []))
@@ -354,7 +354,7 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
         </div>
 
         <div className="mb-3 flex rounded-2xl bg-slate-100 p-1" role="tablist" aria-label="일기 보기 방식">
-          {([['photo', '사진 순서'], ['hour', '시간별']] as const).map(([v, label]) => (
+          {([['hour', '시간별'], ['photo', '사진 순서']] as const).map(([v, label]) => (
             <button
               key={v}
               type="button"
@@ -543,6 +543,9 @@ function HourTimeline({ photos, values, extra, showAll, adding, room, onShowAll,
   const shown = visibleHours(values, photos, extra, showAll)
   const untimed = photos.filter((p) => hourOf(p.time) === null)
   const hidden = Array.from({ length: 24 }, (_, i) => i).filter((h) => !shown.includes(h))
+  // 보이는 마지막 시간의 다음 시간 (밤 11시까지)
+  const lastShown = shown.length ? shown[shown.length - 1] : null
+  const next = lastShown !== null && lastShown < 23 ? lastShown + 1 : null
   const inHour = (h: number) => sortByTime(photos.filter((p) => hourOf(p.time) === h))
 
   return (
@@ -600,13 +603,24 @@ function HourTimeline({ photos, values, extra, showAll, adding, room, onShowAll,
           )
         })}
 
+        {!showAll && next !== null && (
+          <li className="relative pb-2 pl-7">
+            <span className="absolute top-2 left-0 flex size-4 items-center justify-center rounded-full bg-white text-brand-500 ring-1 ring-brand-500/40" aria-hidden>
+              <Plus className="size-3" strokeWidth={3} />
+            </span>
+            <button type="button" onClick={() => onAddHour(next)} className="flex min-h-9 items-center text-sm font-bold text-brand-700">
+              다음 시간 이어 쓰기 ({hourLabel(next)})
+            </button>
+          </li>
+        )}
+
         {!showAll && (
           <li className="relative pl-7">
             <span className="absolute top-2 left-0 flex size-4 items-center justify-center rounded-full bg-white text-brand-500 ring-1 ring-brand-500/40" aria-hidden>
               <Plus className="size-3" strokeWidth={3} />
             </span>
             <label className="relative flex min-h-9 items-center text-sm font-bold text-brand-700">
-              {shown.length ? '시간 칸 더하기' : '시간 칸을 더해서 써 보세요'}
+              {shown.length ? '다른 시간 고르기' : '시간 칸을 더해서 써 보세요'}
               <select
                 value=""
                 onChange={(e) => e.target.value !== '' && onAddHour(Number(e.target.value))}
