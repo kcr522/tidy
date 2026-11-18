@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
+import { adminEnvFrom, handleAdmin } from './src/lib/admin/adminServer.ts'
 import { handleAiProxy, proxyEnvFrom } from './src/lib/ai/proxyServer.ts'
 import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
 import { captureSite, readPageContent } from './src/lib/scrap/pageContent.ts'
@@ -51,6 +52,14 @@ function devPreviewApi(): Plugin {
           body = null
         }
         const r = await handleAiProxy({ method: req.method ?? 'GET', authorization: req.headers.authorization, body }, proxyEnvFrom(process.env))
+        res.statusCode = r.status
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        res.end(JSON.stringify(r.body))
+      })
+      // 관리자 페이지 (배포 때는 api/admin.ts). ADMIN_EMAILS=… FIREBASE_SERVICE_ACCOUNT=… npm run dev 로 넣는다
+      server.middlewares.use('/api/admin', async (req, res) => {
+        const check = new URL(req.url ?? '', 'http://localhost').searchParams.has('check')
+        const r = await handleAdmin({ method: req.method ?? 'GET', authorization: req.headers.authorization, check }, adminEnvFrom(process.env))
         res.statusCode = r.status
         res.setHeader('content-type', 'application/json; charset=utf-8')
         res.end(JSON.stringify(r.body))
