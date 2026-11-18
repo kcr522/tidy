@@ -1,8 +1,8 @@
-import { Bold, Brush, Crop, Highlighter, ImagePlus, Italic, List, ListOrdered, Loader2, Palette, Redo2, Strikethrough, Trash2, Underline, Undo2 } from 'lucide-react'
+import { Bold, Brush, Crop, PenTool, Type, Highlighter, ImagePlus, Italic, List, ListOrdered, Loader2, Palette, Redo2, Strikethrough, Trash2, Underline, Undo2 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '../common/Toast'
 import { shrinkImage } from '../../lib/image'
-import { HIGHLIGHT_COLORS, MAX_MEMO_PICS, TEXT_COLORS, clampWidth, fromEditorHtml, htmlToText, newPicId, sanitizeHtml } from '../../lib/richText'
+import { FONT_SIZES, HIGHLIGHT_COLORS, MAX_MEMO_PICS, TEXT_COLORS, clampWidth, fromEditorHtml, htmlToText, newPicId, sanitizeHtml } from '../../lib/richText'
 import type { MemoPic } from '../../db/types'
 import HandwritingPad from './HandwritingPad'
 import ImageCropper from './ImageCropper'
@@ -23,6 +23,12 @@ interface Props {
   onInput: (empty: boolean) => void
   /** 지금 내용을 읽는 함수를 넘겨준다 (화면이 닫힌 뒤에도 마지막 저장에 쓸 수 있게) */
   bindRead: (read: () => RichValue) => void
+  /** 작은 칸 (일기 시간 칸): 낮게 시작하고, 꾸미기 도구는 이 칸을 누르고 있을 때만 */
+  compact?: boolean
+  /** 글 칸 이름 (읽어 주기 · 손글씨 읽기에 쓴다) */
+  label?: string
+  /** 사진 넣기 수 한도 (기본 MAX_MEMO_PICS) */
+  maxPics?: number
 }
 
 type Cmd = 'bold' | 'italic' | 'underline' | 'strikeThrough' | 'insertUnorderedList' | 'insertOrderedList'
@@ -39,7 +45,7 @@ const isEmptyEl = (el: HTMLElement) => !el.textContent?.trim() && !el.querySelec
  * 메모 본문: 삼성 노트처럼 꾸며 쓰기 (사용자 요청 2026-11-17)
  * 굵게 · 기울임 · 밑줄 · 가운데 줄 · 형광펜 · 글자 색 · 글머리 기호 · 번호, 글 사이 사진(누르면 크기 · 자르기 · 빼기)
  */
-export default function RichTextEditor({ initial, placeholder, autoFocus, onInput, bindRead }: Props) {
+export default function RichTextEditor({ initial, placeholder, autoFocus, onInput, bindRead, compact, label = '메모 내용', maxPics = MAX_MEMO_PICS }: Props) {
   const toast = useToast()
   const box = useRef<HTMLDivElement>(null)
   const wrap = useRef<HTMLDivElement>(null)
@@ -47,7 +53,9 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
   const range = useRef<Range | null>(null)
   const [empty, setEmpty] = useState(true)
   const [active, setActive] = useState<Set<Cmd>>(new Set())
-  const [palette, setPalette] = useState<'hilite' | 'color' | null>(null)
+  const [palette, setPalette] = useState<'hilite' | 'color' | 'size' | null>(null)
+  /** 빈 종이에 손글씨 쓰기 (다 쓰면 글 사이 그림으로 들어간다) */
+  const [drawing, setDrawing] = useState(false)
   const [pic, setPic] = useState<HTMLImageElement | null>(null)
   const [picWidth, setPicWidth] = useState(100)
   const [grip, setGrip] = useState<{ left: number; top: number } | null>(null)
@@ -112,7 +120,7 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
 
   function exec(cmd: string, value?: string) {
     restore()
-    document.execCommand('styleWithCSS', false, cmd === 'hiliteColor' || cmd === 'foreColor' ? 'true' : 'false')
+    document.execCommand('styleWithCSS', false, cmd === 'hiliteColor' || cmd === 'foreColor' || cmd === 'fontSize' ? 'true' : 'false')
     document.execCommand(cmd, false, value)
     changed()
     const on = new Set<Cmd>()
@@ -187,29 +195,31 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
     changed()
   }
 
+  /** 커서 자리에 html 을 넣는다 (커서가 칸 밖이면 맨 끝에) */
+  function insertAtCursor(html: string) {
+    restore()
+    const el = box.current!
+    const sel = document.getSelection()
+    if (!sel || !sel.rangeCount || !el.contains(sel.getRangeAt(0).commonAncestorContainer)) el.insertAdjacentHTML('beforeend', html)
+    else document.execCommand('insertHTML', false, html)
+    changed()
+  }
+
   async function addFiles(files: File[]) {
     const images = files.filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
     if (!images.length) return
     const have = box.current?.querySelectorAll('img').length ?? 0
-    if (have + images.length > MAX_MEMO_PICS) toast(`글 사이 사진은 ${MAX_MEMO_PICS}장까지 넣을 수 있어요`, 'error')
+    if (have + images.length > maxPics) toast(`글 사이 사진은 ${maxPics}장까지 넣을 수 있어요`, 'error')
     setAdding(true)
     try {
       let html = ''
-      for (const f of images.slice(0, Math.max(0, MAX_MEMO_PICS - have))) {
+      for (const f of images.slice(0, Math.max(0, maxPics - have))) {
         // 크게 보여도 되게 1600px 까지 (동기화 한도 안에 들어가게 JPEG 로 줄인다)
         const src = await shrinkImage(f, 1600, 0.85)
         html += `<div><img data-pic="${newPicId()}" src="${src}" alt="" style="width:100%"></div>`
       }
       if (!html) return
-      restore()
-      const el = box.current!
-      const sel = document.getSelection()
-      if (!sel || !sel.rangeCount || !el.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-        el.insertAdjacentHTML('beforeend', `${html}<div><br></div>`)
-      } else {
-        document.execCommand('insertHTML', false, `${html}<div><br></div>`)
-      }
-      changed()
+      insertAtCursor(`${html}<div><br></div>`)
     } catch {
       toast('사진을 넣지 못했어요', 'error')
     } finally {
@@ -241,9 +251,12 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
   }
 
   return (
-    <div ref={wrap} className="relative mt-1 rounded-2xl bg-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500">
+    <div ref={wrap} className={`group relative rounded-2xl bg-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500 ${compact ? '' : 'mt-1'}`}>
       {/* 꾸미기 도구: 누를 때 글자 칸의 커서가 빠지지 않게 mousedown 을 막는다 */}
-      <div className="sticky top-14 z-10 rounded-t-2xl border-b border-slate-200/70 bg-inherit md:top-0" onMouseDown={(e) => e.preventDefault()}>
+      <div
+        className={`sticky top-14 z-10 rounded-t-2xl border-b border-slate-200/70 bg-inherit md:top-0 ${compact && !pic && !palette ? 'hidden group-focus-within:block' : ''}`}
+        onMouseDown={(e) => e.preventDefault()}
+      >
         {pic ? (
           <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5" role="toolbar" aria-label="사진 고치기">
             <span className="px-1 text-xs font-bold text-slate-500">사진 크기</span>
@@ -288,6 +301,9 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
               <Tool label="글자 색" on={palette === 'color'} onClick={() => setPalette(palette === 'color' ? null : 'color')}>
                 <Palette className="size-[18px]" aria-hidden />
               </Tool>
+              <Tool label="글 크기" on={palette === 'size'} onClick={() => setPalette(palette === 'size' ? null : 'size')}>
+                <Type className="size-[18px]" aria-hidden />
+              </Tool>
               <span className="mx-1 h-5 w-px shrink-0 bg-slate-300" />
               <Tool label="글머리 기호" on={active.has('insertUnorderedList')} onClick={() => exec('insertUnorderedList')}>
                 <List className="size-[18px]" aria-hidden />
@@ -297,7 +313,7 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
               </Tool>
               <HandwriteButton
                 compact
-                label="메모 본문"
+                label={label}
                 className="!size-9 !rounded-xl !bg-transparent"
                 onText={(t) => {
                   restore()
@@ -305,6 +321,9 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
                   changed()
                 }}
               />
+              <Tool label="손글씨 그림 넣기 (손가락 · 펜으로 쓰기)" onClick={() => setDrawing(true)}>
+                <PenTool className="size-[18px]" aria-hidden />
+              </Tool>
               <Tool label="글 사이에 사진 넣기" onClick={() => fileInput.current?.click()}>
                 {adding ? <Loader2 className="size-[18px] animate-spin" aria-hidden /> : <ImagePlus className="size-[18px]" aria-hidden />}
               </Tool>
@@ -316,7 +335,25 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
                 <Redo2 className="size-[18px]" aria-hidden />
               </Tool>
             </div>
-            {palette && (
+            {palette === 'size' && (
+              <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2" role="group" aria-label="글 크기">
+                {FONT_SIZES.map((f) => (
+                  <button
+                    key={f.cmd}
+                    type="button"
+                    onClick={() => {
+                      exec('fontSize', f.cmd)
+                      setPalette(null)
+                    }}
+                    className="min-h-8 shrink-0 rounded-full bg-white px-3 font-bold text-slate-700 ring-1 ring-black/10"
+                    style={{ fontSize: f.css === 'medium' ? '14px' : f.css === 'small' ? '12px' : f.css === 'x-large' ? '17px' : '20px' }}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(palette === 'hilite' || palette === 'color') && (
               <div className="flex items-center gap-2 px-3 pb-2" role="group" aria-label={palette === 'hilite' ? '형광펜 색' : '글자 색'}>
                 {(palette === 'hilite' ? HIGHLIGHT_COLORS : TEXT_COLORS).map((c) => (
                   <button
@@ -343,19 +380,19 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
       </div>
 
       <div className="relative">
-        {empty && <p className="pointer-events-none absolute top-4 left-4 text-base text-slate-400">{placeholder}</p>}
+        {empty && <p className={`pointer-events-none absolute text-slate-400 ${compact ? 'top-2.5 left-3 text-[15px]' : 'top-4 left-4 text-base'}`}>{placeholder}</p>}
         <div
           ref={box}
           contentEditable
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          aria-label="메모 내용"
+          aria-label={label}
           onInput={changed}
           onPaste={onPaste}
           onKeyDown={onKeyDown}
           onClick={(e) => selectPic(e.target instanceof HTMLImageElement ? e.target : null)}
-          className="memo-rich min-h-60 p-4 text-base leading-relaxed break-words outline-none"
+          className={`memo-rich break-words outline-none ${compact ? 'min-h-11 px-3 py-2.5 text-[15px] leading-relaxed' : 'min-h-60 p-4 text-base leading-relaxed'}`}
         />
       </div>
 
@@ -380,6 +417,21 @@ export default function RichTextEditor({ initial, placeholder, autoFocus, onInpu
           e.target.value = ''
         }}
       />
+
+      {drawing && (
+        <HandwritingPad
+          title="손글씨 쓰기"
+          onCancel={() => setDrawing(false)}
+          onDone={(src) => {
+            setDrawing(false)
+            if ((box.current?.querySelectorAll('img').length ?? 0) >= maxPics) {
+              toast(`글 사이 그림은 ${maxPics}장까지 넣을 수 있어요`, 'error')
+              return
+            }
+            insertAtCursor(`<div><img data-pic="${newPicId()}" src="${src}" alt="" style="width:100%"></div><div><br></div>`)
+          }}
+        />
+      )}
 
       {marking && (
         <HandwritingPad

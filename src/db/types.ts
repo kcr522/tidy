@@ -236,6 +236,18 @@ export interface DiaryPhoto {
   note?: string
 }
 
+/** 시간별 일기의 한 칸: 그 시간(0~23시)에 있었던 일 (사용자 요청 2026-11-18) */
+export interface DiaryHour {
+  /** 0~23 */
+  hour: number
+  /** 꾸밈을 뺀 글자 (검색 · 미리보기) */
+  text: string
+  /** 꾸민 글 (형광펜 · 글머리 기호 · 기울임 · 글 크기 · 글 색 · 손글씨 그림). 메모와 같은 모양 (src/lib/richText.ts) */
+  html?: string
+  /** 글 사이 사진 · 손글씨 그림 (html 의 <img data-pic="id"> 자리) */
+  pics?: MemoPic[]
+}
+
 export interface Diary {
   /** YYYY-MM-DD (하루 하나라서 날짜가 곧 키) */
   date: string
@@ -246,6 +258,8 @@ export interface Diary {
   photos?: DiaryPhoto[]
   /** 붙인 파일 (PDF, 문서 등, 최대 10개) */
   attachments?: Attachment[]
+  /** 시간별 기록 (1시간에 한 칸, 시간 순서). 예전 일기에는 없다 */
+  hours?: DiaryHour[]
   /** 사진이 없을 때 캘린더에 칠할 색 (쓸 때 아무거나 하나 고른다) */
   color: string
   createdAt: string

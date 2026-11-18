@@ -29,6 +29,15 @@ export const TEXT_COLORS: { name: string; hex: string }[] = [
   { name: '보라', hex: '#8c70da' },
 ]
 
+/** 글 크기 (일기 시간 칸 요청 2026-11-18). cmd 는 execCommand('fontSize') 값, css 는 그때 생기는 font-size */
+export const FONT_SIZES: { name: string; cmd: string; css: string }[] = [
+  { name: '작게', cmd: '2', css: 'small' },
+  { name: '보통', cmd: '3', css: 'medium' },
+  { name: '크게', cmd: '5', css: 'x-large' },
+  { name: '아주 크게', cmd: '6', css: 'xx-large' },
+]
+const SIZE_WORDS = new Set(['x-small', 'small', 'medium', 'large', 'x-large', 'xx-large', 'xxx-large'])
+
 /** 메모 하나에 글 사이 사진 몇 장까지 */
 export const MAX_MEMO_PICS = 30
 /** 사진 크기 (가로 %): 너무 작으면 못 누른다 */
@@ -44,7 +53,7 @@ const DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE'
 
 const COLOR = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\)|transparent)$/i
 
-/** 남겨도 되는 스타일만: 글자 색 · 형광펜 · 굵게 · 기울임 · 밑줄 · 가운데 줄 · 가운데 맞춤 */
+/** 남겨도 되는 스타일만: 글자 색 · 형광펜 · 굵게 · 기울임 · 글 크기 · 밑줄 · 가운데 줄 · 가운데 맞춤 */
 function cleanStyle(el: HTMLElement, tag: string): string {
   const st = el.style
   const out: string[] = []
@@ -60,6 +69,8 @@ function cleanStyle(el: HTMLElement, tag: string): string {
   const fw = st.fontWeight
   if (fw === 'bold' || Number(fw) >= 600) out.push('font-weight:bold')
   if (st.fontStyle === 'italic') out.push('font-style:italic')
+  const fs = st.fontSize.trim()
+  if (SIZE_WORDS.has(fs)) out.push(`font-size:${fs}`)
   const deco = `${st.textDecorationLine || ''} ${st.textDecoration || ''}`
   const lines = ['underline', 'line-through'].filter((d) => deco.includes(d))
   if (lines.length) out.push(`text-decoration:${lines.join(' ')}`)

@@ -2,6 +2,8 @@ import { Clock, FileText, PenLine, Star } from 'lucide-react'
 import type { Diary } from '../../db/types'
 import { extLabel, formatBytes } from '../../lib/attachments'
 import { diaryPhotos, sortByTime } from '../../lib/diaryPhotos'
+import { hourLabel } from '../../lib/diaryHours'
+import { toEditorHtml } from '../../lib/richText'
 import { openAttachment } from '../../platform/openAttachment'
 
 /** 캘린더에서 누른 날의 일기를 읽기 전용으로 보여 준다. 고치려면 일기 화면으로 */
@@ -10,6 +12,19 @@ export default function DiaryViewer({ diary, onEdit, onCover }: { diary: Diary; 
   return (
     <div className="space-y-4">
       {diary.text && <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-slate-800">{diary.text}</p>}
+      {!!diary.hours?.length && (
+        <ol className="relative" aria-label="시간별 기록">
+          <span className="absolute top-2 bottom-2 left-[7px] w-0.5 rounded-full bg-brand-500/30" aria-hidden />
+          {diary.hours.map((h) => (
+            <li key={h.hour} className="relative pb-3 pl-7 last:pb-0">
+              <span className="absolute top-1 left-0 size-4 rounded-full border-[3px] border-white bg-brand-500 ring-1 ring-brand-500/40" aria-hidden />
+              <p className="text-sm font-bold text-brand-700">{hourLabel(h.hour)}</p>
+              {/* 꾸민 글 (허용한 태그 · 스타일만 남긴 html) */}
+              <div className="memo-rich text-[15px] leading-relaxed break-words text-slate-800" dangerouslySetInnerHTML={{ __html: toEditorHtml(h.html, h.text, h.pics) }} />
+            </li>
+          ))}
+        </ol>
+      )}
       {photos.length > 0 && (
         <ul className="space-y-3">
           {photos.map((p, i) => (

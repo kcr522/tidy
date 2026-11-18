@@ -149,6 +149,7 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
       [
         ['일기', d.text],
         ['사진 메모', notes],
+        ['시간별 기록', (d.hours ?? []).map((h) => h.text).join(' · ')],
         ['첨부 파일', fileNames(d.attachments)],
       ],
       terms,

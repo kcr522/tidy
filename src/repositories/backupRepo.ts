@@ -173,10 +173,12 @@ function isEvent(v: unknown): v is CalendarEvent {
 }
 
 const isDiaryPhoto = (v: unknown) => isObj(v) && isStr(v.src) && isOptStr(v.time) && isOptStr(v.note)
+const isDiaryHour = (v: unknown) => isObj(v) && typeof v.hour === 'number' && isStr(v.text)
 
 function isDiary(v: unknown): v is Diary {
   return (
     isObj(v) && isStr(v.date) && isStr(v.text) && isOptStr(v.photo) && (v.photos === undefined || (Array.isArray(v.photos) && v.photos.every(isDiaryPhoto))) && isAttachmentList(v.attachments) &&
+    (v.hours === undefined || (Array.isArray(v.hours) && v.hours.every(isDiaryHour))) &&
     isStr(v.color) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
