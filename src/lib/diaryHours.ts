@@ -74,16 +74,20 @@ export const hasContent = (v: HourValue | undefined) => !!v && (v.text.trim() !=
 
 /**
  * 타임라인에 보일 시간들.
- * 기본은 글이나 사진이 있는 시간 + 직접 더한 시간만, showAll 이면 0~23시 전부.
+ * 기본은 글이나 사진이 있는 시간 + 직접 더한 시간 + 마지막으로 쓴 시간의 다음 칸, showAll 이면 0~23시 전부.
  */
 export function visibleHours(values: Record<number, HourValue>, photos: DiaryPhoto[], extra: number[], showAll: boolean): number[] {
   if (showAll) return Array.from({ length: 24 }, (_, i) => i)
-  const set = new Set<number>(extra)
-  for (const [h, v] of Object.entries(values)) if (hasContent(v)) set.add(Number(h))
+  const filled = new Set<number>()
+  for (const [h, v] of Object.entries(values)) if (hasContent(v)) filled.add(Number(h))
   for (const p of photos) {
     const h = hourOf(p.time)
-    if (h !== null) set.add(h)
+    if (h !== null) filled.add(h)
   }
+  const set = new Set<number>([...extra, ...filled])
+  // 마지막으로 쓴 시간 다음 칸은 늘 비워서 열어 둔다: 사진 없이 글만 써도 줄이 이어지고 바로 다음 시간에 쓴다 (사용자 요청 2026-11-18)
+  const last = Math.max(-1, ...filled)
+  if (last >= 0 && last < 23) set.add(last + 1)
   return [...set].filter(isHour).sort((a, b) => a - b)
 }
 

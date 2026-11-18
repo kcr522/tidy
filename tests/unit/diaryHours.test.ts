@@ -51,8 +51,12 @@ describe('시간별 일기', () => {
   })
 
   it('기본은 쓴 시간·사진 있는 시간만, 다 보기면 24칸', () => {
-    expect(visibleHours({ 13: { text: '점심' }, 14: { text: ' ' } }, [{ src: 'x', time: '09:30' }, { src: 'y' }], [20], false)).toEqual([9, 13, 20])
+    expect(visibleHours({ 13: { text: '점심' }, 14: { text: ' ' } }, [{ src: 'x', time: '09:30' }, { src: 'y' }], [20], false)).toEqual([9, 13, 14, 20])
     expect(visibleHours({}, [], [], true)).toHaveLength(24)
+    // 사진 없이 글만 있어도 다음 칸이 열린다, 밤 11시 다음은 없다
+    expect(visibleHours({ 15: { text: '카페' } }, [], [], false)).toEqual([15, 16])
+    expect(visibleHours({ 23: { text: '잠' } }, [], [], false)).toEqual([23])
+    expect(visibleHours({}, [], [], false)).toEqual([])
   })
 
   it('저장·백업·검색에 들어가고, 시간 칸을 안 주는 저장(AI 대화창)은 예전 칸을 지킨다', async () => {
