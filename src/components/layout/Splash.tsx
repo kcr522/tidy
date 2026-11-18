@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { isDark } from '../../lib/colorMode'
 import { loadPhotos, photoSrc } from '../../lib/customPhotos'
-import { basicSplashDelay, loadCustomization, splashPhoto } from '../../lib/customize'
+import { basicSplashDelay, loadCustomization, splashPhoto, type SplashLogoFx, type SplashLogoPos } from '../../lib/customize'
 import type { PhotoPalette } from '../../lib/photoPalette'
 import { markSplashDone } from '../../lib/splashSignal'
 
 // 앱을 켤 때 한 번만 (화면을 옮겨 다녀도 다시 안 나온다)
 let shown = false
 
-type SplashState = { kind: 'photo'; ref: string; seconds: number; palette?: PhotoPalette } | { kind: 'basic' }
+type SplashState = { kind: 'photo'; ref: string; seconds: number; palette?: PhotoPalette; logoPos: SplashLogoPos; logoClear: number; logoFx: SplashLogoFx } | { kind: 'basic' }
 
 function greeting(h: number) {
   if (h < 5) return '늦은 밤이에요'
@@ -47,7 +47,9 @@ function BasicSplash({ leaving, onSkip }: { leaving: boolean; onSkip: () => void
 
 /**
  * 시작 화면 (꾸미기 > 시작 화면에서 사진을 넣었을 때. 사진이 없으면 기본 시작 화면)
- * 사진은 가로 폭에 맞춰 잘리지 않게 보여 주고, 남는 곳은 사진에서 뽑은 바탕색으로 채운다.
+ * 사진은 화면을 꽉 채운다 (테두리 없이, 넘치는 쪽만 잘린다). TIDY: 로고는 사진 위에 겹쳐서
+ * 고른 자리(위 · 가운데 · 아래)에 고른 투명도로 올린다. 사진 크기와 상관없이 로고 자리는 그대로다.
+ * 로고는 고른 효과(흐림 걷히기 등)로 사진이 뜬 뒤 나타나서, 넘어가기 전에 사라진다 (src/index.css logo-fx-*).
  * 정한 시간이 지나면 저절로 넘어가고, 아무 데나 누르면 바로 넘어간다.
  */
 export default function Splash() {
@@ -58,7 +60,7 @@ export default function Splash() {
     const ref = splashPhoto(c)
     if (!ref && !c.splash.basic) return null
     shown = true
-    return ref ? { kind: 'photo', ref, seconds: c.splash.seconds, palette: c.splash.palettes[ref] } : { kind: 'basic' }
+    return ref ? { kind: 'photo', ref, seconds: c.splash.seconds, palette: c.splash.palettes[ref], logoPos: c.splash.logoPos, logoClear: c.splash.logoClear, logoFx: c.splash.logoFx } : { kind: 'basic' }
   })
   const state = splash?.kind === 'photo' ? splash : null
   const [src, setSrc] = useState<string | undefined>(() => (state ? photoSrc(state.ref) : undefined))
@@ -109,33 +111,61 @@ export default function Splash() {
   const dark = isDark()
   const bg = !dark && state.palette ? state.palette.bg : undefined
   const trio = state.palette?.colors
+  const colors = trio ? trio.join(', ') : 'var(--main-c1), var(--main-c2), var(--main-c3)'
+  // 빛 지나가기: 그라데이션 가운데에 흰 빛을 넣고 위치를 옮긴다
+  const logoText: React.CSSProperties = {
+    backgroundImage: state.logoFx === 'shine' ? `linear-gradient(120deg, ${colors}, #fff 50%, ${trio ? trio[2] : 'var(--main-c3)'} 60%, ${trio ? trio[2] : 'var(--main-c3)'})` : `linear-gradient(120deg, ${colors})`,
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+  }
 
   return (
     <div
-      className={`fixed inset-0 z-[60] flex cursor-pointer flex-col bg-slate-100 transition-opacity duration-300 ${leaving ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+      className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden bg-slate-100 transition-opacity duration-300 ${leaving ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
       style={bg ? { backgroundColor: bg } : undefined}
       onClick={() => setLeaving(true)}
     >
-      <div className="relative flex min-h-0 flex-1 items-start justify-center overflow-hidden">
-        {src && (
-          <img
-            src={src}
-            alt=""
-            onLoad={() => setReady(true)}
-            onError={() => setLeaving(true)}
-            className={`max-h-full w-full object-contain object-top transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`}
-          />
-        )}
-      </div>
-      <div className="shrink-0 px-6 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-center">
-        <p
-          className="text-[32px] font-black tracking-tight text-transparent"
-          style={{ backgroundImage: `linear-gradient(120deg, ${trio ? trio.join(', ') : 'var(--main-c1), var(--main-c2), var(--main-c3)'})`, WebkitBackgroundClip: 'text', backgroundClip: 'text' }}
+      {src && (
+        <img
+          src={src}
+          alt=""
+          onLoad={() => setReady(true)}
+          onError={() => setLeaving(true)}
+          className={`absolute inset-0 size-full object-cover object-center transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`}
+        />
+      )}
+      {state.logoPos !== 'hide' && (
+        <div
+          className={`pointer-events-none absolute inset-x-0 px-6 text-center ${
+            state.logoPos === 'top'
+              ? 'top-[calc(4.5rem+env(safe-area-inset-top))]'
+              : state.logoPos === 'bottom'
+                ? 'bottom-[calc(2.5rem+env(safe-area-inset-bottom))]'
+                : 'top-1/2 -translate-y-1/2'
+          }`}
+          style={{ opacity: 1 - state.logoClear / 100 }}
         >
-          TIDY:
-        </p>
-        <p className="text-xs font-semibold text-slate-500">가계부 · 할 일 · 스크랩</p>
-      </div>
+          <div
+            className={ready && state.logoFx !== 'none' ? `logo-fx-${state.logoFx}` : ready ? '' : 'opacity-0'}
+            style={{ '--fx-dur': `${state.seconds}s` } as React.CSSProperties}
+          >
+            <p className="text-[56px] leading-none font-black tracking-tight" style={{ filter: 'drop-shadow(0 1px 6px rgb(0 0 0 / 0.25))' }}>
+              {state.logoFx === 'letters' ? (
+                'TIDY:'.split('').map((ch, i) => (
+                  <span key={i} className="logo-letter text-transparent" style={{ ...logoText, animationDelay: `${i * 0.08}s` }}>
+                    {ch}
+                  </span>
+                ))
+              ) : (
+                <span className="logo-word text-transparent" style={logoText}>
+                  TIDY:
+                </span>
+              )}
+            </p>
+            <p className="logo-sub mt-3 text-sm font-semibold text-white [text-shadow:0_1px_4px_rgb(0_0_0/0.45)]">가계부 · 할 일 · 스크랩</p>
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={(e) => {
