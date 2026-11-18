@@ -27,9 +27,11 @@
             </intent-filter>
         </activity>
 
+        <!-- 메모 메뉴를 숨겨서(2026-11-18) 공유 받기 · 메모 위젯도 꺼 둔다 (enabled="false"). 되살리려면 지운다 -->
         <!-- 삼성 노트 등에서 "공유 → Tidy 메모": 글 · 사진 · 파일을 새 메모로 (ShareIntentPlugin 이 이 이름으로 구분한다) -->
         <activity-alias
             android:name=".MemoShare"
+            android:enabled="false"
             android:targetActivity=".MainActivity"
             android:label="@string/share_memo_label"
             android:icon="@mipmap/ic_launcher"
@@ -103,6 +105,7 @@
         </receiver>
         <receiver
             android:name=".MemoWidget"
+            android:enabled="false"
             android:label="@string/widget_name_memo"
             android:exported="false">
             <intent-filter>

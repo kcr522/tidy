@@ -33,6 +33,9 @@ import { todoRepo } from '../../repositories/todoRepo'
 import Button from '../common/Button'
 import { useToast } from '../common/Toast'
 
+/** 메모 메뉴를 숨겨서(2026-11-18) 메모 위젯도 앱에서 꺼 두었다 (AndroidManifest MemoWidget enabled=false) */
+const SHOWN_KINDS = WIDGET_KINDS.filter((k) => k.kind !== 'memo')
+
 /** 설정 > 홈 화면 위젯: 종류 고르기, 미리보기, 투명도, 홈 화면에 추가 (갤럭시 앱) */
 export default function WidgetCard() {
   const toast = useToast()
@@ -64,12 +67,12 @@ export default function WidgetCard() {
         <h2 className="font-bold">홈 화면 위젯</h2>
       </div>
       <p className="mb-4 text-sm break-keep text-slate-500">
-        앱을 열지 않고 홈 화면에서 봐요. 위젯은 {WIDGET_KINDS.length}가지이고, 종류마다 바탕 투명도를 따로 정할 수 있어요.
+        앱을 열지 않고 홈 화면에서 봐요. 위젯은 {SHOWN_KINDS.length}가지이고, 종류마다 바탕 투명도를 따로 정할 수 있어요.
         {locked && ' 앱 잠금이 켜져 있어서 제목과 금액은 숨겨요.'}
       </p>
 
       <div className="-mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist" aria-label="위젯 종류">
-        {WIDGET_KINDS.map((k) => (
+        {SHOWN_KINDS.map((k) => (
           <button
             key={k.kind}
             type="button"

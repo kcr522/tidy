@@ -1,4 +1,4 @@
-import { BellRing, BookHeart, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Fingerprint, House, ImagePlus, LayoutGrid, ListChecks, MessageCircle, NotebookPen, Palette, PenLine, Plus, Repeat, Search, Share2, Sparkles, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BellRing, BookHeart, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Fingerprint, House, ImagePlus, LayoutGrid, ListChecks, MessageCircle, Palette, Plus, Repeat, Search, Share2, Sparkles, Wallet, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAccount } from '../../hooks/useAccount'
@@ -73,18 +73,7 @@ export const GUIDE_STEPS: Step[] = [
     tips: [
       { icon: CalendarDays, text: '날짜를 눌러 일정을 넣고, 색 · 스티커로 꾸며요 (공휴일은 저절로)' },
       { icon: Repeat, text: '설정에서 구글 · 삼성 캘린더와 연결할 수 있어요' },
-      { icon: BookHeart, text: '일기에는 하루에 사진 10장까지 시간순으로 남겨요' },
-    ],
-  },
-  {
-    icon: NotebookPen,
-    title: '메모',
-    desc: '떠오른 생각, 파일, 손글씨를 모아 둬요.',
-    to: '/memo',
-    tips: [
-      { icon: LayoutGrid, text: '파일집으로 메모를 나눠서 정리해요' },
-      { icon: PenLine, text: '손글씨로 쓰면 AI가 글자로 읽어 줘요' },
-      { icon: ImagePlus, text: '사진과 파일도 메모에 붙일 수 있어요' },
+      { icon: BookHeart, text: '일기는 1시간마다 칸이 있는 시간별 보기로도 써요. 형광펜 · 글 색 · 손글씨도 돼요' },
     ],
   },
   {
@@ -105,7 +94,7 @@ export const GUIDE_STEPS: Step[] = [
     to: '/settings',
     tips: [
       { icon: Palette, text: '꾸미기: 화면마다 사진 · 색 · 시작 화면을 바꿔요' },
-      { icon: LayoutGrid, text: '홈 화면 위젯으로 달력 · 할 일 · 메모를 바로 봐요' },
+      { icon: LayoutGrid, text: '홈 화면 위젯으로 달력 · 할 일을 바로 봐요' },
       { icon: Fingerprint, text: '앱 잠금(비밀번호 · 지문)과 자동 백업도 켤 수 있어요' },
     ],
   },
