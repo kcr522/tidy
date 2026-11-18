@@ -19,6 +19,20 @@ export type PhotoFit = 'cover' | 'contain'
 /** 꽉 채울 때 사진의 어느 쪽을 보여 줄지 */
 export type PhotoPos = 'top' | 'center' | 'bottom'
 
+/**
+ * 사진 위치 직접 맞추기 (사용자 요청 2026-11-18): 캐릭터가 원하는 곳에 보이게 사진을 끌어 옮기고 키운다.
+ * x, y = 보여 줄 곳의 가운데 (사진 너비·높이에 대한 비율 0~1), zoom = 꽉 채운 크기의 몇 배 (1~4),
+ * aspect = 맞출 때 칸 모양(가로/세로). 맞춘 부분은 잘라 낸 사진(crop)으로 따로 보관해서 어느 칸에서든 그대로 쓴다.
+ */
+export interface PhotoFrame {
+  x: number
+  y: number
+  zoom: number
+  aspect: number
+  crop: string
+}
+export const MAX_ZOOM = 4
+
 export interface SectionStyle {
   color: 'random' | 'fixed'
   colors: Trio
@@ -26,6 +40,8 @@ export interface SectionStyle {
   photos: string[]
   fit: PhotoFit
   pos: PhotoPos
+  /** 원래 사진 이름 → 직접 맞춘 위치 */
+  frames: Record<string, PhotoFrame>
   /** 사진 투명도 % (높을수록 사진이 옅어지고 그라데이션 색이 보인다) */
   clear: number
 }
@@ -37,6 +53,7 @@ export interface BackgroundStyle {
   photos: string[]
   fit: PhotoFit
   pos: PhotoPos
+  frames: Record<string, PhotoFrame>
   /** 색이나 사진의 투명도 % */
   clear: number
   /** 카드 투명도 % (배경이 카드 뒤로 비치는 정도) */
@@ -94,19 +111,20 @@ export const BASIC_SPLASH_MIN_MS = 450
 export const basicSplashDelay = (now: number) => Math.max(BASIC_SPLASH_MIN_MS, BASIC_SPLASH_MS - now)
 export const SPLASH_SECONDS = [1, 2, 3, 5] as const
 
-export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', clear: 70, cardClear: 0 }
+export const DEFAULT_BACKGROUND: BackgroundStyle = { color: 'default', fixed: '#c9e7ff', photos: [], fit: 'cover', pos: 'center', frames: {}, clear: 70, cardClear: 0 }
 export const defaultSection = (colors: Trio = ['#4fd1ff', '#3b82f6', '#7c3aed']): SectionStyle => ({
   color: 'random',
   colors,
   photos: [],
   fit: 'cover',
   pos: 'center',
+  frames: {},
   clear: 35,
 })
 
 export function defaultCustomization(): Customization {
   return {
-    background: { ...DEFAULT_BACKGROUND },
+    background: { ...DEFAULT_BACKGROUND, frames: {} },
     sections: Object.fromEntries(SECTIONS.map((s) => [s, defaultSection()])) as Record<Section, SectionStyle>,
     check: { ...DEFAULT_CHECK },
     splash: { ...DEFAULT_SPLASH, palettes: {} },
@@ -126,18 +144,34 @@ const readPhotos = (v: Record<string, unknown>): string[] => {
   return [...new Set(list.filter(isPhotoRef))].slice(0, MAX_PHOTOS)
 }
 
+const num = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
+
+/** 맞춘 위치 읽기. 목록에 있는 사진 것만, 틀린 값은 버린다 */
+export function readFrames(v: unknown, photos: string[]): Record<string, PhotoFrame> {
+  const out: Record<string, PhotoFrame> = {}
+  if (!v || typeof v !== 'object') return out
+  for (const ref of photos) {
+    const f = (v as Record<string, Partial<PhotoFrame> | undefined>)[ref]
+    if (f && num(f.x, 0, 1) && num(f.y, 0, 1) && num(f.zoom, 1, MAX_ZOOM) && num(f.aspect, 0.2, 5) && isPhotoRef(f.crop))
+      out[ref] = { x: f.x!, y: f.y!, zoom: f.zoom!, aspect: f.aspect!, crop: f.crop! }
+  }
+  return out
+}
+
 /** 저장된 값을 읽는다. 틀린 값은 기본값으로 */
 export function parseCustomization(raw: unknown): Customization {
   const base = defaultCustomization()
   if (!raw || typeof raw !== 'object') return base
   const r = raw as Partial<Record<keyof Customization, Record<string, unknown>>>
   const b = (r.background ?? {}) as Record<string, unknown>
+  const bgPhotos = readPhotos(b)
   base.background = {
     color: b.color === 'random' || b.color === 'fixed' ? b.color : 'default',
     fixed: isHex(b.fixed) ? b.fixed : DEFAULT_BACKGROUND.fixed,
-    photos: readPhotos(b),
+    photos: bgPhotos,
     fit: readFit(b.fit),
     pos: readPos(b.pos),
+    frames: readFrames(b.frames, bgPhotos),
     clear: clamp(b.clear, 0, 100, DEFAULT_BACKGROUND.clear),
     cardClear: clamp(b.cardClear, 0, 70, 0),
   }
@@ -164,12 +198,14 @@ export function parseCustomization(raw: unknown): Customization {
     const v = secs[s]
     if (!v) continue
     const colors = Array.isArray(v.colors) && v.colors.length === 3 && v.colors.every(isHex) ? (v.colors as Trio) : base.sections[s].colors
+    const photos = readPhotos(v)
     base.sections[s] = {
       color: v.color === 'fixed' ? 'fixed' : 'random',
       colors,
-      photos: readPhotos(v),
+      photos,
       fit: readFit(v.fit),
       pos: readPos(v.pos),
+      frames: readFrames(v.frames, photos),
       clear: clamp(v.clear, 0, 100, 35),
     }
   }
@@ -193,7 +229,14 @@ export function saveCustomization(c: Customization) {
 
 /** 꾸미기에 쓰인 모든 사진 이름 */
 export function photoRefs(c: Customization): string[] {
-  return [...c.background.photos, ...SECTIONS.flatMap((s) => c.sections[s].photos), ...c.splash.photos]
+  const areas = [c.background, ...SECTIONS.map((s) => c.sections[s])]
+  return [...areas.flatMap((a) => [...a.photos, ...Object.values(a.frames).map((f) => f.crop)]), ...c.splash.photos]
+}
+
+/** 화면에 쓸 사진: 위치를 맞춘 사진이면 잘라 낸 사진, 아니면 원래 사진 */
+const framedPhoto = (area: { photos: string[]; frames: Record<string, PhotoFrame> }, key: string) => {
+  const ref = sessionPhoto(area.photos, key)
+  return { ref: ref ? (area.frames[ref]?.crop ?? ref) : null, framed: !!ref && !!area.frames[ref] }
 }
 
 /** 켤 때 구역마다 정한 무작위 수. 같은 화면에서는 같은 사진이 계속 보인다 */
@@ -248,14 +291,16 @@ const cssUrl = (data: string) => `url("${data.replace(/"/g, '%22')}")`
 export function applyCustomization(c: Customization, theme: Theme, root: HTMLElement = document.documentElement) {
   for (const s of SECTIONS) {
     const st = c.sections[s]
-    const src = photoSrc(sessionPhoto(st.photos, s))
+    const shown = framedPhoto(st, s)
+    const src = photoSrc(shown.ref)
     if (src) {
       root.style.setProperty(`--${s}-photo`, cssUrl(src))
       // 사진이 또렷할수록 그라데이션은 옅게
       root.style.setProperty(`--${s}-veil`, `${st.clear}%`)
       root.style.setProperty(`--${s}-photo-shadow`, '0 1px 3px rgb(0 0 0 / 0.35)')
       root.style.setProperty(`--${s}-photo-size`, st.fit)
-      root.style.setProperty(`--${s}-photo-pos`, st.pos)
+      // 직접 맞춘 사진은 맞춘 곳이 가운데에 오게 잘라 두었다
+      root.style.setProperty(`--${s}-photo-pos`, shown.framed ? 'center' : st.pos)
     } else {
       root.style.removeProperty(`--${s}-photo`)
       root.style.removeProperty(`--${s}-veil`)
@@ -269,7 +314,8 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   const alpha = 100 - bg.clear
   const page = 'var(--color-slate-100)'
   const layers: string[] = []
-  const bgSrc = photoSrc(sessionPhoto(bg.photos, 'background'))
+  const bgShown = framedPhoto(bg, 'background')
+  const bgSrc = photoSrc(bgShown.ref)
   if (bgSrc) {
     // 사진 위에 바탕색을 덮어서 투명도를 낸다
     layers.push(`linear-gradient(color-mix(in srgb, ${page} ${bg.clear}%, transparent), color-mix(in srgb, ${page} ${bg.clear}%, transparent))`, cssUrl(bgSrc))
@@ -283,7 +329,7 @@ export function applyCustomization(c: Customization, theme: Theme, root: HTMLEle
   }
   if (bgSrc) {
     root.style.setProperty('--page-photo-size', bg.fit)
-    root.style.setProperty('--page-photo-pos', bg.pos)
+    root.style.setProperty('--page-photo-pos', bgShown.framed ? 'center' : bg.pos)
   } else {
     root.style.removeProperty('--page-photo-size')
     root.style.removeProperty('--page-photo-pos')
@@ -316,6 +362,63 @@ export async function shrinkPhoto(file: File, max = 2048): Promise<Blob> {
   } finally {
     done()
   }
+}
+
+const ASPECT_KEY = 'tidy-card-aspect'
+/**
+ * 대시보드에서 구역 사진이 크게 보이는 카드의 모양(가로/세로)을 기억해 둔다.
+ * 사진 위치를 맞출 때 틀을 실제 카드와 같은 모양으로 보여 주려고. 카드 높이는 내용에 따라 바뀌어서 마지막 모양을 쓴다.
+ */
+export function rememberCardAspect(section: Section, width: number, height: number) {
+  if (width < 50 || height < 50) return
+  try {
+    const all = JSON.parse(localStorage.getItem(ASPECT_KEY) || '{}') as Record<string, number>
+    const wide = window.matchMedia('(min-width: 768px)').matches ? 'wide' : 'narrow'
+    const v = Math.round((width / height) * 100) / 100
+    if (all[`${section}:${wide}`] === v) return
+    localStorage.setItem(ASPECT_KEY, JSON.stringify({ ...all, [`${section}:${wide}`]: v }))
+  } catch {
+    // 못 적어도 기본 모양으로 맞춘다
+  }
+}
+
+/** 기억해 둔 카드 모양. 없으면 폰 4:3, 컴퓨터 4:5 */
+export function cardAspect(section: Section): number {
+  const wide = window.matchMedia('(min-width: 768px)').matches
+  try {
+    const v = (JSON.parse(localStorage.getItem(ASPECT_KEY) || '{}') as Record<string, unknown>)[`${section}:${wide ? 'wide' : 'narrow'}`]
+    if (typeof v === 'number' && v >= 0.4 && v <= 4) return v
+  } catch {
+    // 기본 모양
+  }
+  return wide ? 4 / 5 : 4 / 3
+}
+
+/** 맞춘 위치에서 잘라 낼 네모 (원래 사진 픽셀). 칸 모양(aspect)으로 꽉 채운 크기를 zoom 배 키운 만큼 */
+export function frameRect(w: number, h: number, f: Pick<PhotoFrame, 'x' | 'y' | 'zoom' | 'aspect'>) {
+  const baseW = Math.min(w, h * f.aspect)
+  const cw = baseW / f.zoom
+  const ch = cw / f.aspect
+  const cx = Math.min(w - cw / 2, Math.max(cw / 2, f.x * w))
+  const cy = Math.min(h - ch / 2, Math.max(ch / 2, f.y * h))
+  return { sx: cx - cw / 2, sy: cy - ch / 2, sw: cw, sh: ch, cx, cy }
+}
+
+/** 맞춘 부분만 잘라서 JPEG 로 (긴 쪽 최대 max px) */
+export async function cropPhoto(src: string, f: Pick<PhotoFrame, 'x' | 'y' | 'zoom' | 'aspect'>, max = 2048): Promise<Blob> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = reject
+    i.src = src
+  })
+  const r = frameRect(img.naturalWidth, img.naturalHeight, f)
+  const scale = Math.min(1, max / Math.max(r.sw, r.sh))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(r.sw * scale))
+  canvas.height = Math.max(1, Math.round(r.sh * scale))
+  canvas.getContext('2d')!.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, canvas.width, canvas.height)
+  return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('사진 자르기 실패'))), 'image/jpeg', 0.9))
 }
 
 /** 사진 열기. createImageBitmap 이 큰 사진도 메모리를 덜 쓰고 회전 정보도 맞춰 준다. 안 되면 <img> 로 */

@@ -1,7 +1,9 @@
-import { Check, Eye, ImagePlus, Palette, Plus, RotateCcw, Shuffle, X } from 'lucide-react'
+import { Check, Crop, Eye, ImagePlus, Palette, Plus, RotateCcw, Shuffle, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../lib/customPhotos'
 import {
+  cardAspect,
+  cropPhoto,
   DEFAULT_BACKGROUND,
   DEFAULT_CHECK,
   DEFAULT_SPLASH,
@@ -13,6 +15,7 @@ import {
   shrinkPhoto,
   SPLASH_SECONDS,
   type Customization,
+  type PhotoFrame,
 } from '../../lib/customize'
 import type { Section, Trio } from '../../lib/palette'
 import { paletteFromBlob, type PhotoPalette } from '../../lib/photoPalette'
@@ -21,9 +24,20 @@ import Button from '../common/Button'
 import { useToast } from '../common/Toast'
 import { useDraftStyles } from '../../hooks/useDraftStyles'
 import CustomizePreview from './CustomizePreview'
+import PhotoFrameEditor from './PhotoFrameEditor'
 import { themeFor } from '../layout/theme'
 
 type Target = 'background' | Section | 'check' | 'splash'
+
+/**
+ * 사진 위치를 맞출 때의 칸 모양 (가로/세로).
+ * 구역 사진이 크게 보이는 곳은 대시보드 카드라서 마지막으로 본 그 카드 모양으로 (cardAspect).
+ * 앱 배경은 지금 화면 모양. 꾸미기는 기기마다 따로 저장되니 이 기기 모양에 맞추면 된다.
+ */
+const frameAspect = (target: Target) => {
+  if (target === 'background') return Math.min(2.4, Math.max(0.4, window.innerWidth / Math.max(1, window.innerHeight)))
+  return cardAspect(target as Section)
+}
 
 const TARGETS: { key: Target; label: string; path: string }[] = [
   { key: 'background', label: '앱 배경', path: '/' },
@@ -52,6 +66,9 @@ export default function CustomizeCard() {
   useDraftStyles(card, custom)
   const dirty = JSON.stringify(custom) !== JSON.stringify(saved)
   const [adding, setAdding] = useState(false)
+  // 위치를 맞추고 있는 사진
+  const [framing, setFraming] = useState<string | null>(null)
+  const [cropping, setCropping] = useState(false)
   // 보관함에 있는 사진을 읽어서 작은 사진(썸네일)을 보여 준다
   const [, setLoaded] = useState(0)
   useEffect(() => {
@@ -77,6 +94,7 @@ export default function CustomizeCard() {
   const photos = target === 'background' ? bg.photos : target === 'splash' ? splash.photos : (sec?.photos ?? [])
   const fit = target === 'background' ? bg.fit : (sec?.fit ?? 'cover')
   const pos = target === 'background' ? bg.pos : (sec?.pos ?? 'center')
+  const frames: Record<string, PhotoFrame> = target === 'background' ? bg.frames : (sec?.frames ?? {})
   const check = custom.check
   /** 모두 같은 색일 때 가계부·할 일·스크랩은 대시보드 색을 따라간다 */
   const following = custom.sameColor && (target === 'money' || target === 'todo' || target === 'scrap')
@@ -86,15 +104,35 @@ export default function CustomizeCard() {
     setCustom((c) => ({ ...c, sections: { ...c.sections, [s]: { ...c.sections[s], ...patch } } }))
   const setCheck = (patch: Partial<Customization['check']>) => setCustom((c) => ({ ...c, check: { ...c.check, ...patch } }))
   const setSplash = (patch: Partial<Customization['splash']>) => setCustom((c) => ({ ...c, splash: { ...c.splash, ...patch } }))
+  /** 지운 사진의 맞춘 위치도 같이 뺀다 */
+  const keepFrames = (f: Record<string, PhotoFrame>, list: string[]) => Object.fromEntries(Object.entries(f).filter(([ref]) => list.includes(ref)))
+  const setFrames = (next: Record<string, PhotoFrame>) => (target === 'background' ? setBg({ frames: next }) : sec && setSec(target as Section, { frames: next }))
   const setPhotos = (list: string[], pals: Record<string, PhotoPalette> = {}) => {
-    if (target === 'background') setBg({ photos: list })
+    if (target === 'background') setBg({ photos: list, frames: keepFrames(bg.frames, list) })
     else if (target === 'splash') {
       // 지운 사진의 색은 빼고, 새로 넣은 사진의 색을 더한다
       setCustom((c) => {
         const palettes = Object.fromEntries(Object.entries({ ...c.splash.palettes, ...pals }).filter(([ref]) => list.includes(ref)))
         return { ...c, splash: { ...c.splash, photos: list, palettes } }
       })
-    } else if (sec) setSec(target as Section, { photos: list })
+    } else if (sec) setSec(target as Section, { photos: list, frames: keepFrames(sec.frames, list) })
+  }
+
+  /** 맞춘 곳만 잘라서 보관하고 위치를 적어 둔다 */
+  async function saveFrame(ref: string, spot: Pick<PhotoFrame, 'x' | 'y' | 'zoom'>) {
+    const src = photoSrc(ref)
+    if (!src) return
+    setCropping(true)
+    try {
+      const aspect = frameAspect(target)
+      const crop = await storePhoto(await cropPhoto(src, { ...spot, aspect }))
+      setFrames({ ...frames, [ref]: { ...spot, aspect, crop } })
+      setFraming(null)
+    } catch {
+      toast('사진 위치를 맞추지 못했어요. 다시 시도해 주세요', 'error')
+    } finally {
+      setCropping(false)
+    }
   }
 
   const setFit = (patch: Partial<Pick<Customization['background'], 'fit' | 'pos'>>) =>
@@ -328,8 +366,14 @@ export default function CustomizeCard() {
 
         {/* 사진: 여러 장 넣으면 앱을 켤 때마다 한 장씩 골라 보여 준다 */}
         <Label>사진 {photos.length > 0 && <span className="font-normal text-slate-400">({photos.length}/{MAX_PHOTOS})</span>}</Label>
-        <PhotoGrid photos={photos} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} />
+        <PhotoGrid photos={photos} frames={frames} adding={adding} onRemove={(ref) => setPhotos(photos.filter((p) => p !== ref))} onAdd={() => fileInput.current?.click()} onPick={setFraming} />
         {photos.length > 1 && <p className="mt-1.5 text-xs text-slate-500">여러 장이면 앱을 켤 때마다 한 장씩 바뀌어요</p>}
+        {photos.length > 0 && (
+          <p className="mt-1.5 flex items-start gap-1 text-xs break-keep text-slate-500">
+            <Crop className="mt-px size-3.5 shrink-0" aria-hidden />
+            사진을 누르면 끌어서 옮기고 키워서, 캐릭터가 보일 곳을 직접 맞출 수 있어요
+          </p>
+        )}
 
         {/* 사진 맞춤: 세로로 긴 사진도 안 잘리게 */}
         {photos.length > 0 && (
@@ -346,7 +390,7 @@ export default function CustomizeCard() {
             <p className="mt-2 text-xs text-slate-500">
               {fit === 'contain' ? '사진이 잘리지 않아요. 남는 곳은 색으로 채워요' : '칸을 꽉 채워요. 칸보다 긴 쪽은 잘려요'}
             </p>
-            {fit === 'cover' && (
+            {fit === 'cover' && photos.some((p) => !frames[p]) && (
               <>
                 <Label>보여 줄 곳</Label>
                 <Segmented
@@ -358,6 +402,7 @@ export default function CustomizeCard() {
                   ]}
                   onChange={(v) => setFit({ pos: v })}
                 />
+                {Object.keys(frames).length > 0 && <p className="mt-2 text-xs text-slate-500">위치를 직접 맞춘 사진은 맞춘 대로 보여요</p>}
               </>
             )}
           </>
@@ -414,6 +459,29 @@ export default function CustomizeCard() {
         }}
       />
 
+      {framing && photoSrc(framing) && (
+        <PhotoFrameEditor
+          key={framing}
+          src={photoSrc(framing)!}
+          frame={frames[framing]}
+          aspect={frames[framing]?.aspect ?? frameAspect(target)}
+          kind={
+            target === 'background'
+              ? { type: 'background', clear: bg.clear }
+              : { type: 'section', theme: themeFor(TARGETS.find((t) => t.key === target)!.path), label: TARGETS.find((t) => t.key === target)!.label, clear: sec?.clear ?? 35 }
+          }
+          saving={cropping}
+          onSave={(spot) => void saveFrame(framing, spot)}
+          onReset={() => {
+            const next = { ...frames }
+            delete next[framing]
+            setFrames(next)
+            setFraming(null)
+          }}
+          onClose={() => setFraming(null)}
+        />
+      )}
+
       <CustomizePreview open={previewing} custom={custom} dirty={dirty} onClose={() => setPreviewing(false)} onApply={apply} />
     </section>
   )
@@ -438,15 +506,42 @@ function Preview({ target }: { target: Target }) {
 }
 
 /** 고른 사진 작은 그림들 + 추가 버튼. 시작 화면 사진이면 밑에 뽑은 색을 보여 준다 */
-function PhotoGrid({ photos, adding, onRemove, onAdd, palettes }: { photos: string[]; adding: boolean; onRemove: (ref: string) => void; onAdd: () => void; palettes?: Record<string, PhotoPalette> }) {
+function PhotoGrid({
+  photos,
+  frames,
+  adding,
+  onRemove,
+  onAdd,
+  onPick,
+  palettes,
+}: {
+  photos: string[]
+  frames?: Record<string, PhotoFrame>
+  adding: boolean
+  onRemove: (ref: string) => void
+  onAdd: () => void
+  /** 사진을 누르면 (위치 맞추기) */
+  onPick?: (ref: string) => void
+  palettes?: Record<string, PhotoPalette>
+}) {
   return (
     <div className="flex flex-wrap gap-2">
-      {photos.map((ref, i) => (
+      {photos.map((ref, i) => {
+        // 위치를 맞춘 사진은 맞춘 모양으로 보여 준다
+        const shown = photoSrc(frames?.[ref]?.crop) ?? photoSrc(ref)
+        const thumb = shown ? <img src={shown} alt={`고른 사진 ${i + 1}`} className="size-16 rounded-2xl object-cover" /> : <span className="block size-16 rounded-2xl bg-slate-100" />
+        return (
         <div key={ref} className="relative">
-          {photoSrc(ref) ? (
-            <img src={photoSrc(ref)} alt={`고른 사진 ${i + 1}`} className="size-16 rounded-2xl object-cover" />
+          {onPick ? (
+            <button type="button" onClick={() => onPick(ref)} className="block rounded-2xl" aria-label={`사진 ${i + 1} 위치 맞추기`}>
+              {thumb}
+              <span className={`absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${frames?.[ref] ? 'bg-brand-500 text-white' : 'bg-black/55 text-white'}`}>
+                <Crop className="size-2.5" aria-hidden />
+                {frames?.[ref] ? '맞춤' : '위치'}
+              </span>
+            </button>
           ) : (
-            <span className="block size-16 rounded-2xl bg-slate-100" />
+            thumb
           )}
           {palettes?.[ref] && (
             <span className="mt-1 flex justify-center gap-0.5" aria-label="이 사진에서 뽑은 색">
@@ -464,7 +559,8 @@ function PhotoGrid({ photos, adding, onRemove, onAdd, palettes }: { photos: stri
             <X className="size-3.5" strokeWidth={3} aria-hidden />
           </button>
         </div>
-      ))}
+        )
+      })}
       {photos.length < MAX_PHOTOS && (
         <button
           type="button"
