@@ -112,7 +112,7 @@ export default function AppLayout() {
     <div className={`flex h-full ${theme}`}>
       <SideNav />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-3 pb-2 backdrop-blur-md short:pt-1.5 short:pb-1 md:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-100/85 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2 backdrop-blur-md short:pt-[calc(0.375rem+env(safe-area-inset-top))] short:pb-1 md:hidden">
           <Logo />
           <div className="flex items-center gap-1">
             <Link to="/search" className="tap rounded-full p-1.5 text-slate-500" aria-label="검색">
@@ -124,7 +124,7 @@ export default function AppLayout() {
             </Link>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 short:pb-20 md:px-6 md:pt-10 md:pb-10 short:md:pt-6 lg:px-10">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 short:pb-20 md:px-6 md:pt-[calc(2.5rem+env(safe-area-inset-top))] md:pb-10 short:md:pt-[calc(1.5rem+env(safe-area-inset-top))] lg:px-10">
           <Suspense fallback={<PageLoading />}>
             <Outlet />
           </Suspense>
@@ -143,7 +143,7 @@ function Logo() {
 
 function SideNav() {
   return (
-    <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col overflow-y-auto bg-white px-4 py-8 short:py-4 md:flex lg:w-60">
+    <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col overflow-y-auto bg-white px-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-8 short:pt-[calc(1rem+env(safe-area-inset-top))] short:pb-4 md:flex lg:w-60">
       <div className="mb-10 flex short:mb-4 items-center justify-between pl-3">
         <Logo />
         <ColorModeButton className="bg-slate-100 hover:bg-slate-200" />
