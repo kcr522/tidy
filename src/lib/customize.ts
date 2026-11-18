@@ -67,7 +67,20 @@ export interface SplashStyle {
   logoPos: SplashLogoPos
   /** 사진 위 로고 투명도 (%). 높을수록 사진이 비쳐 보인다 */
   logoClear: number
+  /** 사진 위 로고가 나타나고 사라지는 효과 (사용자 요청 2026-11-18) */
+  logoFx: SplashLogoFx
 }
+
+export type SplashLogoFx = 'none' | 'fade' | 'zoom' | 'rise' | 'blur' | 'letters' | 'shine'
+export const SPLASH_LOGO_FX: [SplashLogoFx, string][] = [
+  ['blur', '흐림 걷히기'],
+  ['fade', '서서히'],
+  ['zoom', '커졌다 작아지기'],
+  ['rise', '떠오르기'],
+  ['letters', '한 글자씩'],
+  ['shine', '빛 지나가기'],
+  ['none', '효과 없음'],
+]
 
 export type SplashLogoPos = 'top' | 'center' | 'bottom' | 'hide'
 export const SPLASH_LOGO_POS: [SplashLogoPos, string][] = [
@@ -95,7 +108,7 @@ export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 /** 구역마다 넣을 수 있는 사진 수 */
 export const MAX_PHOTOS = 10
 
-export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {}, logoPos: 'center', logoClear: 50 }
+export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {}, logoPos: 'center', logoClear: 50, logoFx: 'blur' }
 /**
  * 기본 시작 화면은 앱을 누른 때부터 이 시간(ms)까지 보인다. 앱이 느려 보이지 않게 짧게.
  * 앱을 읽는 데 걸린 시간도 여기에 들어가서, 화면이 늦게 뜬 만큼 시작 화면은 짧아진다
@@ -174,6 +187,7 @@ export function parseCustomization(raw: unknown): Customization {
     palettes,
     logoPos: SPLASH_LOGO_POS.some(([k]) => k === sp.logoPos) ? (sp.logoPos as SplashLogoPos) : DEFAULT_SPLASH.logoPos,
     logoClear: clamp(sp.logoClear, 0, SPLASH_LOGO_CLEAR_MAX, DEFAULT_SPLASH.logoClear),
+    logoFx: SPLASH_LOGO_FX.some(([k]) => k === sp.logoFx) ? (sp.logoFx as SplashLogoFx) : DEFAULT_SPLASH.logoFx,
   }
   const secs = (r.sections ?? {}) as Record<string, Record<string, unknown> | undefined>
   for (const s of SECTIONS) {

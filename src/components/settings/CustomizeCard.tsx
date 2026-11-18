@@ -12,6 +12,7 @@ import {
   saveCustomization,
   shrinkPhoto,
   SPLASH_LOGO_CLEAR_MAX,
+  SPLASH_LOGO_FX,
   SPLASH_LOGO_POS,
   SPLASH_SECONDS,
   type Customization,
@@ -208,6 +209,24 @@ export default function CustomizeCard() {
                   onChange={(v) => setSplash({ logoClear: v })}
                   hint="높을수록 로고가 흐려져서 사진이 더 잘 보여요"
                 />
+              )}
+              {splash.logoPos !== 'hide' && (
+                <>
+                  <Label>로고 효과</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SPLASH_LOGO_FX.map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSplash({ logoFx: key })}
+                        className={`min-h-10 rounded-full px-4 text-sm font-semibold ${splash.logoFx === key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs break-keep text-slate-500">사진이 뜨면 로고가 이 효과로 나타났다가, 넘어가기 전에 사라져요</p>
+                </>
               )}
               <Label>보여 주는 시간</Label>
               <Segmented
