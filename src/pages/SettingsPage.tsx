@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
+import { BookOpen, Download, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import Button from '../components/common/Button'
 import AccountCard from '../components/settings/AccountCard'
@@ -22,6 +22,7 @@ import ScrapSettingsSection from '../components/settings/ScrapSettingsSection'
 import { db } from '../db/database'
 import { useAccount } from '../hooks/useAccount'
 import { todayKey } from '../lib/date'
+import { openGuide } from '../lib/guide'
 import { jsonPieces } from '../lib/jsonChunks'
 import { pickTextFile, saveTextFile } from '../platform/saveFile'
 import { InvalidBackupError, backupFileName, backupRepo } from '../repositories/backupRepo'
@@ -113,6 +114,19 @@ export default function SettingsPage() {
             <Stat label="할 일" value={counts?.todos} />
             <Stat label="스크랩" value={counts?.bookmarks} />
           </dl>
+        </section>
+
+        <section className="card overflow-hidden">
+          <Row
+            icon={<BookOpen className="size-5" aria-hidden />}
+            title="사용 가이드"
+            desc="처음 켰을 때 나온 기능 안내를 다시 봐요."
+            action={
+              <Button variant="secondary" onClick={openGuide}>
+                다시 보기
+              </Button>
+            }
+          />
         </section>
 
         <AccountCard />
