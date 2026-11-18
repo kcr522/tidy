@@ -1,7 +1,9 @@
 // 개발 기록 조각(docs/개발-기록-조각/*.md)을 docs/개발-기록.md 에 넣는다.
 // PR마다 개발-기록.md 의 같은 줄(표 맨 아래, 마지막 갱신)을 고치면 PR끼리 충돌이 나서, PR은 조각 파일만 더하고
 // 합친 뒤 .github/workflows/dev-record.yml 이 이 스크립트로 넣고 PDF를 다시 만든다.
-// 사용법: node scripts/doc-fragments.mjs [합친 PR 번호]
+// 사용법: node scripts/doc-fragments.mjs [합친 PR 번호] [조각파일.md=PR번호 ...]
+//   조각파일.md=PR번호 를 주면 그 조각의 '#?' 는 그 번호로 바뀐다 (여러 PR이 잇달아 합쳐져도 번호가 섞이지 않게,
+//   dev-record.yml 이 조각마다 그 파일을 더한 합치기 커밋에서 PR 번호를 찾아 넘긴다). 안 주면 첫 번째 숫자를 쓴다.
 //
 // 조각 파일 모양 (파일 이름은 아무거나, 다른 PR과 겹치지 않게 브랜치 이름 등):
 //   ## 6
@@ -19,7 +21,10 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const docPath = join(root, 'docs/개발-기록.md')
 const dir = join(root, 'docs/개발-기록-조각')
-const pr = process.argv[2] && /^\d+$/.test(process.argv[2]) ? process.argv[2] : ''
+const args = process.argv.slice(2)
+const prOf = new Map(args.filter((a) => /^.+\.md=\d+$/.test(a)).map((a) => [a.slice(0, a.lastIndexOf('=')), a.slice(a.lastIndexOf('=') + 1)]))
+const pr = args.find((a) => /^\d+$/.test(a)) ?? ''
+const merged = new Set(pr ? [pr] : [])
 
 let lines = readFileSync(docPath, 'utf8').split('\n')
 const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md').sort() : []
@@ -48,11 +53,13 @@ for (const f of files) {
   const text = readFileSync(join(dir, f), 'utf8')
   let key = ''
   const groups = new Map()
+  const n = prOf.get(f) ?? pr
+  if (n) merged.add(n)
   for (const raw of text.split('\n')) {
     const l = raw.trimEnd()
     const h = l.match(/^##\s+([\d-]+)/)
     if (h) key = h[1]
-    else if (l.startsWith('|') && key) groups.set(key, [...(groups.get(key) ?? []), pr ? l.replaceAll('#?', `#${pr}`) : l])
+    else if (l.startsWith('|') && key) groups.set(key, [...(groups.get(key) ?? []), n ? l.replaceAll('#?', `#${n}`) : l])
   }
   const missing = [...groups.keys()].filter((k) => sectionStart(k) < 0 || tableEnd(sectionStart(k)) < 0)
   if (missing.length) {
@@ -66,12 +73,12 @@ for (const f of files) {
   rmSync(join(dir, f))
 }
 
+// 6. 변경 기록에서 합친 PR 줄의 '검토 중' → '합침'
+const s6 = sectionStart('6')
+for (let i = s6 + 1; s6 >= 0 && i < lines.length && !/^## /.test(lines[i]); i++) {
+  if (lines[i].startsWith('|') && [...merged].some((m) => lines[i].includes(`| #${m} |`))) lines[i] = lines[i].replace(/\|\s*검토 중\s*\|\s*$/, '| 합침 |')
+}
 if (pr) {
-  // 6. 변경 기록에서 이 PR 줄의 '검토 중' → '합침'
-  const s6 = sectionStart('6')
-  for (let i = s6 + 1; s6 >= 0 && i < lines.length && !/^## /.test(lines[i]); i++) {
-    if (lines[i].startsWith('|') && lines[i].includes(`| #${pr} |`)) lines[i] = lines[i].replace(/\|\s*검토 중\s*\|\s*$/, '| 합침 |')
-  }
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)
   lines = lines.map((l) => (l.startsWith('| 마지막 갱신 |') ? `| 마지막 갱신 | ${today} (PR #${pr}까지 반영) |` : l))
 }
