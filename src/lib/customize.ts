@@ -90,12 +90,12 @@ export interface SplashStyle {
 
 export type SplashLogoFx = 'none' | 'fade' | 'zoom' | 'rise' | 'blur' | 'letters' | 'shine'
 export const SPLASH_LOGO_FX: [SplashLogoFx, string][] = [
-  ['blur', '흐림 걷히기'],
+  ['shine', '빛 지나가기'],
   ['fade', '서서히'],
   ['zoom', '커졌다 작아지기'],
   ['rise', '떠오르기'],
   ['letters', '한 글자씩'],
-  ['shine', '빛 지나가기'],
+  ['blur', '흐림 걷히기'],
   ['none', '효과 없음'],
 ]
 
@@ -125,7 +125,7 @@ export const DEFAULT_CHECK: CheckStyle = { color: 'section', fixed: '#34c759' }
 /** 구역마다 넣을 수 있는 사진 수 */
 export const MAX_PHOTOS = 10
 
-export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {}, logoPos: 'center', logoClear: 50, logoFx: 'blur' }
+export const DEFAULT_SPLASH: SplashStyle = { photos: [], seconds: 2, matchColors: true, basic: true, palettes: {}, logoPos: 'center', logoClear: 50, logoFx: 'shine' }
 /**
  * 기본 시작 화면은 앱을 누른 때부터 이 시간(ms)까지 보인다. 앱이 느려 보이지 않게 짧게.
  * 앱을 읽는 데 걸린 시간도 여기에 들어가서, 화면이 늦게 뜬 만큼 시작 화면은 짧아진다
