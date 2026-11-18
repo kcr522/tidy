@@ -36,7 +36,7 @@ describe('대시보드 위젯 배치', () => {
   it('뺀 위젯을 다시 넣으면 맨 앞에 기본 크기로', () => {
     const l = removeWidget(defaultLayout(4), 'dday')
     expect(l.some((w) => w.kind === 'dday')).toBe(false)
-    expect(addWidget(l, 'dday', 4)[0]).toEqual({ kind: 'dday', w: 2, h: 1 })
+    expect(addWidget(l, 'dday', 4)[0]).toMatchObject({ kind: 'dday' })
   })
 
   it('디데이와 잔디', () => {

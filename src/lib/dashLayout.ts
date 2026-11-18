@@ -39,13 +39,13 @@ export const ALL_KINDS = Object.keys(WIDGET_INFO) as DashWidgetKind[]
 /** 가장 큰 세로 칸 수 */
 export const MAX_H = 12
 
+// 폰 기본 배치: 위젯을 한 줄씩 크게 (사용자가 고른 B안, 2026-11-18). 디데이는 날짜 위젯 안에 보인다
 const PHONE: DashWidget[] = [
-  { kind: 'date', w: 2, h: 2 },
-  { kind: 'dday', w: 2, h: 1 },
-  { kind: 'progress', w: 2, h: 1 },
-  { kind: 'timeline', w: 4, h: 4 },
+  { kind: 'date', w: 4, h: 4 },
+  { kind: 'progress', w: 4, h: 1 },
+  { kind: 'timeline', w: 4, h: 5 },
+  { kind: 'todos', w: 4, h: 4 },
   { kind: 'habitWeek', w: 4, h: 3 },
-  { kind: 'todos', w: 4, h: 3 },
   { kind: 'tracker', w: 4, h: 2 },
   { kind: 'money', w: 4, h: 4 },
   { kind: 'ai', w: 4, h: 3 },
@@ -141,7 +141,7 @@ export function removeWidget(list: DashWidget[], kind: DashWidgetKind): DashWidg
 /** 빠진 위젯을 기본 크기로 맨 앞에 다시 넣는다 */
 export function addWidget(list: DashWidget[], kind: DashWidgetKind, cols: GridCols): DashWidget[] {
   if (list.some((x) => x.kind === kind)) return list
-  const base = defaultLayout(cols).find((x) => x.kind === kind) ?? { kind, w: cols, h: 3 }
+  const base = defaultLayout(cols).find((x) => x.kind === kind) ?? { kind, w: cols, h: WIDGET_INFO[kind].minH }
   return [{ ...base }, ...list]
 }
 

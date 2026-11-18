@@ -49,10 +49,12 @@ interface DateProps {
   box: WidgetBox
   /** 이번 달 일정 (점으로 표시) */
   events: CalendarEvent[]
+  /** 다가오는 일정 (디데이 위젯이 없고 칸이 넉넉하면 날짜와 달력 사이에 보인다) */
+  upcoming?: CalendarEvent
 }
 
 /** 큰 요일·날짜, 칸이 넉넉하면 이번 달 달력까지 */
-export function DateWidget({ today, box, events }: DateProps) {
+export function DateWidget({ today, box, events, upcoming }: DateProps) {
   const d = parseDateKey(today)
   const showCal = box.py >= 250 && box.px >= 150
   const y = d.getFullYear()
@@ -86,6 +88,17 @@ export function DateWidget({ today, box, events }: DateProps) {
               </span>
             </span>
           ))}
+        </div>
+      )}
+      {showCal && upcoming && !box.kinds.includes('dday') && box.py >= 330 && (
+        <div className="mt-auto flex items-center gap-3 rounded-2xl bg-grad-soft px-3.5 py-2.5">
+          <span className="text-[26px] leading-none font-extrabold text-slate-900 tabular-nums">{ddayLabel(daysUntil(today, upcoming.startDate))}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-brand-600">{upcoming.title}</span>
+            <span className="block text-xs text-slate-500">
+              {Number(upcoming.startDate.slice(5, 7))}월 {Number(upcoming.startDate.slice(8))}일 ({WEEK[parseDateKey(upcoming.startDate).getDay()]})
+            </span>
+          </span>
         </div>
       )}
       {showCal && (

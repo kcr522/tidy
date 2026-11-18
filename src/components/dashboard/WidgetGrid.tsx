@@ -24,6 +24,8 @@ export interface WidgetBox {
   px: number
   py: number
   cols: GridCols
+  /** 지금 대시보드에 있는 위젯들 (겹치는 내용을 안 보이게) */
+  kinds: DashWidgetKind[]
 }
 
 interface WidgetGridProps {
@@ -97,7 +99,7 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
   const gap = cols === 4 ? 12 : 16
   const colW = width > 0 ? (width - gap * (cols - 1)) / cols : 80
   const rowH = cols === 4 ? Math.round(colW) : Math.round(Math.min(colW, 64))
-  const box = (w: DashWidget): WidgetBox => ({ w: w.w, h: w.h, px: w.w * colW + (w.w - 1) * gap, py: w.h * rowH + (w.h - 1) * gap, cols })
+  const box = (w: DashWidget): WidgetBox => ({ w: w.w, h: w.h, px: w.w * colW + (w.w - 1) * gap, py: w.h * rowH + (w.h - 1) * gap, cols, kinds: list?.map((x) => x.kind) ?? [] })
 
   // ── 미끄러지듯 옮기기 (FLIP): 바뀌기 전 자리를 기억했다가 새 자리에서 거꾸로 당겨 놓고 풀어 준다 ──
   const rects = useRef(new Map<DashWidgetKind, DOMRect>())
