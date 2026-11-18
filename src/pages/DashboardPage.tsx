@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Pencil } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BookmarkForm, { type BookmarkFormValue } from '../components/bookmarks/BookmarkForm'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
@@ -8,13 +9,13 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import AssistantButton from '../components/assistant/AssistantButton'
 import AiFeedbackCard from '../components/dashboard/AiFeedbackCard'
-import HabitCard from '../components/dashboard/HabitCard'
 import MoneyCard from '../components/dashboard/MoneyCard'
 import BackupReminder from '../components/dashboard/BackupReminder'
 import ReportTeaser from '../components/dashboard/ReportTeaser'
 import PaydayCard from '../components/dashboard/PaydayCard'
-import TodayTodoCard from '../components/dashboard/TodayTodoCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
+import { DateWidget, DdayWidget, HabitWeekWidget, ProgressWidget, TimelineWidget, TodoListWidget, TrackerWidget } from '../components/dashboard/MiniWidgets'
+import WidgetGrid from '../components/dashboard/WidgetGrid'
 import HabitForm from '../components/habits/HabitForm'
 import TodoForm from '../components/todos/TodoForm'
 import RecurringManager from '../components/transactions/RecurringManager'
@@ -22,7 +23,11 @@ import TransactionForm from '../components/transactions/TransactionForm'
 import type { Bookmark, Habit, Todo } from '../db/types'
 import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
+import type { DashWidgetKind } from '../lib/dashLayout'
+import { parseDateKey, toDateKey } from '../lib/date'
 import { openUrl } from '../platform/openUrl'
+import { diaryRepo } from '../repositories/diaryRepo'
+import { eventRepo } from '../repositories/eventRepo'
 import { bookmarkRepo } from '../repositories/bookmarkRepo'
 import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
 import { scrapMediaRepo } from '../repositories/scrapMediaRepo'
@@ -52,6 +57,18 @@ export default function DashboardPage() {
   const habits = useLiveQuery(() => habitRepo.list(), [])
   const checkRows = useLiveQuery(() => habitRepo.allChecks(), [])
   const checks = useMemo(() => groupChecks(checkRows ?? []), [checkRows])
+  const [editing, setEditing] = useState(false)
+  // 이번 달 + 앞으로 한 달 일정 (달력 점, 다가오는 일정, 오늘 종일 일정)
+  const monthStart = `${today.slice(0, 7)}-01`
+  const ahead = useMemo(() => {
+    const d = parseDateKey(today)
+    d.setDate(d.getDate() + 45)
+    return toDateKey(d)
+  }, [today])
+  const eventRows = useLiveQuery(() => eventRepo.listBetween(monthStart, ahead), [monthStart, ahead])
+  const events = useMemo(() => eventRows ?? [], [eventRows])
+  const upcoming = useMemo(() => events.filter((e) => e.startDate > today).sort((a, b) => a.startDate.localeCompare(b.startDate))[0], [events, today])
+  const diary = useLiveQuery(() => diaryRepo.get(today), [today])
   const incomes = useLiveQuery(async () => (await recurringRepo.list()).filter((r) => r.type === 'INCOME' && r.isActive === 1), [])
 
   async function run(action: () => Promise<unknown>, done: string) {
@@ -106,37 +123,65 @@ export default function DashboardPage() {
   const viewTodos = () => navigate('/todos', { state: { tab: 'all' } })
   const loading = transactions === undefined || todos === undefined || unread === undefined
 
+  // 위젯 종류마다 그릴 것. 가계부·AI·월급·스크랩은 예전 카드를 그대로 위젯 칸에 넣는다
+  const card = (node: ReactNode) => <div className="h-full overflow-y-auto rounded-3xl [scrollbar-width:none] [&>section]:min-h-full">{node}</div>
+  const renderWidget = (kind: DashWidgetKind, box: Parameters<typeof DateWidget>[0]['box']): ReactNode => {
+    const list = todos ?? []
+    switch (kind) {
+      case 'date':
+        return <DateWidget today={today} box={box} events={events} upcoming={upcoming} />
+      case 'timeline':
+        return <TimelineWidget today={today} todos={list} diary={diary} events={events} />
+      case 'progress':
+        return <ProgressWidget todos={list} today={today} box={box} />
+      case 'dday':
+        return <DdayWidget today={today} upcoming={upcoming} box={box} />
+      case 'todos':
+        return <TodoListWidget todos={list} today={today} onToggle={toggle} onSelect={(item) => setSheet({ kind: 'todo', item })} onAdd={() => setSheet({ kind: 'todo' })} />
+      case 'habitWeek':
+        return <HabitWeekWidget habits={habits ?? []} checks={checks} today={today} box={box} onToggle={toggleHabit} />
+      case 'tracker':
+        return <TrackerWidget todos={list} today={today} box={box} />
+      case 'money':
+        return card(<MoneyCard month={month} items={transactions ?? []} today={today} onAdd={() => setSheet({ kind: 'money' })} />)
+      case 'ai':
+        return card(<AiFeedbackCard items={transactions ?? []} today={today} />)
+      case 'payday':
+        return card(<PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />)
+      case 'scrap':
+        return card(
+          <UnreadScrapCard unread={unread ?? []} linked={linked ?? new Map()} onAdd={() => setSheet({ kind: 'scrap' })} onOpen={open} onConvert={setConverting} onViewTodo={viewTodos} />,
+        )
+    }
+  }
+
   return (
     <>
-      <PageHeader title="대시보드" action={<span className="text-sm text-slate-500">{formatDateLabel(today)}</span>} />
+      <PageHeader
+        title="대시보드"
+        action={
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">{formatDateLabel(today)}</span>
+            {!editing && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                aria-label="위젯 편집"
+                title="위젯 편집 (위젯을 꾹 눌러도 돼요)"
+                className="tap flex size-8 items-center justify-center rounded-full bg-white/70 text-slate-500 shadow-card"
+              >
+                <Pencil className="size-4" aria-hidden />
+              </button>
+            )}
+          </div>
+        }
+      />
 
-      {!loading && <BackupReminder hasData={(transactions?.length ?? 0) + (todos?.length ?? 0) > 0} />}
-      {!loading && <ReportTeaser today={today} />}
+      {!loading && !editing && <BackupReminder hasData={(transactions?.length ?? 0) + (todos?.length ?? 0) > 0} />}
+      {!loading && !editing && <ReportTeaser today={today} />}
 
-      {!loading && (
-        // 폰: 세로로 쌓기, 컴퓨터: 2~3칸이고 모든 칸 높이를 같게 (FR-050)
-        <div className="grid items-start gap-4 md:auto-rows-fr md:grid-cols-2 md:items-stretch lg:grid-cols-3">
-          <MoneyCard month={month} items={transactions} today={today} onAdd={() => setSheet({ kind: 'money' })} />
-          <AiFeedbackCard items={transactions} today={today} />
-          <PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />
-          <TodayTodoCard
-            todos={todos}
-            today={today}
-            onAdd={() => setSheet({ kind: 'todo' })}
-            onToggle={toggle}
-            onSelect={(item) => setSheet({ kind: 'todo', item })}
-          />
-          <HabitCard habits={habits ?? []} checks={checks} today={today} onAdd={() => setSheet({ kind: 'habit' })} onToggle={toggleHabit} />
-          <UnreadScrapCard
-            unread={unread}
-            linked={linked ?? new Map()}
-            onAdd={() => setSheet({ kind: 'scrap' })}
-            onOpen={open}
-            onConvert={setConverting}
-            onViewTodo={viewTodos}
-          />
-        </div>
-      )}
+      {/* 위젯 격자: 꾹 누르면 옮기고 크기를 바꾼다 (사용자 요청 2026-11-18) */}
+      {!loading && <WidgetGrid editing={editing} onEditingChange={setEditing} render={renderWidget} />}
 
       <Modal
         open={sheet !== null}

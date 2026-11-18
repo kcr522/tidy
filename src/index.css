@@ -254,6 +254,21 @@ button {
   .animate-pin-shake { animation: none; }
 }
 
+/* 대시보드 위젯 편집: 아이폰 홈 화면처럼 살짝 흔들린다 (rotate 만 써서 옮길 때 translate 와 겹치지 않게) */
+@keyframes jiggle {
+  0%, 100% { rotate: -0.7deg; }
+  50% { rotate: 0.7deg; }
+}
+@utility animate-jiggle {
+  animation: jiggle 0.32s ease-in-out infinite;
+}
+@utility animate-jiggle-b {
+  animation: jiggle 0.36s ease-in-out infinite reverse;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-jiggle, .animate-jiggle-b { animation: none; }
+}
+
 /* 기본 시작 화면: 로고가 살짝 커지며 나타난다 */
 @keyframes splash-pop {
   0% { opacity: 0; transform: scale(0.88) translateY(6px); }
