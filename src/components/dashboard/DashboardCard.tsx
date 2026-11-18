@@ -1,6 +1,8 @@
 import { ChevronRight, Plus, type LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { rememberCardAspect } from '../../lib/customize'
+import type { Section } from '../../lib/palette'
 import { themeFor } from '../layout/theme'
 
 interface DashboardCardProps {
@@ -20,6 +22,23 @@ interface DashboardCardProps {
  * 카드마다 그 구역의 그라데이션 색을 쓴다 (가계부: 하늘, 할 일: 민트, 스크랩: 핑크)
  */
 export default function DashboardCard({ to, icon: Icon, title, addLabel, onAdd, vivid = false, children }: DashboardCardProps) {
+  // 사진이 크게 보이는 카드 모양을 기억해서, 꾸미기에서 사진 위치를 맞출 때 같은 모양 틀로 보여 준다
+  const vividRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = vividRef.current
+    if (!el) return
+    const section = themeFor(to).replace('theme-', '') as Section
+    let timer = 0
+    const ro = new ResizeObserver(() => {
+      clearTimeout(timer)
+      timer = window.setTimeout(() => rememberCardAspect(section, el.offsetWidth, el.offsetHeight), 500)
+    })
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      clearTimeout(timer)
+    }
+  }, [to, vivid])
   const header = (
     <div className="on-grad flex items-center gap-2.5">
       <Link to={to} className="group flex min-w-0 flex-1 items-center gap-2.5 font-bold">
@@ -43,7 +62,7 @@ export default function DashboardCard({ to, icon: Icon, title, addLabel, onAdd, 
 
   if (vivid) {
     return (
-      <section className={`${themeFor(to)} bg-grad on-grad flex flex-col rounded-3xl p-5 shadow-float`}>
+      <section ref={vividRef} className={`${themeFor(to)} bg-grad on-grad flex flex-col rounded-3xl p-5 shadow-float`}>
         <div className="mb-4">{header}</div>
         {children}
       </section>
