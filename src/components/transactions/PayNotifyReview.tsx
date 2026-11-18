@@ -6,6 +6,7 @@ import type { PayCandidate } from '../../lib/payNotify'
 import { addApp, addWord, loadPayFilter, savePayFilter } from '../../lib/payNotifyFilter'
 import { removePayNotifications } from '../../platform/payNotify'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
+import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import PaymentDraftCard, { type DraftPatch, type DraftRow } from './PaymentDraftCard'
@@ -37,12 +38,13 @@ export default function PayNotifyReview({ candidates, skipped, onDone, onLater }
 
   useEffect(() => {
     let alive = true
-    Promise.all([transactionRepo.listAll(), merchantAliasRepo.list()]).then(([transactions, aliases]) => {
+    Promise.all([transactionRepo.listAll(), merchantAliasRepo.list(), payMethodRepo.list()]).then(([transactions, aliases, methods]) => {
       if (!alive) return
       const drafts = refinePayments(
         candidates.map((c) => c.guess),
         transactions,
         aliases,
+        methods,
       )
       setRows(drafts.map((d, i) => ({ ...d, key: i, checked: !d.duplicate, realName: '', candidate: candidates[i], muted: null })))
     })

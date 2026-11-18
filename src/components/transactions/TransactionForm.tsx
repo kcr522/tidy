@@ -8,8 +8,9 @@ import { formatNumber } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
-import { ACCOUNT_PRESETS, accountEmoji, MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
-import { transactionRepo, type TransactionInput } from '../../repositories/transactionRepo'
+import { MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
+import PayMethodPicker from '../payMethods/PayMethodPicker'
+import type { TransactionInput } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
@@ -40,8 +41,6 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   // 새 내역은 지금 시각으로 채운다
   const [time, setTime] = useState(() => (base ? (base.time ?? '') : format(new Date(), 'HH:mm')))
   const [account, setAccount] = useState(base?.account ?? '')
-  const usedAccounts = useLiveQuery(() => transactionRepo.usedAccounts(), []) ?? []
-  const accountChips = [...new Set([...usedAccounts, '현금', '토스', '카카오페이'])].slice(0, 6)
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
 
@@ -142,60 +141,28 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
         <Field label="날짜" error={errors.date}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass(!!errors.date)} />
         </Field>
-
-        {/* 카테고리 */}
-        <Field label="카테고리" error={errors.category}>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass(!!errors.category)}>
-            <option value="" disabled>
-              선택
-            </option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {categoryEmoji(c)} {c}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
         {/* 시각 */}
         <Field label="시간 (선택)">
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputClass(false)} aria-label="쓴 시간" />
         </Field>
-        {/* 결제 수단 */}
-        <Field label="결제 수단 (선택)">
-          <input
-            value={account}
-            list="tidy-accounts"
-            maxLength={MAX_ACCOUNT_LENGTH}
-            placeholder="예: 신한카드"
-            onChange={(e) => setAccount(e.target.value)}
-            className={inputClass(false)}
-            aria-label="결제 수단"
-          />
-          <datalist id="tidy-accounts">
-            {[...new Set([...usedAccounts, ...ACCOUNT_PRESETS])].map((a) => (
-              <option key={a} value={a} />
-            ))}
-          </datalist>
-        </Field>
       </div>
-      <div className="-mt-2 flex flex-wrap gap-1.5" role="group" aria-label="자주 쓰는 결제 수단">
-        {accountChips.map((a) => (
-          <button
-            key={a}
-            type="button"
-            aria-pressed={account === a}
-            onClick={() => setAccount(account === a ? '' : a)}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-              account === a ? 'bg-grad on-grad' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {accountEmoji(a)} {a}
-          </button>
-        ))}
-      </div>
+
+      {/* 카테고리 */}
+      <Field label="카테고리" error={errors.category}>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass(!!errors.category)}>
+          <option value="" disabled>
+            선택
+          </option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {categoryEmoji(c)} {c}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {/* 어떤 카드 · 계좌로 (사용자 요청 2026-11-17) */}
+      <PayMethodPicker value={account} onChange={setAccount} label={type === 'INCOME' ? '들어온 계좌 (선택)' : '카드 · 계좌 (선택)'} />
 
       {/* 메모 */}
       <Field label={`가게 · 메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>

@@ -8,14 +8,17 @@ import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { shrinkImage } from '../../lib/image'
 import { addMonthsKey, defaultSchedule, INTEREST_LABEL, maturity, progressOf, scheduleLabel, TAX_LABEL } from '../../lib/savings'
 import { draftSize, type SavingsDraft } from '../../lib/savingsText'
+import { methodEmoji } from '../../lib/payMethods'
 import { parseAmount } from '../../lib/validate'
 import { requestAlarmPermission } from '../../platform/alarms'
+import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { depositMemo, savingsRepo, type SavingsInput } from '../../repositories/savingsRepo'
 import Button from '../common/Button'
 import ConfirmDialog from '../common/ConfirmDialog'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
+import PayMethodPicker from '../payMethods/PayMethodPicker'
 
 type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan }
 
@@ -79,6 +82,7 @@ export default function SavingsManager({ today, startWith }: { today: string; st
 type Deposited = Map<number, { count: number; amount: number }>
 
 function SavingsList({ plans, deposited, today, onOpen, onAdd }: { plans?: SavingsPlan[]; deposited?: Deposited; today: string; onOpen: (id: number) => void; onAdd: () => void }) {
+  const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
   const totals = useMemo(() => {
     if (!plans) return null
     return plans.reduce((acc, p) => ({ saved: acc.saved + (deposited?.get(p.id!)?.amount ?? 0), net: acc.net + maturity(p).netTotal }), { saved: 0, net: 0 })
@@ -117,6 +121,11 @@ function SavingsList({ plans, deposited, today, onOpen, onAdd }: { plans?: Savin
                         {p.bank ? `${p.bank} · ` : ''}
                         {scheduleLabel(p.schedule)} {formatWon(p.amount)} · 연 {p.rate}%
                       </span>
+                      {p.fromAccount && (
+                        <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
+                          {methodEmoji(p.fromAccount, methods)} {p.fromAccount}에서 나가요
+                        </span>
+                      )}
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block text-[15px] font-extrabold text-brand-600">{pr.matured ? '만기' : `D-${pr.daysLeft}`}</span>
@@ -155,6 +164,7 @@ function Row({ label, value, strong, sub }: { label: string; value: ReactNode; s
 }
 
 function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { plan: SavingsPlan; today: string; deposited?: { count: number; amount: number }; onBack: () => void; onEdit: () => void; onDelete: () => void }) {
+  const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
   const m = maturity(plan)
   const pr = progressOf(plan, today)
   return (
@@ -194,6 +204,7 @@ function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { p
         {plan.autoDeposit !== 1 && pr.done > (deposited?.count ?? 0) && <Row sub label="넣을 차례였던 횟수" value={`${pr.done}회`} />}
         <Row label="다음 넣는 날" value={pr.next ? formatDateLabel(pr.next) : '다 넣었어요'} />
         <Row label="만기까지" value={pr.matured ? '만기됐어요 🎉' : `${pr.daysLeft}일`} />
+        <Row label="나가는 계좌" value={plan.fromAccount ? `${methodEmoji(plan.fromAccount, methods)} ${plan.fromAccount}` : plan.bank ? `${plan.bank} (정해 두지 않음)` : '정해 두지 않음'} />
         <Row label="기록 방법" value={plan.autoDeposit === 1 ? '자동이체 (넣는 날 자동 기록)' : '습관 체크하면 기록'} />
         <Row
           label="알림"
@@ -269,6 +280,7 @@ interface FormProps {
 function SavingsForm({ initial, today, onSubmit, onCancel }: FormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [bank, setBank] = useState(initial?.bank ?? '')
+  const [fromAccount, setFromAccount] = useState(initial?.fromAccount ?? '')
   const [amountText, setAmountText] = useState(initial ? formatNumber(initial.amount) : '')
   const [startDate, setStartDate] = useState(initial?.startDate ?? today)
   const [endDate, setEndDate] = useState(initial?.endDate ?? addMonthsKey(today, 12))
@@ -342,6 +354,7 @@ function SavingsForm({ initial, today, onSubmit, onCancel }: FormProps) {
     await onSubmit({
       name: name.trim().slice(0, 30),
       bank: bank.trim() || undefined,
+      fromAccount: fromAccount.trim() || undefined,
       amount: amount.value,
       startDate,
       endDate,
@@ -373,6 +386,9 @@ function SavingsForm({ initial, today, onSubmit, onCancel }: FormProps) {
           <input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="예: 카카오뱅크" maxLength={30} className={inputClass(false)} />
         </Field>
       </div>
+
+      {/* 어느 계좌에서 나가는지: 넣을 때 가계부 내역의 결제 수단 칸에 들어간다 */}
+      <PayMethodPicker value={fromAccount} onChange={setFromAccount} label="돈이 나가는 계좌 (선택)" />
 
       <div>
         <span className="mb-1 block text-sm font-medium text-slate-600">넣는 날</span>

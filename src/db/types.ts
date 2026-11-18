@@ -106,6 +106,23 @@ export interface Budget {
 /** 할 일 카테고리 색 */
 export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'
 
+/** 결제 수단 종류: 카드 / 계좌(은행) / 간편결제 / 현금 */
+export type PayMethodKind = 'card' | 'account' | 'pay' | 'cash'
+
+/** 내 카드 · 계좌 (스키마 12부터). 내역에는 이름(Transaction.account)으로 이어진다 */
+export interface PayMethod {
+  id?: number
+  /** 내역의 결제 수단 칸에 들어가는 이름 (예: 신한 체크, 국민 월급통장) */
+  name: string
+  kind: PayMethodKind
+  /** 카드 번호 · 계좌 번호 끝 4자리 (알림에서 찾을 때 쓴다) */
+  last4?: string
+  /** 보여 줄 순서 */
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
 /** 할 일 카테고리 (스키마 8부터): 할 일 캘린더 아래 묶음 */
 export interface TodoCategory {
   id?: number
@@ -284,6 +301,8 @@ export interface SavingsPlan {
   name: string
   /** 은행 이름 (선택) */
   bank?: string
+  /** 돈이 나가는 내 계좌 (선택, 내 카드 · 계좌의 이름). 납입 내역의 결제 수단 칸에 들어간다 */
+  fromAccount?: string
   /** 한 번에 넣는 돈 */
   amount: number
   /** 가입일 = 첫 납입일 (YYYY-MM-DD) */

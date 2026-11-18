@@ -1,7 +1,9 @@
 import { CalendarDays, Clock, HelpCircle, Pencil, Receipt, Repeat, StickyNote, Tag, Trash2, Wallet } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import type { Transaction } from '../../db/types'
-import { accountEmoji } from '../../lib/accounts'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { methodEmoji, methodLabel, PAY_KIND_LABEL } from '../../lib/payMethods'
+import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { categoryEmoji } from '../../lib/categories'
 import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
@@ -22,6 +24,8 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
   const m = matchMerchant(item.memo)
   const unclear = !item.originalMemo && isUnclearMerchant(item.memo)
   const income = item.type === 'INCOME'
+  const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
+  const mine = item.account ? methods.find((x) => x.name === item.account) : undefined
   return (
     <div>
       <div className="flex flex-col items-center pt-1 pb-5 text-center">
@@ -41,8 +45,8 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
         <Row icon={<Tag />} label="카테고리" value={`${categoryEmoji(item.category)} ${item.category}`} />
         <Row
           icon={<Wallet />}
-          label="결제 수단"
-          value={item.account ? `${accountEmoji(item.account)} ${item.account}` : '기록 안 함'}
+          label="카드 · 계좌"
+          value={item.account ? `${methodEmoji(item.account, methods)} ${mine ? `${methodLabel(mine)} (${PAY_KIND_LABEL[mine.kind]})` : item.account}` : '기록 안 함'}
           muted={!item.account}
         />
         {item.recurringId != null && <Row icon={<Repeat />} label="정기 내역" value="매달 자동으로 기록돼요" />}

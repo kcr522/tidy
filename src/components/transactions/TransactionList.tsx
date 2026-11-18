@@ -1,8 +1,11 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { Transaction } from '../../db/types'
 import { categoryEmoji } from '../../lib/categories'
 import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
+import { methodEmoji } from '../../lib/payMethods'
 import { groupByDate } from '../../lib/summary'
+import { payMethodRepo } from '../../repositories/payMethodRepo'
 import MerchantAvatar from './MerchantAvatar'
 
 interface TransactionListProps {
@@ -13,6 +16,7 @@ interface TransactionListProps {
 /** 날짜별로 묶은 내역 목록 (FR-014) */
 export default function TransactionList({ items, onSelect }: TransactionListProps) {
   const groups = groupByDate(items)
+  const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
   return (
     <div className="space-y-4">
       {groups.map((g) => (
@@ -40,7 +44,14 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                     <span className="block truncate text-xs text-slate-400">
                       {categoryEmoji(t.category)} {t.category}
                       {t.time && <> · {formatTimeLabel(t.time)}</>}
-                      {t.account && <> · {t.account}</>}
+                      {t.account && (
+                        <>
+                          {' · '}
+                          <span className="font-semibold text-slate-500">
+                            {methodEmoji(t.account, methods)} {t.account}
+                          </span>
+                        </>
+                      )}
                       {t.recurringId != null && <> · 🔁 정기</>}
                       {!t.originalMemo && isUnclearMerchant(t.memo) && <span className="font-semibold text-amber-600"> · ❓ 어디서 썼나요?</span>}
                     </span>
