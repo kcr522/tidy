@@ -97,6 +97,10 @@ export default defineConfig({
       // 등록은 main.tsx 에서 직접 한다 (폰 앱에서는 서비스 워커를 쓰지 않는다)
       injectRegister: false,
       workbox: {
+        // 새 버전 서비스 워커가 기다리지 않고 바로 자리를 넘겨받게 한다 (사용자 제보 2026-11-18: 사이트에 새 기능이 안 보임).
+        // 이게 없으면 새 버전이 '대기'에만 머물러서, 탭을 다 닫기 전까지 새로 고침해도 예전 화면이 나왔다
+        skipWaiting: true,
+        clientsClaim: true,
         // 서버 함수(/api/…)는 앱 화면으로 바꿔치기하지 않는다
         navigateFallbackDenylist: [/^\/api\//, /^\/privacy/],
         // 글자 인식 파일(16MB)은 처음 설치 때 받지 않고, 캡처 인식을 처음 쓸 때 받아 둔다
