@@ -1,0 +1,71 @@
+# 개발 기록 자동 정리: PR을 preview/all-features 에 합치면
+# docs/개발-기록-조각/ 의 조각을 docs/개발-기록.md 에 넣고, 마지막 갱신을 고치고, PDF를 다시 만들어 올린다.
+# (PR마다 같은 줄을 고쳐 생기던 충돌을 없애려고. 쓰는 법은 docs/개발-기록-조각/README.md)
+# 여기서 올리는 커밋은 GITHUB_TOKEN 으로 올려서 다른 작업(APK 빌드 등)을 다시 돌리지 않는다.
+name: Dev record
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['preview/all-features']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-record
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview/all-features
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 조각 넣기
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # 'Merge pull request #12 …' 또는 스쿼시 합치기의 '… (#12)'
+          pr=$(printf '%s' "$MSG" | head -1 | grep -oE 'Merge pull request #[0-9]+|\(#[0-9]+\)$' | grep -oE '[0-9]+' | head -1 || true)
+          node scripts/doc-fragments.mjs $pr
+
+      - name: 바뀐 게 있는지
+        id: diff
+        run: |
+          # 조각을 넣었거나, 합친 PR이 개발 기록을 직접 고쳤으면 PDF를 다시 만든다
+          if ! git diff --quiet -- docs/개발-기록.md || ! git diff --quiet HEAD~1 HEAD -- docs/개발-기록.md; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: PDF 다시 만들기
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq pandoc
+          npm install --no-save --no-package-lock pretendard@1.3.9 playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node scripts/doc-pdf.mjs
+
+      - name: 올리기
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A docs/개발-기록.md docs/개발-기록.pdf docs/개발-기록-조각
+          git diff --cached --quiet && exit 0
+          git commit -m "개발 기록 자동 정리 (조각 넣기 · PDF)"
+          for i in 1 2 3 4; do
+            git push origin HEAD:preview/all-features && exit 0
+            git pull --rebase origin preview/all-features || exit 1
+          done
+          exit 1
