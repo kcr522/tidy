@@ -7,6 +7,7 @@ import { loginSkipped } from '../../lib/sync/state'
 import { isDeskWidget } from '../../platform/deskWidget'
 import { GoogleAuthError } from '../../platform/googleAuth'
 import logoUrl from '../../assets/logo.svg'
+import EmailLogin from './EmailLogin'
 
 /** 구글 G 로고 (공식 색) */
 export function GoogleLogo({ className = 'size-5' }: { className?: string }) {
@@ -99,6 +100,7 @@ export default function LoginScreen() {
               {error}
             </p>
           )}
+          {!isDeskWidget() && <EmailLogin />}
         </div>
 
         <button type="button" onClick={() => void local()} className="mt-6 text-sm font-semibold text-slate-500 underline underline-offset-4">

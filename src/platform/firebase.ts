@@ -95,6 +95,26 @@ export async function signInWithGoogle(): Promise<User> {
   }
 }
 
+/**
+ * 이메일 + 비밀번호로 로그인 (테스트 계정용).
+ * Firebase 콘솔 → Authentication → 로그인 방법 에서 "이메일/비밀번호"를 켜 둬야 한다.
+ * 새 계정은 앱에서 만들지 않는다 (콘솔이나 관리자가 만든 계정만 들어올 수 있다).
+ */
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  const { auth } = await loadFirebase()
+  const { signInWithEmailAndPassword } = await import('firebase/auth')
+  try {
+    return (await signInWithEmailAndPassword(auth, email.trim(), password)).user
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? ''
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-email') throw new GoogleAuthError('이메일이나 비밀번호가 맞지 않아요')
+    if (code === 'auth/operation-not-allowed') throw new GoogleAuthError('이메일 로그인이 아직 꺼져 있어요 (Firebase에서 켜야 해요)')
+    if (code === 'auth/too-many-requests') throw new GoogleAuthError('너무 여러 번 틀렸어요. 잠시 뒤에 다시 해 주세요')
+    if (code === 'auth/network-request-failed') throw new GoogleAuthError('인터넷 연결을 확인해 주세요')
+    throw new GoogleAuthError('로그인 오류' + (code ? ` (${code})` : ''))
+  }
+}
+
 /** 컴퓨터 위젯 앱에 넘길 구글 ID 토큰 (브라우저의 /widget-login 에서). 위젯 앱이 이 토큰으로 같은 계정에 로그인한다 */
 export async function googleIdTokenForWidget(): Promise<string> {
   const { auth } = await loadFirebase()
