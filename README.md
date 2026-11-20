@@ -355,8 +355,49 @@
 | 폰 앱 | Capacitor 8 + 직접 만든 안드로이드 플러그인(지문, 위젯, 공유받기, 앱 안 캡처, 업데이트) |
 | AI (무료) | Gemini 무료 → Groq 무료(예비) → 기본 모드(규칙). 글자 인식은 기기 안 Tesseract.js, 아이폰 사진은 heic-to |
 | 테스트 | Vitest (단위 테스트 430개 넘게), Playwright (화면 확인 · 스크린샷) |
-| 배포 | GitHub Actions가 APK를 만들어 Releases에 올림, Vercel이 웹을 자동 배포 |
+| 배포 | GitHub Actions가 APK를 만들어 Releases에 올림, Vercel이 웹을 자동 배포 ([자세히](#배포--업데이트--도메인)) |
 | 기획 | [GitHub Spec Kit](https://github.com/github/spec-kit) (스펙 주도 개발) |
+
+## 배포 · 업데이트 · 도메인
+
+### 한눈에 보기
+
+| 항목 | 내용 |
+|---|---|
+| 프레임워크 | **React 19 + TypeScript**, 빌드 도구 **Vite 8**, 스타일 **Tailwind CSS 4**. 폰 앱은 같은 웹 코드를 **Capacitor 8**로 감싼 것, 컴퓨터 앱은 **PWA**, 바탕화면 달력 위젯만 **Tauri** |
+| 홈페이지를 만든 곳 | **[Vercel](https://vercel.com)** (Hobby 무료 요금제). GitHub 저장소를 Vercel에 연결해 두면 Vercel이 코드를 받아 빌드하고 사이트로 올려 줌 |
+| 도메인 | **[tidy-gules.vercel.app](https://tidy-gules.vercel.app)**: Vercel이 무료로 주는 주소 (`*.vercel.app`). 도메인을 따로 사지 않았고, HTTPS 인증서도 Vercel이 자동으로 붙여 줌 |
+| 서버 | 따로 서버 컴퓨터 없이 **Vercel 서버 함수**(`api/` 폴더, 서버리스)와 **Firebase**(로그인 · Firestore, 서울 리전 `asia-northeast3`, Spark 무료 요금제) |
+| 배포 방식 | **Git 기반 자동 배포(CI/CD)**: PR을 `preview/all-features` 브랜치에 합치면 웹 · 안드로이드 앱이 자동으로 새 버전이 됨 |
+| 웹 교체 방식 | **원자적 교체(Atomic deploy)**: 새 버전을 다 만든 뒤 주소를 한 번에 새 버전으로 바꿈. 일부 서버부터 차례로 바꾸는 **롤링 배포가 아니고**, 중간에 반쯤 바뀐 상태가 없음. 예전 버전이 그대로 남아 있어 Vercel에서 **바로 되돌리기(Instant Rollback)** 가능 |
+| 미리 보기 배포 | PR마다 Vercel이 **Preview 배포**(따로 된 임시 주소)를 만들어서, 실제 사이트에 넣기 전에 확인 가능 |
+
+### PR을 합치면 일어나는 일
+
+```text
+  PR 합치기 (→ preview/all-features)
+        │
+        ├─▶ Vercel ─ npm run build ─ 새 버전 완성되면 tidy-gules.vercel.app 을 한 번에 교체
+        │              └─ 웹 · PWA: 서비스 워커가 새 버전을 받아 다시 열면 적용 (열려 있어도 10분마다 확인)
+        │
+        ├─▶ GitHub Actions "Web deploy" ─ 사이트의 /version.json 커밋이 방금 합친 커밋과 같아질 때까지 확인 (15분 넘으면 ❌)
+        │
+        ├─▶ GitHub Actions "Android APK" ─ 웹 빌드 → Capacitor로 앱에 넣기 → APK 만들기
+        │              └─ 같은 서명 키 + 버전 번호 자동 증가(1.0.<실행 번호>) → GitHub Releases(latest)에 올림
+        │                  └─ 폰 앱이 /api/app-update 로 새 버전 확인 → "업데이트" 누르면 받아서 설치
+        │
+        ├─▶ GitHub Actions "Desktop widget" ─ desktop-widget/ 이 바뀐 때만 맥 · 윈도우 위젯 앱 다시 빌드
+        │
+        └─▶ GitHub Actions "Dev record" ─ docs/개발-기록-조각/ 을 개발 기록에 넣고 PDF 다시 만들기
+```
+
+- 문서(`docs/`, `*.md`)만 바뀐 커밋은 Vercel이 다시 빌드하지 않아요 (`vercel.json`의 `ignoreCommand`).
+- 사이트 비밀값(`GEMINI_API_KEY`, `GROQ_API_KEY`, `GITHUB_RELEASE_TOKEN` 등)은 코드에 넣지 않고 Vercel 환경 변수에만 둬요.
+- 안드로이드 앱은 스토어가 아니라 GitHub Releases로 나눠 줘요. 서명 키가 항상 같아서 새 APK가 예전 앱 위에 덮어 설치돼요.
+
+### 보고서용 한 문단 요약
+
+> Tidy는 React 19와 TypeScript로 만든 웹 앱을 Vite로 빌드하고, 같은 코드를 PWA(웹 · 컴퓨터)와 Capacitor(안드로이드 앱)로 함께 배포한다. 홈페이지는 GitHub 저장소를 Vercel(무료 Hobby 요금제)에 연결해 만들었고, 도메인은 따로 사지 않고 Vercel이 주는 무료 주소 tidy-gules.vercel.app을 쓴다. 배포는 Git 기반 CI/CD로, PR을 배포 브랜치(preview/all-features)에 합치면 Vercel이 웹을 자동으로 빌드해 원자적(Atomic) 방식으로 한 번에 교체하고, 문제가 생기면 이전 배포로 바로 되돌릴 수 있다(롤링 배포는 쓰지 않음). 동시에 GitHub Actions가 서명된 안드로이드 APK를 만들어 GitHub Releases에 올리고, 앱은 실행할 때 새 버전을 확인해 앱 안에서 업데이트한다. 로그인과 동기화는 Firebase, AI 같은 서버 기능은 Vercel 서버리스 함수로 처리해 별도 서버 비용이 없다.
 
 ## 문서
 
