@@ -399,6 +399,52 @@
 
 > Tidy는 React 19와 TypeScript로 만든 웹 앱을 Vite로 빌드하고, 같은 코드를 PWA(웹 · 컴퓨터)와 Capacitor(안드로이드 앱)로 함께 배포한다. 홈페이지는 GitHub 저장소를 Vercel(무료 Hobby 요금제)에 연결해 만들었고, 도메인은 따로 사지 않고 Vercel이 주는 무료 주소 tidy-gules.vercel.app을 쓴다. 배포는 Git 기반 CI/CD로, PR을 배포 브랜치(preview/all-features)에 합치면 Vercel이 웹을 자동으로 빌드해 원자적(Atomic) 방식으로 한 번에 교체하고, 문제가 생기면 이전 배포로 바로 되돌릴 수 있다(롤링 배포는 쓰지 않음). 동시에 GitHub Actions가 서명된 안드로이드 APK를 만들어 GitHub Releases에 올리고, 앱은 실행할 때 새 버전을 확인해 앱 안에서 업데이트한다. 로그인과 동기화는 Firebase, AI 같은 서버 기능은 Vercel 서버리스 함수로 처리해 별도 서버 비용이 없다.
 
+## 언어 · 앱 · 위젯 · 데이터 · 보안
+
+### 쓴 언어
+
+| 언어 | 대략 비율 (코드 크기 기준) | 어디에 |
+|---|:---:|---|
+| **TypeScript** (TSX 포함) | 약 93% | 화면(React), 데이터 처리, 동기화, AI, Vercel 서버 함수(`api/`), 테스트 |
+| **Java** | 약 6% | 안드로이드 전용 기능: 홈 화면 위젯, 지문 잠금, 구글 캘린더 인증, 앱 업데이트, 공유받기, 결제 알림 읽기 |
+| CSS · HTML | 1% 미만 | Tailwind 설정, 시작 페이지 |
+| Rust | 1% 미만 | 컴퓨터 바탕화면 위젯 앱(Tauri)의 창 설정 |
+| JavaScript (`.mjs`) | 1% 미만 | 빌드 · 문서 스크립트 |
+
+### 앱 · 위젯을 만든 기술
+
+| 무엇 | 기술 | 방법 |
+|---|---|---|
+| 📱 안드로이드 앱 | **Capacitor 8** (+ Java 플러그인) | 웹으로 만든 화면(`dist`)을 그대로 앱 안에 넣고, 폰만 되는 기능은 Java로 직접 만든 플러그인으로 연결 |
+| 💻 컴퓨터 앱 | **PWA** (vite-plugin-pwa, 서비스 워커) | Chrome · Edge에서 "앱 설치"하면 따로 창으로 뜨고, 인터넷이 없어도 열림 |
+| 🏠 폰 홈 화면 위젯 6가지 (할 일 · 가계부 · 습관 · 일정 · 달력 · 메모) | **Android App Widget** (Java, `RemoteViews`) | 앱이 위젯에 보일 내용을 기기 안(SharedPreferences)에 써 두면, 위젯이 그걸 읽어 그림. 누르면 앱의 해당 화면으로 바로 이동 |
+| 🖥 바탕화면 달력 위젯 (맥 · 윈도우) | **Tauri 2** (Rust + 웹 화면) | 투명한 작은 창에 웹의 `/widget` 화면을 띄움. 웹이 배포되면 위젯도 같이 새 버전. GitHub Actions가 `.dmg` · `.exe`로 만들어 Releases에 올림 |
+| 🍎 아이폰 앱 | Capacitor iOS | 빌드는 가능, 앱스토어 출시는 안 함 |
+
+### 데이터 저장
+
+| 단계 | 어디에 | 설명 |
+|---|---|---|
+| 1. 기기 안 (기본) | **IndexedDB** (Dexie.js 4, 지금 DB 버전 12) | 모든 기록은 먼저 기기 안에 저장 → 인터넷이 없어도 쓰고, 로그인 없이도 씀 (오프라인 우선) |
+| 2. 동기화 (선택) | **Cloud Firestore** (서울 리전) | 구글 로그인하면 `users/내 uid/…` 자리에만 올라가서 폰 · 컴퓨터가 같은 기록을 봄. 사진 · 파일은 data URL로 함께 동기화 (Firestore 문서 한도 1MB 때문에 약 650KB 넘는 파일은 기기에만) |
+| 3. 백업 | JSON 파일 | 설정에서 내보내기 · 가져오기, 자동 백업(매일 · 매주 · 열 때마다). 폰은 0.5MB씩 나눠 저장 |
+| 작은 설정 | localStorage | 대시보드 배치, 최근 이모지, 잠금 설정(암호화된 값) 같은 기기별 설정 |
+
+첨부 파일은 일기 · 일정 · 할 일에 10MB까지, 메모 파일집은 50MB까지 붙일 수 있어요.
+
+### 보안
+
+| 항목 | 어떻게 |
+|---|---|
+| 로그인 | **Firebase Authentication** 구글 로그인만 사용 (비밀번호를 Tidy가 받지 않음) |
+| 내 기록만 보기 | **Firestore 보안 규칙**: `request.auth.uid == uid` 인 사람만 `users/{uid}` 아래를 읽고 쓸 수 있음 → 다른 사람 기록은 서버가 막음 ([firestore.rules](firestore.rules)) |
+| 앱 잠금 | 4자리 PIN 또는 8자 이상 비밀번호. 비밀번호를 그대로 저장하지 않고 **PBKDF2(SHA-256, 10만 번, 솔트)** 로 바꾼 값만 저장. 5번 틀리면 30초부터 최대 5분까지 기다리게 함. 안드로이드는 **지문 잠금**(androidx.biometric) |
+| API 키 숨기기 | Gemini · Groq · 카카오 · GitHub 키는 앱 코드에 없고 **Vercel 환경 변수**에만 둠. 앱은 Vercel 서버 함수에 부탁만 함 |
+| AI 서버 사용 제한 | 서버가 Firebase 로그인 토큰을 확인하고(로그인한 사람만), 한 사람당 하루 횟수 제한 (`AI_DAILY_LIMIT`) |
+| 관리자 페이지 | `/admin`은 로그인 토큰 확인 + `ADMIN_EMAILS`에 있는 메일만 열림. 전체 조회용 서비스 계정 키도 서버에만 둠 |
+| 웹 보안 헤더 | HTTPS 강제(HSTS), 다른 사이트 안에 못 띄우게(`X-Frame-Options: DENY`), `nosniff`, 카메라 · 위치는 Tidy 자신만 쓰게(`Permissions-Policy`) — [vercel.json](vercel.json) |
+| 앱 서명 | 안드로이드 APK는 항상 같은 키로 서명 → 다른 사람이 만든 가짜 APK로는 덮어 설치가 안 됨 |
+
 ## 문서
 
 | 문서 | 내용 |
