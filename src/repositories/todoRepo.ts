@@ -1,8 +1,9 @@
 import { db as defaultDb, type TidyDB } from '../db/database'
-import type { Priority, Todo, TodoRepeat } from '../db/types'
+import type { Attachment, Priority, Todo, TodoRepeat } from '../db/types'
+import { cleanAttachments } from '../lib/attachments'
 import { nowIso, todayKey } from '../lib/date'
 import { nextDueDate } from '../lib/todoRepeat'
-import { MAX_TITLE_LENGTH } from '../lib/validate'
+import { MAX_TITLE_LENGTH, MAX_TODO_MEMO_LENGTH } from '../lib/validate'
 
 /** 화면에서 입력받는 값 */
 export interface TodoInput {
@@ -15,6 +16,17 @@ export interface TodoInput {
   remindAt?: string
   /** 반복 (마감일이 있을 때만) */
   repeat?: TodoRepeat
+  /** 메모·참고 글 */
+  memo?: string
+  /** 참고 사진·파일 */
+  attachments?: Attachment[]
+}
+
+/** 메모·첨부 정리: 비어 있으면 값을 지운다 */
+function cleanExtras(input: TodoInput): TodoInput {
+  const memo = input.memo?.trim().slice(0, MAX_TODO_MEMO_LENGTH) || undefined
+  const files = cleanAttachments(input.attachments)
+  return { ...input, memo, attachments: files.length ? files : undefined }
 }
 
 /** 이미 할 일로 전환한 스크랩을 다시 전환하려 할 때 (FR-041) */
@@ -37,12 +49,13 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
   return {
     async add(input: TodoInput): Promise<number> {
       const now = nowIso()
-      return database.todos.add({ ...input, isCompleted: 0, completedAt: null, createdAt: now, updatedAt: now })
+      return database.todos.add({ ...cleanExtras(input), isCompleted: 0, completedAt: null, createdAt: now, updatedAt: now })
     },
 
     async update(id: number, input: TodoInput): Promise<void> {
       // 카테고리를 '기본'으로 돌리면 값을 지운다 (undefined는 update에서 무시되므로)
-      await database.todos.update(id, { ...input, categoryId: input.categoryId, remindAt: input.remindAt, repeat: input.repeat, updatedAt: nowIso() })
+      const v = cleanExtras(input)
+      await database.todos.update(id, { ...v, categoryId: v.categoryId, remindAt: v.remindAt, repeat: v.repeat, memo: v.memo, attachments: v.attachments, updatedAt: nowIso() })
     },
 
     async remove(id: number): Promise<void> {
@@ -76,6 +89,8 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
             ...(todo.categoryId != null && { categoryId: todo.categoryId }),
             ...(todo.remindAt && { remindAt: todo.remindAt }),
             repeat: todo.repeat,
+            ...(todo.memo && { memo: todo.memo }),
+            ...(todo.attachments?.length && { attachments: todo.attachments }),
             isCompleted: 0,
             completedAt: null,
             createdAt: now,

@@ -138,9 +138,16 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
   }
 
   for (const t of data.todos ?? []) {
-    const m = matchFields([['할 일', t.title]], terms)
+    const m = matchFields(
+      [
+        ['할 일', t.title],
+        ['메모', t.memo],
+        ['첨부 파일', fileNames(t.attachments)],
+      ],
+      terms,
+    )
     if (!m) continue
-    hits.push({ kind: 'todo', key: `todo-${t.id}`, item: t, title: t.title, field: m.label, snippet: '', sortKey: t.dueDate ?? t.createdAt })
+    hits.push({ kind: 'todo', key: `todo-${t.id}`, item: t, title: t.title, field: m.label, snippet: pick(m, t.title, t.memo ?? ''), sortKey: t.dueDate ?? t.createdAt })
   }
 
   for (const d of data.diaries ?? []) {
