@@ -73,3 +73,13 @@ describe('전체 검색', () => {
     ])
   })
 })
+
+describe('할 일 메모 · 첨부 검색', () => {
+  it('메모 글과 첨부 파일 이름으로도 찾는다', () => {
+    const t: Todo = { ...todo(7, '발표 준비'), memo: '3쪽 표 먼저 정리', attachments: [{ name: '참고자료.pdf', type: 'application/pdf', size: 3, src: 'data:application/pdf;base64,AAAA' }] }
+    const byMemo = searchAll({ todos: [t] }, '먼저')
+    expect(byMemo.map((h) => [h.key, h.field])).toEqual([['todo-7', '메모']])
+    expect(byMemo[0].snippet).toContain('먼저')
+    expect(searchAll({ todos: [t] }, '참고자료').map((h) => h.field)).toEqual(['첨부 파일'])
+  })
+})

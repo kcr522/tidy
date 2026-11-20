@@ -82,6 +82,10 @@ export interface Todo {
   repeat?: TodoRepeat
   /** 반복 할 일을 끝내서 생긴 다음 할 일 id (완료를 되돌리면 지운다) */
   repeatNextId?: number
+  /** 메모·참고 글 (목록에서 제목 아래 작게 보인다) */
+  memo?: string
+  /** 참고 사진·파일 (목록에서 작은 그림으로 보인다). data URL 로 기록 안에 넣는다 */
+  attachments?: Attachment[]
   createdAt: string
   updatedAt: string
 }
