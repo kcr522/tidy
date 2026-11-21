@@ -64,11 +64,14 @@ jobs:
       - name: 파일 이름 정리
         run: cp android/app/build/outputs/apk/debug/app-debug.apk tidy-debug.apk && cp tidy-debug.apk tidy.apk
 
+      # 빌드 결과를 Actions 화면에도 잠깐 둔다. GitHub 무료 저장 공간이 차면 올리기가 실패하는데,
+      # 그 때문에 아래 Releases(앱 업데이트) 올리기까지 멈추지 않게 실패해도 넘어간다 (2026-11-21)
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: tidy-debug-apk
           path: tidy-debug.apk
-          retention-days: 30
+          retention-days: 7
 
       # 폰에서 바로 받을 수 있게 "Releases"에도 올린다 (main 이나 preview/all-features 에서 만들 때만, 항상 같은 주소: releases/latest)
       - name: 릴리스에 올리기
