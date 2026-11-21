@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, Plus, X } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, MapPin, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AttachmentField, { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
 import HandwriteButton, { appendHandwritten } from '../components/common/HandwriteButton'
 import Button from '../components/common/Button'
@@ -22,6 +22,7 @@ import { MAX_HOUR_PICS, type HourValue, cleanHours, hasContent, hourLabel, hourO
 import { toEditorHtml } from '../lib/richText'
 import RichTextEditor from '../components/memo/RichTextEditor'
 import { diaryRepo } from '../repositories/diaryRepo'
+import { routeStore } from '../lib/routeStore'
 
 const MAX_TEXT = 2000
 /** 입력을 멈추고 이만큼 지나면 자동 저장 */
@@ -47,6 +48,8 @@ export default function DiaryPage() {
   const loaded = useLiveQuery(() => diaryRepo.get(date).then((d) => ({ date, entry: d ?? null })), [date])
   const entry = loaded && loaded.date === date ? loaded.entry : undefined
   const recent = useLiveQuery(() => diaryRepo.recent(30), [])
+  // 그날 이동 기록이 있으면 지도로 가는 버튼 (이 기기에만 있는 기록)
+  const routeCount = useLiveQuery(() => routeStore.listByDate(date).then((l) => l.length).catch(() => 0), [date])
   const shift = (n: number) => setDate(toDateKey(addDays(parseDateKey(date), n)))
   // 자동 저장한 뒤에 쓰기 칸을 새로 그리면 쓰던 자리(커서)가 날아간다.
   // 내가 저장한 것이면 그대로 두고, 다른 기기 동기화·삭제처럼 밖에서 바뀐 것만 새로 그린다
@@ -57,7 +60,17 @@ export default function DiaryPage() {
 
   return (
     <>
-      <PageHeader title="일기" />
+      <PageHeader
+        title="일기"
+        action={
+          routeCount ? (
+            <Link to="/route" state={{ date }} className="tap flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-600 shadow-card">
+              <MapPin className="size-4 text-brand-600" aria-hidden />
+              이 날 이동 경로
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:items-start">
         {entry === undefined ? (
