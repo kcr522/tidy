@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, MapPin, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import AttachmentField, { DropOverlay, filesToAttachments } from '../components/common/AttachmentField'
+import AttachmentField, { DropOverlay, filesToAttachments, isPictureFile } from '../components/common/AttachmentField'
 import HandwriteButton, { appendHandwritten } from '../components/common/HandwriteButton'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -258,9 +258,8 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
 
   /** 컴퓨터에서 끌어다 놓기: 사진·GIF 는 사진 타임라인으로, 나머지는 파일로 */
   const dragging = useFileDrop(async (dropped) => {
-    const isPic = (f: File) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)
-    const pics = dropped.filter(isPic)
-    const others = dropped.filter((f) => !isPic(f))
+    const pics = dropped.filter(isPictureFile)
+    const others = dropped.filter((f) => !isPictureFile(f))
     if (pics.length) await pickPhotos(pics)
     if (others.length) {
       const { added, error } = await filesToAttachments(others, MAX_ATTACHMENTS - files.length)
@@ -487,7 +486,9 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
 
         <div className="mt-3">
           <span className="mb-1.5 block text-sm font-medium text-slate-600">파일 (선택)</span>
-          <AttachmentField value={files} onChange={setFiles} addLabel="파일 첨부 (PDF, 문서 등)" />
+          {/* 여기로 올린 사진도 첨부가 아니라 사진으로 넣어서, 찍은 시간 칸에 들어가게 한다 (사용자 요청 2026-11-21) */}
+          <AttachmentField value={files} onChange={setFiles} onImages={(pics) => pickPhotos(pics)} addLabel="파일 첨부 (PDF, 문서, 사진 등)" />
+          <p className="mt-1 text-xs text-slate-400">여기로 올린 사진도 찍은 시간 칸에 들어가요</p>
         </div>
 
         <div className="mt-3 flex gap-2">

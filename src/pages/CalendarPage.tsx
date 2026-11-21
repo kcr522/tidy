@@ -1,6 +1,6 @@
 import { formatDateLabel } from '../lib/format'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookHeart, ChevronLeft, ChevronRight, Plus, SmilePlus, Wallet } from 'lucide-react'
+import { BookHeart, CalendarDays, ChevronLeft, ChevronRight, Plus, SmilePlus, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import CalendarAddForm from '../components/calendar/CalendarAddForm'
@@ -54,17 +54,10 @@ export default function CalendarPage() {
   const diaries = useMemo(() => new Map((diaryList ?? []).map((d) => [d.date, d])), [diaryList])
   const selDiary = diaries.get(selected)
   // 일기 달력: 일기 쓴 날만 사진/색으로 보여 주고, 누르면 그 일기를 연다 (사용자 요청 2026-11-12)
-  const [diaryView, setDiaryView] = useState(() => readDiaryView())
+  // 캘린더는 늘 일정 달력으로 연다. 예전에는 일기 달력을 기억해서, 한 번 누르면 다음에 열어도 일정이 안 보였다 (2026-11-21)
+  const [diaryView, setDiaryView] = useState(false)
   const [viewing, setViewing] = useState<Diary | null>(null)
-  function toggleDiaryView() {
-    const next = !diaryView
-    setDiaryView(next)
-    try {
-      localStorage.setItem(DIARY_VIEW_KEY, next ? '1' : '0')
-    } catch {
-      // 저장 못 해도 이번에는 바뀐다
-    }
-  }
+  useEffect(() => clearOldDiaryView(), [])
   const navigate = useNavigate()
   const location = useLocation()
   // AI 대화창의 "내가 등록할게": 찾은 일정을 하나씩 채워서 추가 창을 연다
@@ -205,31 +198,43 @@ export default function CalendarPage() {
               {m}월 {/* 폰은 버튼이 많아 올해면 연도를 뺀다 */}
               <span className={`text-base font-semibold text-slate-400 ${y === Number(today.slice(0, 4)) ? 'hidden sm:inline' : ''}`}>{y}</span>
             </h1>
-            <button
-              type="button"
-              // 금액은 칸이 좁아 넘쳐서, 가계부의 금액 전용 달력으로 보낸다 (사용자 요청 2026-11-10)
-              onClick={() => navigate('/money', { state: { view: 'calendar', date: selected } })}
-              className="mr-1 flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-500"
-              title="금액 달력 열기 (가계부)"
-              aria-label="금액 달력"
-            >
-              <Wallet className="size-3.5" aria-hidden />
-              금액
-              {/* 폰은 칸이 좁아 '달력'을 뺀다 */}
-              <span className="hidden sm:inline">달력</span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleDiaryView}
-              aria-pressed={diaryView}
-              aria-label="일기 달력"
-              className={`mr-1 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold ${diaryView ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-500'}`}
-              title={diaryView ? '일정 달력으로 돌아가기' : '일기 쓴 날 보기'}
-            >
-              <BookHeart className="size-3.5" aria-hidden />
-              일기
-              <span className="hidden sm:inline">달력</span>
-            </button>
+            {/* 폰은 칸이 좁아 아이콘을 뺀다. 일정 · 일기 · 금액을 한 줄 버튼으로: 지금 어느 달력인지 바로 보이고, 일정 달력으로 언제든 돌아온다 (사용자 요청 2026-11-21: "일정 보이는 캘린더가 사라졌다") */}
+            <div role="tablist" aria-label="달력 종류" className="mr-1 flex shrink-0 items-center rounded-full bg-slate-100 p-0.5 text-xs font-bold">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!diaryView}
+                onClick={() => setDiaryView(false)}
+                className={`flex items-center gap-1 rounded-full px-2 py-1.5 sm:px-2.5 ${!diaryView ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500'}`}
+                title="일정 달력"
+              >
+                <CalendarDays className="hidden size-3.5 sm:block" aria-hidden />
+                일정
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={diaryView}
+                onClick={() => setDiaryView(true)}
+                className={`flex items-center gap-1 rounded-full px-2 py-1.5 sm:px-2.5 ${diaryView ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500'}`}
+                title="일기 쓴 날 보기"
+              >
+                <BookHeart className="hidden size-3.5 sm:block" aria-hidden />
+                일기
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={false}
+                // 금액은 칸이 좁아 넘쳐서, 가계부의 금액 전용 달력으로 보낸다 (사용자 요청 2026-11-10)
+                onClick={() => navigate('/money', { state: { view: 'calendar', date: selected } })}
+                className="flex items-center gap-1 rounded-full px-2 py-1.5 text-slate-500 sm:px-2.5"
+                title="금액 달력 열기 (가계부)"
+              >
+                <Wallet className="hidden size-3.5 sm:block" aria-hidden />
+                금액
+              </button>
+            </div>
             {(month !== today.slice(0, 7) || selected !== today) && (
               <button type="button" onClick={() => pick(today)} className="mr-1 shrink-0 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
                 오늘
@@ -526,15 +531,14 @@ export default function CalendarPage() {
   )
 }
 
-const DIARY_VIEW_KEY = 'tidy.calendar.diaryView'
-function readDiaryView(): boolean {
+/** 예전 버전이 남긴 '일기 달력 기억' 값 지우기 */
+function clearOldDiaryView() {
   try {
-    return localStorage.getItem(DIARY_VIEW_KEY) === '1'
+    localStorage.removeItem('tidy.calendar.diaryView')
   } catch {
-    return false
+    // 못 지워도 이제는 읽지 않는다
   }
 }
-
 
 /** 막대 하나. 날짜 숫자 아래 줄(lane)에 놓이고, 이름이 길면 세 줄까지 줄바꿈한다 */
 function BarView({ bar, dim }: { bar: Bar; dim: boolean }) {
