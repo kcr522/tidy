@@ -125,6 +125,12 @@
             </intent-filter>
         </service>
 
+        <!-- 오늘 이동 기록: 켜 둔 동안 알림창에 "오늘 이동 기록 중"을 띄우고 위치를 쌓는다 (LocationTrackService) -->
+        <service
+            android:name=".LocationTrackService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -146,4 +152,9 @@
     <!-- 삼성 캘린더(폰 캘린더) 일정 읽기 · Tidy 일정 넣기 (설정에서 켤 때 처음 한 번 물어본다) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- 오늘 이동 기록 (설정에서 켤 때 처음 한 번 물어본다. 앱이 켜 둔 알림이 있는 동안만 위치를 받는다) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 </manifest>
