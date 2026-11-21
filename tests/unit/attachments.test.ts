@@ -128,3 +128,15 @@ describe('검색', () => {
     ])
   })
 })
+
+describe('일기 파일 첨부로 올린 사진 고르기 (2026-11-21)', () => {
+  it('사진 · GIF · HEIC 는 사진으로, 나머지는 파일로', async () => {
+    const { isPictureFile } = await import('../../src/components/common/AttachmentField')
+    const f = (name: string, type: string) => new File(['x'], name, { type })
+    expect(isPictureFile(f('a.jpg', 'image/jpeg'))).toBe(true)
+    expect(isPictureFile(f('a.gif', 'image/gif'))).toBe(true)
+    expect(isPictureFile(f('IMG_1.HEIC', ''))).toBe(true)
+    expect(isPictureFile(f('a.pdf', 'application/pdf'))).toBe(false)
+    expect(isPictureFile(f('a.mp4', 'video/mp4'))).toBe(false)
+  })
+})

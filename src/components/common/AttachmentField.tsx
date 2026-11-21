@@ -62,17 +62,26 @@ interface Props {
   addLabel?: string
   /** 파일 하나 최대 크기 (기본 10MB) */
   maxBytes?: number
+  /** 있으면 사진(GIF 포함)은 첨부 대신 여기로 넘긴다. 일기에서 사진을 찍은 시간 칸에 넣을 때 쓴다 */
+  onImages?: (files: File[]) => void | Promise<void>
 }
 
+/** 사진 파일인가 (HEIC 는 type 이 비어 있을 때가 있어 이름으로도 본다) */
+export const isPictureFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)
+
 /** 사진·파일 첨부 칸: 사진은 작은 그림으로, 나머지는 파일 줄로 보여 준다 */
-export default function AttachmentField({ value, onChange, acceptDrop = false, accept, addLabel = '사진·파일 첨부', maxBytes }: Props) {
+export default function AttachmentField({ value, onChange, acceptDrop = false, accept, addLabel = '사진·파일 첨부', maxBytes, onImages }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [adding, setAdding] = useState(false)
   const [viewing, setViewing] = useState<Attachment | null>(null)
   const toast = useToast()
   const room = MAX_ATTACHMENTS - value.length
 
-  async function add(files: File[]) {
+  async function add(picked: File[]) {
+    // 사진을 따로 받는 곳이면 사진은 그쪽으로 넘기고 나머지만 첨부한다
+    const pics = onImages ? picked.filter(isPictureFile) : []
+    const files = onImages ? picked.filter((f) => !isPictureFile(f)) : picked
+    if (pics.length) await onImages?.(pics)
     if (files.length === 0) return
     if (room <= 0) return void toast(`첨부는 ${MAX_ATTACHMENTS}개까지 넣을 수 있어요`, 'error')
     setAdding(true)
