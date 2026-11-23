@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, MapPin, Plus, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, Loader2, MapPin, Plus, Sparkles, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AttachmentField, { DropOverlay, filesToAttachments, isPictureFile } from '../components/common/AttachmentField'
 import HandwriteButton, { appendHandwritten } from '../components/common/HandwriteButton'
@@ -23,6 +23,8 @@ import { toEditorHtml } from '../lib/richText'
 import RichTextEditor from '../components/memo/RichTextEditor'
 import { diaryRepo } from '../repositories/diaryRepo'
 import { routeStore } from '../lib/routeStore'
+import { DigestError, digestDiary, digestHours, localDigest } from '../lib/ai/diaryDigest'
+import { loadAiSettings } from '../lib/ai/settings'
 
 const MAX_TEXT = 2000
 /** 입력을 멈추고 이만큼 지나면 자동 저장 */
@@ -206,6 +208,17 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  // 하루 정리 자동으로 채우기 (사용자 요청 2026-11-23)
+  const [digesting, setDigesting] = useState(false)
+  const [askReplace, setAskReplace] = useState(false)
+  // 시간별 보기에선 하루 정리 칸이 글만큼 늘어난다 (자동 정리한 줄이 다 보이게)
+  const textRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    el.style.height = ''
+    if (view === 'hour') el.style.height = `${Math.min(el.scrollHeight + 2, 520)}px`
+  }, [text, view])
   const fileRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
@@ -340,6 +353,34 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
 
   const save = () => flush(true)
 
+  /** 시간 칸에 쓴 것들을 시간마다 한 줄로 줄여 하루 정리 칸에 넣는다. 이미 쓴 하루 정리가 있으면 먼저 묻는다 */
+  function askDigest() {
+    if (!digestHours(hourVals, photos).length) {
+      toast('시간 칸에 쓴 글이 없어요. 시간마다 한 일을 적으면 정리해 줘요', 'error')
+      return
+    }
+    if (text.trim()) setAskReplace(true)
+    else void runDigest()
+  }
+
+  async function runDigest() {
+    setAskReplace(false)
+    const list = digestHours(hourVals, photos)
+    if (!list.length || digesting) return
+    setDigesting(true)
+    let out: string
+    try {
+      const r = await digestDiary(loadAiSettings(), list)
+      out = r.text
+      if (r.engine === 'local') toast('AI 없이 줄여서 정리했어요. 설정 > AI 연결에서 Tidy AI를 고르면 AI가 정리해요')
+    } catch (err) {
+      out = localDigest(list)
+      toast(`${err instanceof DigestError ? err.message : '지금은 AI에 연결하지 못했어요'}. 기본 정리를 대신 넣었어요`, 'error')
+    }
+    setText(out.slice(0, MAX_TEXT))
+    setDigesting(false)
+  }
+
   async function remove() {
     removed.current = true
     while (running.current) await running.current
@@ -468,11 +509,27 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
           }}
         />
 
+        {view === 'hour' && (
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-bold text-slate-600">하루 정리</span>
+            <button
+              type="button"
+              onClick={askDigest}
+              disabled={digesting}
+              className="tap flex items-center gap-1 rounded-full bg-grad on-grad px-3 py-1.5 text-sm font-bold shadow-float disabled:opacity-70"
+              title="시간 칸에 쓴 것들을 시간마다 한 줄로 정리해요"
+            >
+              {digesting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
+              {digesting ? '정리하는 중…' : '자동 정리'}
+            </button>
+          </div>
+        )}
         <textarea
           value={text}
           maxLength={MAX_TEXT}
           onChange={(e) => setText(e.target.value)}
           placeholder={view === 'hour' ? '하루 정리 (선택): 오늘 하루 어땠는지 한마디' : '오늘 한 일, 기분, 기억하고 싶은 것'}
+          ref={textRef}
           rows={view === 'hour' ? 3 : 7}
           className="w-full resize-none rounded-2xl bg-slate-100 p-4 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-brand-500"
           aria-label="일기 내용"
@@ -528,6 +585,14 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
         danger
         onConfirm={remove}
         onCancel={() => setDeleting(false)}
+      />
+      <ConfirmDialog
+        open={askReplace}
+        title="하루 정리 바꾸기"
+        message="이미 쓴 하루 정리가 있어요. 자동 정리한 글로 바꿀까요? 지금 쓴 글은 지워져요."
+        confirmLabel="바꾸기"
+        onConfirm={() => void runDigest()}
+        onCancel={() => setAskReplace(false)}
       />
     </>
   )
