@@ -47,6 +47,7 @@ export default function WidgetCard() {
   useEffect(() => onWidgetSettingsChange(() => setOpacity(loadWidgetOpacity())), [])
   const [kind, setKind] = useState<WidgetKind>('today')
   const [calSize, setCalSize] = useState<CalendarSize>('medium')
+  const [cells, setCells] = useState<2 | 3 | 4>(2)
 
   const [from, to] = widgetRange(today)
   const todos = useLiveQuery(() => todoRepo.listAll(), [])
@@ -108,8 +109,36 @@ export default function WidgetCard() {
           <p className="mt-1.5 text-xs break-keep text-slate-400">홈 화면에서 위젯을 길게 누르면 크기를 바꿀 수 있어요. 가장 크게(4×6, 폰 화면 가득) 늘리면 글자가 커지고 하루에 일정이 4개까지 보여요.</p>
         </div>
       )}
+      {kind !== 'calendar' && (
+        <div className="mb-2">
+          {SQUARE_KINDS.includes(kind) && (
+            <div className="flex gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="위젯 크기 미리보기">
+              {SQUARE_SIZES.map((z) => (
+                <button
+                  key={z.cells}
+                  type="button"
+                  role="radio"
+                  aria-checked={cells === z.cells}
+                  onClick={() => setCells(z.cells)}
+                  className={`flex-1 rounded-lg py-1.5 text-sm font-semibold transition ${cells === z.cells ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                >
+                  {z.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="mt-1.5 text-xs break-keep text-slate-400">
+            홈 화면에서 위젯을 길게 누르면 테두리에 손잡이가 나와요. 끌어서 크기를 바꾸면{' '}
+            {SQUARE_KINDS.includes(kind) ? '가로 · 세로를 같이 키울수록 글자가 커지고(최대 1.6배), 세로로만 늘리면 줄이 더 보여요.' : '가로 · 세로를 같이 키울수록 글자가 커지고, 세로로만 늘리면 줄이 더 보여요.'}
+          </p>
+        </div>
+      )}
       <Wallpaper tall={kind === 'calendar' && calSize === 'large'}>
-        {summary && <KindPreview kind={kind} summary={summary} today={today} opacity={opacity[kind]} calSize={calSize} />}
+        {summary && (
+          <div style={kind !== 'calendar' && SQUARE_KINDS.includes(kind) && cells > 2 ? { zoom: cells === 3 ? 1.5 : 1.6 } : undefined}>
+            <KindPreview kind={kind} summary={summary} today={today} opacity={opacity[kind]} calSize={calSize} />
+          </div>
+        )}
       </Wallpaper>
 
       <label className="mt-4 block">
@@ -179,7 +208,7 @@ function DesktopWidgetHelp() {
       <ol className="mt-1 list-decimal space-y-0.5 pl-5 break-keep text-slate-600">
         <li>{mac ? "아래 버튼에서 'Tidy-Calendar-mac.dmg'를 받아 열고, 'Tidy 달력'을 응용 프로그램 폴더로 끌어 넣어요" : "아래 버튼에서 'Tidy-Calendar-windows.exe'를 받아 설치해요"}</li>
         <li>{mac ? "처음 열 때 '확인되지 않은 개발자'가 나오면 시스템 설정 → 개인정보 보호 및 보안 → '그래도 열기'" : "'Windows의 PC 보호' 창이 나오면 '추가 정보' → '실행'"}</li>
-        <li>위젯 위에 마우스를 올리면 아래에 막대가 나와요: 끌어서 옮기기 · 투명도 · 닫기</li>
+        <li>위젯 위에 마우스를 올리면 아래에 막대가 나와요: 끌어서 옮기기 · 투명도 · − / + 크기 · 닫기. 맨 오른쪽 ⤡ 손잡이를 끌면 크기를 마음대로 바꿔요 (크기는 다음에 켤 때도 그대로)</li>
         <li>처음 한 번 구글 로그인 (브라우저가 열려요). 컴퓨터를 켤 때마다 저절로 떠요</li>
       </ol>
       <a href={DESK_APP_URL} target="_blank" rel="noreferrer" className="tap mt-2 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 font-bold text-white">
@@ -198,6 +227,14 @@ function DesktopWidgetHelp() {
     </div>
   )
 }
+
+/** 처음에 2×2 칸으로 놓이는 위젯. 크게 늘리면 글자가 같이 커진다 (TidyBaseWidget.scaleOf: 칸 수 비율, 최대 1.6배) */
+const SQUARE_KINDS: WidgetKind[] = ['todo', 'money', 'habit', 'memo']
+const SQUARE_SIZES: { cells: 2 | 3 | 4; label: string }[] = [
+  { cells: 2, label: '처음 2×2' },
+  { cells: 3, label: '3×3' },
+  { cells: 4, label: '크게 4×4' },
+]
 
 /** 달력 위젯 미리보기 크기 */
 const CAL_SIZES: { size: CalendarSize; label: string }[] = [

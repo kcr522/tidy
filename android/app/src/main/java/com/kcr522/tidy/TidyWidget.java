@@ -24,6 +24,16 @@ public class TidyWidget extends TidyBaseWidget {
     private static final int[] ITEM_IDS = {R.id.widget_item1, R.id.widget_item2, R.id.widget_item3, R.id.widget_item4};
 
     @Override
+    int baseCellsW() {
+        return 4;
+    }
+
+    @Override
+    float itemSp() {
+        return 14;
+    }
+
+    @Override
     String kind() {
         return "today";
     }
