@@ -45,7 +45,7 @@ export const BRANDS: Brand[] = [
   withApp('com.oliveyoung', b('올리브영', 'oliveyoung.co.kr', '#9BCB3C', '쇼핑', ['oliveyoung', 'cj올리브영', '올영'], '올영')),
   withApp('com.emart.today', b('이마트', 'emart.com', '#FFB300', '쇼핑', ['emart', '이마트에브리데이'])),
   withApp('com.socialapps.homeplus', b('홈플러스', 'homeplus.co.kr', '#E2001A', '쇼핑', ['homeplus'])),
-  withWiki('롯데마트|en:Lotte Mart|commons:Lotte Mart logo', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
+  withApp('com.lottemart.lmscp', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart', '롯데슈퍼'])),
   withApp('com.costco.dmc.store', b('코스트코', 'costco.co.kr', '#005DAA', '쇼핑', ['costco'])),
   withApp('com.coupang.mobile', b('쿠팡', 'coupang.com', '#E52528', '쇼핑', ['coupang'])),
   withApp('com.musinsa.store', b('무신사', 'musinsa.com', '#111111', '쇼핑', ['musinsa'])),
@@ -70,7 +70,7 @@ export const BRANDS: Brand[] = [
   withApp('com.naverfin.payapp', b('네이버페이', 'naver.com', '#03C75A', '쇼핑', ['naverpay', '네이버'], 'N')),
   // 편의점
   withApp('com.bgfcu.membership', b('CU', 'cu.bgfretail.com', '#652F8D', '식비', ['씨유', 'bgf리테일'])),
-  withWiki('GS25|en:GS25', b('GS25', 'gs25.gsretail.com', '#00A0E2', '식비', ['지에스25', 'gs리테일'], 'GS25')),
+  withWiki('commons:GS25 logo|ko:GS25', b('GS25', 'gs25.gsretail.com', '#00A0E2', '식비', ['지에스25', 'gs리테일'], 'GS25')),
   withApp('kr.co.kork7app', b('세븐일레븐', '7-eleven.co.kr', '#008061', '식비', ['7eleven', '7-eleven', '코리아세븐'], '7')),
   withApp('kr.co.emart24.everse', b('이마트24', 'emart24.co.kr', '#FFB81C', '식비', ['emart24'])),
   // 카페·디저트
