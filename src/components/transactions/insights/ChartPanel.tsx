@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Transaction } from '../../../db/types'
-import { categoryEmoji, isSpending } from '../../../lib/categories'
+import { isSpending } from '../../../lib/categories'
 import { formatDateLabel, formatWon } from '../../../lib/format'
 import { sortTransactions } from '../../../repositories/transactionRepo'
 import {
@@ -16,6 +16,7 @@ import {
   type PeriodUnit,
 } from '../../../lib/stats'
 import { BarChart, Segmented, ShareRow } from './charts'
+import { CategoryIcon } from '../../common/MoneyIcon'
 
 const UNITS = [
   ['week', '주별'],
@@ -122,7 +123,11 @@ export default function ChartPanel({ items, today }: { items: Transaction[]; tod
                   >
                     <ShareRow
                         color={categoryColor(s.category)}
-                        label={`${categoryEmoji(s.category)} ${s.category}`}
+                        label={
+                      <>
+                        <CategoryIcon category={s.category} /> {s.category}
+                      </>
+                    }
                         sub={`${s.count}건`}
                         amount={s.amount}
                         percent={s.percent}

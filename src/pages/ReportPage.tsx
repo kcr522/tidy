@@ -1,19 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addMonths, format } from 'date-fns'
-import { BookHeart, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Flame, Wallet } from 'lucide-react'
+import { BookHeart, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Flame, PiggyBank, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import BudgetBar from '../components/budget/BudgetBar'
 import PageHeader from '../components/common/PageHeader'
 import { db } from '../db/database'
 import { useToday } from '../hooks/useToday'
-import { categoryEmoji } from '../lib/categories'
 import { parseDateKey } from '../lib/date'
 import { formatDateLabel, formatWon } from '../lib/format'
 import { buildReport, prevMonth } from '../lib/monthlyReport'
 import { budgetRepo } from '../repositories/budgetRepo'
 import { habitRepo } from '../repositories/habitRepo'
 import { todoRepo } from '../repositories/todoRepo'
+import { CategoryIcon } from '../components/common/MoneyIcon'
 
 /** 처음 열면: 1~7일에는 지난달, 그 뒤로는 이번 달 */
 export function defaultReportMonth(today: string): string {
@@ -72,7 +72,7 @@ export default function ReportPage() {
             </div>
             {r.money.saving > 0 && (
               <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                🐷 저축으로 <b className="text-saving">{formatWon(r.money.saving)}</b> 모았어요 (쓴 돈에는 넣지 않았어요)
+                <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축으로 <b className="text-saving">{formatWon(r.money.saving)}</b> 모았어요 (쓴 돈에는 넣지 않았어요)
               </p>
             )}
             {r.money.diffPct !== null && (
@@ -92,7 +92,7 @@ export default function ReportPage() {
                   {r.money.top.map((t, n) => (
                     <li key={t.category} className="flex items-center gap-2 text-sm">
                       <span className="w-4 text-center font-extrabold text-slate-400">{n + 1}</span>
-                      <span aria-hidden>{categoryEmoji(t.category)}</span>
+                      <CategoryIcon category={t.category} className="size-4 shrink-0 text-slate-500" />
                       <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{t.category}</span>
                       <span className="text-xs text-slate-400">{t.pct}%</span>
                       <span className="font-bold text-slate-900 tabular-nums">{formatWon(t.amount)}</span>

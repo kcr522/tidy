@@ -1,3 +1,4 @@
+import { PiggyBank } from 'lucide-react'
 import { useMemo } from 'react'
 import type { Transaction } from '../../db/types'
 import { cellWon, dailyTotals, dayTitle, monthGrid } from '../../lib/calendar'
@@ -60,7 +61,7 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
               <span className="mt-auto mb-1 flex min-w-0 flex-col text-[10px] leading-tight font-semibold tracking-tighter tabular-nums whitespace-nowrap sm:text-xs">
                 {t?.income ? <span className="overflow-hidden text-income">+{cellWon(t.income)}</span> : null}
                 {t?.expense ? <span className="overflow-hidden text-expense">-{cellWon(t.expense)}</span> : null}
-                {t?.saving ? <span className="overflow-hidden text-saving">🐷{cellWon(t.saving)}</span> : null}
+                {t?.saving ? <span className="overflow-hidden text-saving"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden />{cellWon(t.saving)}</span> : null}
               </span>
             </button>
           )

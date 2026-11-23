@@ -9,7 +9,6 @@ import { buildContext, refineEvents, refinePayments } from '../../lib/assistant/
 import { quickReply } from '../../lib/assistant/quickData'
 import { dayTitle } from '../../lib/calendar'
 import { diaryPhotos, nowTime } from '../../lib/diaryPhotos'
-import { categoryEmoji } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatWon } from '../../lib/format'
 import { isWebUrl } from '../../lib/validate'
@@ -21,6 +20,7 @@ import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
 import { useToast } from '../common/Toast'
 import { CHOICE_LABEL, msgId as id, type ChatMessage, type Choice, type Proposal } from '../../lib/assistant/chat'
+import { CategoryIcon } from '../common/MoneyIcon'
 
 const PLACE: Record<Proposal['kind'], string> = { event: '캘린더', payment: '가계부', diary: '일기' }
 
@@ -283,8 +283,8 @@ function ProposalCard({ msg, onChoose }: { msg: Extract<ChatMessage, { proposal:
         {p.kind === 'payment' &&
           p.items.map((t, i) => (
             <li key={i} className={`flex items-center gap-2.5 py-2.5 ${t.duplicate ? 'opacity-50' : ''}`}>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-base" aria-hidden>
-                {categoryEmoji(t.input.category)}
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-brand-600" aria-hidden>
+                <CategoryIcon category={t.input.category} className="size-[18px]" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-bold">

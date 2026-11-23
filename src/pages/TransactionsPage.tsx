@@ -23,8 +23,8 @@ import BudgetStrip from '../components/budget/BudgetStrip'
 import type { Transaction } from '../db/types'
 import { usePayNotify } from '../hooks/usePayNotify'
 import { useToday } from '../hooks/useToday'
-import { categoryEmoji } from '../lib/categories'
-import { methodEmoji } from '../lib/payMethods'
+import { isSaving } from '../lib/categories'
+import { CategoryIcon, MethodIcon } from '../components/common/MoneyIcon'
 import { payMethodRepo } from '../repositories/payMethodRepo'
 import { dayTitle } from '../lib/calendar'
 import { formatWon } from '../lib/format'
@@ -137,7 +137,9 @@ export default function TransactionsPage() {
     }
   }
 
-  const items = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
+  const monthItems = useLiveQuery(() => transactionRepo.listByMonth(ym.year, ym.month), [ym.year, ym.month])
+  // 저축은 가계부 첫 화면(목록 · 달력 · 필터)에 보이지 않고, 🐷 저금통을 눌러야 보인다 (사용자 요청 2026-11-23)
+  const items = useMemo(() => monthItems?.filter((t) => !isSaving(t)), [monthItems])
   const used = useMemo(() => categoriesUsed(items ?? []), [items])
   const accounts = useMemo(() => accountTotals(items ?? []), [items])
   const methods = useLiveQuery(() => payMethodRepo.list(), [])
@@ -153,7 +155,11 @@ export default function TransactionsPage() {
     setAccount(null)
   }
   // 필터를 고르면 위쪽 합계도 그 카테고리 기준 (US6 시나리오 2)
-  const summary = useMemo(() => monthSummary(filtered ?? []), [filtered])
+  // 잔액은 저축으로 빠진 돈까지 빼고 센다 (저축 칸은 보이지 않아도)
+  const summary = useMemo(() => {
+    const saved = filterBy === 'account' ? filterByAccount(monthItems ?? [], account).filter(isSaving) : category === null ? (monthItems ?? []).filter(isSaving) : []
+    return monthSummary([...(filtered ?? []), ...saved])
+  }, [filtered, monthItems, filterBy, category, account])
   const chips = category !== null && !used.includes(category) ? [...used, category] : used
 
   const moveMonth = (delta: number) => {
@@ -256,7 +262,13 @@ export default function TransactionsPage() {
             {filterBy === 'category'
               ? [null, ...chips].map((c) => (
                   <Chip key={c ?? 'all'} active={category === c} onClick={() => setCategory(c)}>
-                    {c === null ? '전체' : `${categoryEmoji(c)} ${c}`}
+                    {c === null ? (
+                      '전체'
+                    ) : (
+                      <>
+                        <CategoryIcon category={c} /> {c}
+                      </>
+                    )}
                   </Chip>
                 ))
               : [null, ...accounts].map((a) => (
@@ -265,9 +277,9 @@ export default function TransactionsPage() {
                       '전체'
                     ) : (
                       <>
-                        {methodEmoji(a.account, methods ?? [])} {a.account}
+                        <MethodIcon name={a.account} methods={methods ?? []} /> {a.account}
                         {methods?.find((m) => m.name === a.account)?.last4 && <span className="ml-1 opacity-70">··{methods.find((m) => m.name === a.account)!.last4}</span>}
-                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : a.saving > 0 ? `🐷${formatWon(a.saving)}` : `+${formatWon(a.income)}`}</span>
+                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
                       </>
                     )}
                   </Chip>
@@ -299,7 +311,8 @@ export default function TransactionsPage() {
             <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="저축 · 적금" title="저축 · 적금">
+            {/* 폰은 저금통을 달 옆(🐷)으로 옮겨 위쪽 버튼 줄을 줄인다 */}
+            <Button variant="secondary" className="max-sm:hidden sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="저축 · 적금" title="저축 · 적금">
               <PiggyBank className="size-[18px]" aria-hidden />
               <span className="hidden sm:inline">저축</span>
             </Button>

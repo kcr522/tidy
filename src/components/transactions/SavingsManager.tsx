@@ -8,7 +8,6 @@ import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { shrinkImage } from '../../lib/image'
 import { addMonthsKey, defaultSchedule, INTEREST_LABEL, maturity, progressOf, scheduleLabel, TAX_LABEL } from '../../lib/savings'
 import { draftSize, type SavingsDraft } from '../../lib/savingsText'
-import { methodEmoji } from '../../lib/payMethods'
 import { parseAmount } from '../../lib/validate'
 import { requestAlarmPermission } from '../../platform/alarms'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
@@ -20,6 +19,7 @@ import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 import PayMethodPicker from '../payMethods/PayMethodPicker'
 import { DepositForm, SavingsLogList, useSavingsLog } from './SavingsLog'
+import { MethodIcon } from '../common/MoneyIcon'
 
 type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan } | { mode: 'deposit' }
 
@@ -130,7 +130,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
       )}
       <div className="mb-5 flex gap-2">
         <Button className="flex-1" onClick={onDeposit}>
-          🐷 저축 넣기
+          <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축 넣기
         </Button>
         <Button variant="secondary" className="flex-1" onClick={onAdd}>
           + 적금 추가
@@ -154,7 +154,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
               <li key={p.id}>
                 <button type="button" onClick={() => onOpen(p.id!)} className="w-full rounded-2xl bg-slate-50 p-4 text-left hover:bg-slate-100">
                   <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-grad-soft text-xl">🐷</span>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-grad-soft text-saving"><PiggyBank className="size-5" aria-hidden /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-bold text-slate-800">{p.name}</span>
                       <span className="block truncate text-xs text-slate-400">
@@ -163,7 +163,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
                       </span>
                       {p.fromAccount && (
                         <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
-                          {methodEmoji(p.fromAccount, methods)} {p.fromAccount}에서 나가요
+                          <MethodIcon name={p.fromAccount} methods={methods} /> {p.fromAccount}에서 나가요
                         </span>
                       )}
                     </span>
@@ -212,7 +212,7 @@ function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { p
         <ChevronLeft className="size-4" aria-hidden /> 적금 목록
       </button>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-grad-soft text-2xl">🐷</span>
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-grad-soft text-saving"><PiggyBank className="size-6" aria-hidden /></span>
         <div className="min-w-0">
           <p className="truncate text-lg font-extrabold">{plan.name}</p>
           <p className="text-sm text-slate-500">
@@ -243,7 +243,7 @@ function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { p
         {plan.autoDeposit !== 1 && pr.done > (deposited?.count ?? 0) && <Row sub label="넣을 차례였던 횟수" value={`${pr.done}회`} />}
         <Row label="다음 넣는 날" value={pr.next ? formatDateLabel(pr.next) : '다 넣었어요'} />
         <Row label="만기까지" value={pr.matured ? '만기됐어요 🎉' : `${pr.daysLeft}일`} />
-        <Row label="나가는 계좌" value={plan.fromAccount ? `${methodEmoji(plan.fromAccount, methods)} ${plan.fromAccount}` : plan.bank ? `${plan.bank} (정해 두지 않음)` : '정해 두지 않음'} />
+        <Row label="나가는 계좌" value={plan.fromAccount ? <><MethodIcon name={plan.fromAccount} methods={methods} /> {plan.fromAccount}</> : plan.bank ? `${plan.bank} (정해 두지 않음)` : '정해 두지 않음'} />
         <Row label="기록 방법" value={plan.autoDeposit === 1 ? '자동이체 (넣는 날 자동 기록)' : '습관 체크하면 기록'} />
         <Row
           label="알림"

@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { ACCOUNT_PRESETS, MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
-import { methodEmoji, methodLabel, PAY_KIND_EMOJI, PAY_KIND_LABEL, groupMethods } from '../../lib/payMethods'
+import { methodLabel, PAY_KIND_LABEL, groupMethods } from '../../lib/payMethods'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
 import { inputClass } from '../common/formStyles'
 import PayMethodEditor from './PayMethodEditor'
+import { MethodIcon, PayKindIcon } from '../common/MoneyIcon'
 
 interface Props {
   value: string
@@ -64,7 +65,7 @@ export default function PayMethodPicker({ value, onChange, label = '카드 · �
           {groups.map((g) => (
             <div key={g.kind} className="flex flex-wrap items-center gap-1.5">
               <span className="w-[4.5rem] shrink-0 text-[11px] font-bold text-slate-400">
-                {PAY_KIND_EMOJI[g.kind]} {PAY_KIND_LABEL[g.kind]}
+                <PayKindIcon kind={g.kind} /> {PAY_KIND_LABEL[g.kind]}
               </span>
               {g.items.map((m) => (
                 <PickChip key={m.id} active={value === m.name} onClick={() => pick(m.name)}>
@@ -74,10 +75,10 @@ export default function PayMethodPicker({ value, onChange, label = '카드 · �
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-1.5">
-            {groups.length > 0 && others.length > 0 && <span className="w-[4.5rem] shrink-0 text-[11px] font-bold text-slate-400">👛 그 밖에</span>}
+            {groups.length > 0 && others.length > 0 && <span className="w-[4.5rem] shrink-0 text-[11px] font-bold text-slate-400"><Wallet className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 그 밖에</span>}
             {others.map((a) => (
               <PickChip key={a} active={value === a} onClick={() => pick(a)}>
-                {methodEmoji(a)} {a}
+                <MethodIcon name={a} /> {a}
               </PickChip>
             ))}
             {!adding && (

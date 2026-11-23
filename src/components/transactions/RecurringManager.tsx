@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, Pause, Play, Repeat, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Recurring, TransactionType } from '../../db/types'
-import { categoriesFor, categoryEmoji } from '../../lib/categories'
+import { categoriesFor } from '../../lib/categories'
 import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { matchMerchant } from '../../lib/merchants'
 import { dayLabel, ddayFor, ddayLabel } from '../../lib/recurring'
@@ -246,7 +246,7 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
             </option>
             {categories.map((c) => (
               <option key={c} value={c}>
-                {categoryEmoji(c)} {c}
+                {c}
               </option>
             ))}
           </select>

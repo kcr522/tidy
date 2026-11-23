@@ -2,7 +2,7 @@ import { Check, HelpCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { TransactionType } from '../../db/types'
 import type { PaymentDraft } from '../../lib/assistant/learn'
-import { categoriesFor, categoryEmoji } from '../../lib/categories'
+import { categoriesFor } from '../../lib/categories'
 import { formatDateLabel, formatNumber, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { inputClass } from '../common/formStyles'
@@ -78,7 +78,7 @@ export default function PaymentDraftCard({ row, onChange, note }: { row: DraftRo
           <select value={input.category} onChange={(e) => setInput({ category: e.target.value })} aria-label="카테고리" className={`${inputClass(false)} min-h-10 w-auto text-sm`}>
             {categoriesFor(input.type).map((c) => (
               <option key={c} value={c}>
-                {categoryEmoji(c)} {c}
+                {c}
               </option>
             ))}
           </select>
