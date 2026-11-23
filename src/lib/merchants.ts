@@ -21,7 +21,7 @@ export interface Brand {
   category: string
   /** 공식 앱 패키지 (Google Play). 로고는 public/brands/<app>.webp */
   app?: string
-  /** 앱이 없거나 앱 아이콘이 다른 브랜드 것일 때: 위키백과 문서의 로고 그림. public/brands/<domain>.png */
+  /** 앱이 없거나 앱 아이콘이 다른 브랜드 것일 때: 위키백과 문서의 로고 그림 ('롯데리아|en:Lotteria'). public/brands/<domain>.png */
   wiki?: string
 }
 
@@ -45,7 +45,7 @@ export const BRANDS: Brand[] = [
   withApp('com.oliveyoung', b('올리브영', 'oliveyoung.co.kr', '#9BCB3C', '쇼핑', ['oliveyoung', 'cj올리브영', '올영'], '올영')),
   withApp('com.emart.today', b('이마트', 'emart.com', '#FFB300', '쇼핑', ['emart', '이마트에브리데이'])),
   withApp('com.socialapps.homeplus', b('홈플러스', 'homeplus.co.kr', '#E2001A', '쇼핑', ['homeplus'])),
-  withApp('com.osp.lotte.mobile', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
+  withApp('com.lottemart.lmscp', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
   withApp('com.costco.dmc.store', b('코스트코', 'costco.co.kr', '#005DAA', '쇼핑', ['costco'])),
   withApp('com.coupang.mobile', b('쿠팡', 'coupang.com', '#E52528', '쇼핑', ['coupang'])),
   withApp('com.musinsa.store', b('무신사', 'musinsa.com', '#111111', '쇼핑', ['musinsa'])),
@@ -83,9 +83,9 @@ export const BRANDS: Brand[] = [
   withApp('com.kr.hollyscoffee', b('할리스', 'hollys.co.kr', '#A6192E', '식비', ['할리스커피', 'hollys'])),
   withApp('com.msseed.membership', b('폴바셋', 'baristapaulbassett.co.kr', '#1A1A1A', '식비', ['paulbassett'])),
   withApp('kr.co.baskinrobbins.client', b('배스킨라빈스', 'baskinrobbins.co.kr', '#FF1F8E', '식비', ['베스킨라빈스', 'baskinrobbins', '배라'])),
-  withWiki('던킨', b('던킨', 'dunkindonuts.co.kr', '#FF671F', '식비', ['던킨도너츠', 'dunkin'])),
+  withWiki('던킨|en:Dunkin Donuts', b('던킨', 'dunkindonuts.co.kr', '#FF671F', '식비', ['던킨도너츠', 'dunkin'])),
   withApp('com.pb.android', b('파리바게뜨', 'paris.co.kr', '#1F3B73', '식비', ['파리바게트', 'parisbaguette'])),
-  withWiki('뚜레쥬르', b('뚜레쥬르', 'tlj.co.kr', '#00704A', '식비', ['touslesjours'])),
+  withWiki('뚜레쥬르|en:Tous les Jours', b('뚜레쥬르', 'tlj.co.kr', '#00704A', '식비', ['touslesjours'])),
   withApp('com.easymembership.gongcha', b('공차', 'gong-cha.co.kr', '#B5121B', '식비', ['gongcha'])),
   withApp('com.coffeebeankorea.purpleorder', b('커피빈', 'coffeebeankorea.com', '#5F259F', '식비', ['coffeebean', '커피빈앤티리프'])),
   withApp('com.sulbing.mobile.app', b('설빙', 'sulbing.com', '#E4E1D9', '식비', ['sulbing'])),
@@ -94,7 +94,7 @@ export const BRANDS: Brand[] = [
   // 음식점·배달
   withApp('com.mcdonalds.mobileapp', b('맥도날드', 'mcdonalds.co.kr', '#DA291C', '식비', ['mcdonalds', '맥날'])),
   withApp('kr.co.burgerkinghybrid', b('버거킹', 'burgerking.co.kr', '#D62300', '식비', ['burgerking'])),
-  withWiki('롯데리아', b('롯데리아', 'lotteria.com', '#E60012', '식비', ['lotteria', '롯데리아'])),
+  withWiki('롯데리아|en:Lotteria', b('롯데리아', 'lotteria.com', '#E60012', '식비', ['lotteria', '롯데리아'])),
   withApp('kr.co.momstouch.moms', b('맘스터치', 'momstouch.co.kr', '#E3001B', '식비', ['momstouch'])),
   withApp('kr.co.subway.preorder', b('써브웨이', 'subway.co.kr', '#008938', '식비', ['서브웨이', 'subway'])),
   withApp('com.order.kyochonchicken', b('교촌치킨', 'kyochon.com', '#B8860B', '식비', ['교촌'])),

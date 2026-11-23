@@ -42,14 +42,21 @@ async function find(queries) {
   }
 }
 
-/** 위키백과 문서의 대표 그림(보통 로고) → PNG */
-async function wikiLogo(title) {
-  const api = `https://ko.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail|name&pithumbsize=256&redirects=1&titles=${encodeURIComponent(title)}`
-  const res = await fetch(api, { headers: { 'user-agent': 'TidyBrandLogos/1.0 (github.com/kcr522/tidy)' } })
-  const pages = Object.values((await res.json()).query?.pages ?? {})
-  const thumb = pages[0]?.thumbnail?.source
-  if (!thumb) throw new Error('위키백과 그림 없음')
-  return { url: thumb, name: pages[0].pageimage }
+/** 위키백과 문서에 들어 있는 로고 그림(파일 이름에 logo/로고) → PNG. title 은 '롯데리아' 또는 'en:Lotteria', 여러 개는 | 로 */
+async function wikiLogo(titles) {
+  const ua = { 'user-agent': 'TidyBrandLogos/1.0 (github.com/kcr522/tidy)' }
+  for (const t of titles.split('|')) {
+    const [lang, title] = t.includes(':') ? t.split(':') : ['ko', t]
+    const base = `https://${lang}.wikipedia.org/w/api.php?format=json&action=query&redirects=1`
+    const list = await (await fetch(`${base}&prop=images&imlimit=100&titles=${encodeURIComponent(title)}`, { headers: ua })).json()
+    const files = Object.values(list.query?.pages ?? {}).flatMap((p) => (p.images ?? []).map((i) => i.title))
+    const logo = files.find((f) => /logo|로고/i.test(f) && !/commons-logo|wiki.*logo|edit|question|symbol_|flag/i.test(f))
+    if (!logo) continue
+    const info = await (await fetch(`${base}&prop=imageinfo&iiprop=url&iiurlwidth=256&titles=${encodeURIComponent(logo)}`, { headers: ua })).json()
+    const url = Object.values(info.query?.pages ?? {})[0]?.imageinfo?.[0]?.thumburl
+    if (url) return { url, name: logo }
+  }
+  throw new Error('위키백과 로고 없음')
 }
 
 async function save(file, url, label) {
