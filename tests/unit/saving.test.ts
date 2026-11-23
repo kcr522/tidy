@@ -83,3 +83,18 @@ describe('저축은 지출에 넣지 않는다', () => {
     expect(w.months['2026-11']).toBe(20_000)
   })
 })
+
+describe('저축 내역 달마다 묶기', () => {
+  it('최근 순 목록을 달마다 합계와 함께 묶는다', async () => {
+    const { groupByMonth } = await import('../../src/components/transactions/SavingsLog')
+    const g = groupByMonth([
+      tx({ amount: 300_000, category: '저축', date: '2026-11-21', savingsId: 1 }),
+      tx({ amount: 100_000, category: '저축', date: '2026-11-18' }),
+      tx({ amount: 300_000, category: '저축', date: '2026-10-21', savingsId: 1 }),
+    ])
+    expect(g.map((x) => [x.ym, x.total, x.items.length])).toEqual([
+      ['2026-11', 400_000, 2],
+      ['2026-10', 300_000, 1],
+    ])
+  })
+})
