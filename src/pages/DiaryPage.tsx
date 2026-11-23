@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, Loader2, MapPin, Pencil, Plus, Sparkles, X } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImagePlus, Loader2, MapPin, Moon, Pencil, Plus, Sparkles, Sun, Sunrise, Sunset, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AttachmentField, { DropOverlay, filesToAttachments, isPictureFile } from '../components/common/AttachmentField'
@@ -614,8 +614,17 @@ function DiaryEditor({ date, today, entry, draft, onSaved, onShift: shift }: Edi
   )
 }
 
-/** 아침 · 낮 · 저녁 · 밤 표시 */
-const dayPart = (h: number) => (h < 5 ? '🌙' : h < 12 ? '🌅' : h < 18 ? '☀️' : h < 22 ? '🌆' : '🌙')
+/** 아침 · 낮 · 저녁 · 밤 표시: 이모티콘 대신 테두리만 있는 아이콘 (사용자 요청 2026-11-23, 가계부 아이콘과 같은 모양) */
+const dayPart = (h: number): LucideIcon => (h < 5 ? Moon : h < 12 ? Sunrise : h < 18 ? Sun : h < 22 ? Sunset : Moon)
+
+function DayPartIcon({ hour }: { hour: number }) {
+  const Icon = dayPart(hour)
+  return (
+    <span className="relative z-[1] flex size-[2.1rem] shrink-0 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm" aria-hidden>
+      <Icon className="size-[1.1rem]" strokeWidth={2} />
+    </span>
+  )
+}
 
 /**
  * 자동 정리한 하루 정리를 보기 좋게: 왼쪽에 시간 칩, 오른쪽에 내용, 세로 선으로 이어진 짧은 타임라인.
@@ -629,9 +638,7 @@ function SummaryView({ lines, onEdit }: { lines: DigestLine[]; onEdit: () => voi
           l.time ? (
             <li key={i} className="relative flex gap-3 pb-3 last:pb-0">
               {i < lines.length - 1 && <span className="absolute top-7 bottom-0 left-[1.05rem] w-0.5 rounded-full bg-brand-100" aria-hidden />}
-              <span className="relative z-[1] flex size-[2.1rem] shrink-0 items-center justify-center rounded-full bg-white text-base shadow-sm" aria-hidden>
-                {dayPart(l.hour ?? 12)}
-              </span>
+              <DayPartIcon hour={l.hour ?? 12} />
               <div className="min-w-0 flex-1 pt-0.5">
                 <span className="block text-xs font-bold text-brand-700">{l.time}</span>
                 <span className="block text-[15px] leading-snug break-keep text-slate-800">{l.body}</span>
