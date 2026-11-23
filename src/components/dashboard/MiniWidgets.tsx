@@ -49,18 +49,28 @@ interface DateProps {
   box: WidgetBox
   /** 이번 달 일정 (점으로 표시) */
   events: CalendarEvent[]
-  /** 다가오는 일정 (디데이 위젯이 없고 칸이 넉넉하면 날짜와 달력 사이에 보인다) */
-  upcoming?: CalendarEvent
 }
 
-/** 큰 요일·날짜, 칸이 넉넉하면 이번 달 달력까지 */
-export function DateWidget({ today, box, events, upcoming }: DateProps) {
+/** 일정 한 줄 높이 (px) */
+const AGENDA_ROW = 26
+/** 달력 한 주 줄 기본 높이 (칸 24 + 줄 간격 4) */
+const CAL_ROW = 28
+/** 달력 칸이 커질 수 있는 최대 높이 */
+const CAL_CELL_MAX = 40
+
+/**
+ * 큰 요일·날짜, 칸이 넉넉하면 이번 달 달력까지.
+ * 날짜와 달력 사이가 비지 않게, 남는 높이만큼 오늘 · 다가오는 일정을 줄로 넣고
+ * 그래도 남으면 달력 칸을 키워 위젯을 고르게 채운다
+ */
+export function DateWidget({ today, box, events }: DateProps) {
   const d = parseDateKey(today)
   const showCal = box.py >= 250 && box.px >= 150
   const y = d.getFullYear()
   const m = d.getMonth()
   const first = new Date(y, m, 1).getDay()
   const days = new Date(y, m + 1, 0).getDate()
+  const weeks = Math.ceil((first + days) / 7)
   const monthKey = today.slice(0, 7)
   const holidays = useMemo(() => holidaysBetween(`${monthKey}-01`, `${monthKey}-31`), [monthKey])
   const busy = useMemo(() => {
@@ -68,15 +78,44 @@ export function DateWidget({ today, box, events, upcoming }: DateProps) {
     for (const e of events) for (let k = e.startDate; k <= e.endDate && set.size < 400; k = addDays(k, 1)) set.add(k)
     return set
   }, [events])
-  const big = box.py < 120 ? 'text-[34px]' : 'text-[44px]'
+  // 오늘 걸친 일정 먼저, 그다음 다가오는 일정 (가까운 순)
+  const agenda = useMemo(
+    () =>
+      events
+        .filter((e) => e.endDate >= today)
+        .sort((a, b) => (a.startDate <= today ? today : a.startDate).localeCompare(b.startDate <= today ? today : b.startDate) || a.title.localeCompare(b.title)),
+    [events, today],
+  )
+  const small = box.py < 120
+  const big = small ? 'text-[34px]' : 'text-[44px]'
+
+  // 높이 나누기: 안쪽 여백 32, 요일·날짜 74, 달력 제목·요일줄 60
+  const head = 32 + 74
+  const calFixed = 60
+  const spare = showCal ? box.py - head - calFixed - weeks * CAL_ROW : 0
+  // 남는 자리에 일정 줄 (제목줄 22 + 위아래 여백 16)
+  const fit = spare >= 22 + 16 + AGENDA_ROW ? Math.floor((spare - 22 - 16) / AGENDA_ROW) : 0
+  const rows = Math.min(fit, agenda.length, 6)
+  const empty = fit > 0 && agenda.length === 0
+  const listH = rows > 0 ? 22 + 16 + rows * AGENDA_ROW : empty ? 22 + 16 + AGENDA_ROW : 0
+  // 그래도 남는 높이는 달력 칸을 키우는 데 쓴다
+  // 일정 줄이 안 들어가는 크기에선 가장 가까운 일정 하나를 요일 옆에 작게
+  const next = agenda[0]
+  const cell = Math.min(CAL_CELL_MAX, 24 + Math.max(0, Math.floor((spare - listH) / weeks)))
 
   return (
     <WidgetShell to="/calendar">
-      <p className={`${big} leading-none font-extrabold tracking-tight text-slate-900`}>{WEEK[d.getDay()]}요일</p>
-      <p className="mt-1.5 text-sm font-semibold text-slate-500">
-        {m + 1}월 {d.getDate()}일
-        {holidays.get(today)?.[0] && <span className="ml-1 text-red-500">· {holidays.get(today)![0].name}</span>}
-      </p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={`${big} leading-none font-extrabold tracking-tight text-slate-900`}>{WEEK[d.getDay()]}요일</p>
+          <p className="mt-1.5 text-sm font-semibold text-slate-500">
+            {m + 1}월 {d.getDate()}일
+            {holidays.get(today)?.[0] && <span className="ml-1 text-red-500">· {holidays.get(today)![0].name}</span>}
+          </p>
+        </div>
+        {showCal && rows === 0 && !empty && next && box.px >= 260 && <NextBadge e={next} today={today} />}
+      </div>
+      {!showCal && !small && agenda[0] && box.py >= 200 && <AgendaRow e={agenda[0]} today={today} className="mt-3" />}
       {!showCal && box.py >= 150 && (
         <div className="mt-auto flex justify-between text-center text-[11px] tabular-nums">
           {Array.from({ length: 7 }, (_, i) => addDays(today, i - d.getDay())).map((k, i) => (
@@ -90,15 +129,14 @@ export function DateWidget({ today, box, events, upcoming }: DateProps) {
           ))}
         </div>
       )}
-      {showCal && upcoming && !box.kinds.includes('dday') && box.py >= 330 && (
-        <div className="mt-auto flex items-center gap-3 rounded-2xl bg-grad-soft px-3.5 py-2.5">
-          <span className="text-[26px] leading-none font-extrabold text-slate-900 tabular-nums">{ddayLabel(daysUntil(today, upcoming.startDate))}</span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-brand-600">{upcoming.title}</span>
-            <span className="block text-xs text-slate-500">
-              {Number(upcoming.startDate.slice(5, 7))}월 {Number(upcoming.startDate.slice(8))}일 ({WEEK[parseDateKey(upcoming.startDate).getDay()]})
-            </span>
-          </span>
+      {showCal && (rows > 0 || empty) && (
+        <div className="mt-3 flex min-h-0 flex-col border-t border-slate-100 pt-2.5">
+          <p className="mb-1 text-[12px] font-bold text-slate-400">다가오는 일정</p>
+          {empty ? (
+            <p className="flex h-[26px] items-center text-[13px] text-slate-400">일정이 없어요 · 눌러서 추가</p>
+          ) : (
+            agenda.slice(0, rows).map((e) => <AgendaRow key={`${e.id}-${e.startDate}`} e={e} today={today} />)
+          )}
         </div>
       )}
       {showCal && (
@@ -106,9 +144,9 @@ export function DateWidget({ today, box, events, upcoming }: DateProps) {
           <p className="mb-1.5 text-[13px] font-bold text-slate-700">
             {y}년 {m + 1}월
           </p>
-          <div className="grid grid-cols-7 gap-y-1 text-center text-[11px] tabular-nums">
+          <div className="grid grid-cols-7 gap-y-1 text-center text-[11px] tabular-nums" style={{ gridAutoRows: cell }}>
             {WEEK.map((w, i) => (
-              <span key={w} className={`font-semibold ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>
+              <span key={w} className={`self-center font-semibold ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>
                 {w}
               </span>
             ))}
@@ -121,7 +159,7 @@ export function DateWidget({ today, box, events, upcoming }: DateProps) {
               const isToday = key === today
               const red = dow === 0 || holidays.has(key)
               return (
-                <span key={key} className="relative flex h-6 items-center justify-center">
+                <span key={key} className="relative flex items-center justify-center">
                   <span
                     className={`flex size-6 items-center justify-center rounded-full ${
                       isToday ? 'bg-grad font-bold on-grad' : red ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-slate-700'
@@ -137,6 +175,35 @@ export function DateWidget({ today, box, events, upcoming }: DateProps) {
         </div>
       )}
     </WidgetShell>
+  )
+}
+
+/** 요일 옆 작은 일정 표시: 오늘/디데이 + 제목 */
+function NextBadge({ e, today }: { e: CalendarEvent; today: string }) {
+  const now = e.startDate <= today
+  return (
+    <div className="flex max-w-[48%] shrink-0 flex-col items-end gap-1 pt-1 text-right">
+      <span className="rounded-full bg-grad-soft px-2 py-0.5 text-[12px] font-extrabold text-brand-600 tabular-nums">{now ? '오늘' : ddayLabel(daysUntil(today, e.startDate))}</span>
+      <span className="flex max-w-full items-center gap-1.5 text-[13px] font-semibold text-slate-700">
+        <span className="size-2 shrink-0 rounded-full" style={{ background: eventBg(e.color) }} aria-hidden />
+        <span className="truncate">{e.title}</span>
+      </span>
+    </div>
+  )
+}
+
+/** 일정 한 줄: 색 막대 · 제목 · 오늘/디데이 */
+function AgendaRow({ e, today, className = '' }: { e: CalendarEvent; today: string; className?: string }) {
+  const now = e.startDate <= today
+  const start = parseDateKey(e.startDate)
+  return (
+    <div className={`flex h-[26px] items-center gap-2 text-[13px] ${className}`}>
+      <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ background: eventBg(e.color) }} aria-hidden />
+      <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{e.title}</span>
+      <span className={`shrink-0 text-[12px] font-bold tabular-nums ${now ? 'text-brand-600' : 'text-slate-400'}`}>
+        {now ? '오늘' : `${start.getMonth() + 1}/${start.getDate()} · ${ddayLabel(daysUntil(today, e.startDate))}`}
+      </span>
+    </div>
   )
 }
 
