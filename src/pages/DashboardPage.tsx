@@ -130,7 +130,7 @@ export default function DashboardPage() {
     const list = todos ?? []
     switch (kind) {
       case 'date':
-        return <DateWidget today={today} box={box} events={events} upcoming={upcoming} />
+        return <DateWidget today={today} box={box} events={events} />
       case 'timeline':
         return <TimelineWidget today={today} todos={list} diary={diary} events={events} />
       case 'progress':
