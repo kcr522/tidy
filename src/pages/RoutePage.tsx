@@ -175,12 +175,14 @@ export default function RoutePage() {
               <label className="flex items-center gap-3">
                 <span className="flex-1 text-sm">
                   <span className="block font-semibold text-slate-800">이동 기록</span>
-                  <span className="block text-xs break-keep text-slate-500">켜 두면 알림창에 &lsquo;오늘 이동 기록 중&rsquo;이 보이고, 2분마다 또는 40m 넘게 움직일 때 위치를 남겨요</span>
+                  <span className="block text-xs break-keep text-slate-500">
+                    {track.web ? '컴퓨터 · 웹은 Tidy 창이 열려 있는 동안 2분마다 또는 40m 넘게 움직일 때 위치를 남겨요. 열 때마다 저절로 켜져요' : '켜 두면 알림창에 ‘오늘 이동 기록 중’이 보이고, 2분마다 또는 40m 넘게 움직일 때 위치를 남겨요. 앱을 열면 저절로 켜져요'}
+                  </span>
                 </span>
                 <Switch label="이동 기록" on={!!track.status?.on} disabled={track.busy || !track.status} onClick={toggle} />
               </label>
             ) : (
-              <p className="text-xs break-keep text-slate-500">웹 · 컴퓨터는 창이 닫혀 있을 때 위치를 잴 수 없어요. 하루 동선은 갤럭시 앱에서 기록하고, 여기서는 지금 위치만 남길 수 있어요.</p>
+              <p className="text-xs break-keep text-slate-500">이 브라우저는 위치를 알 수 없어요. 하루 동선은 갤럭시 앱에서 기록해 주세요.</p>
             )}
             {track.status?.on && !track.status.gps && <p className="mt-2 text-xs font-semibold text-expense">폰의 위치(GPS)가 꺼져 있어요. 빠른 설정에서 위치를 켜 주세요</p>}
             <div className="mt-4 flex flex-wrap gap-2">

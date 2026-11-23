@@ -40,9 +40,11 @@ export default function RouteTrackCard() {
         {track.available && <Switch label="오늘 이동 기록" on={!!track.status?.on} disabled={track.busy || !track.status} onClick={toggle} />}
       </div>
       <p className="text-sm break-keep text-slate-500">
-        {track.available
-          ? '켜 두면 다닌 길을 지도에 그려요. 알림창에 ‘오늘 이동 기록 중’이 떠 있는 동안만 기록하고, 위치는 이 폰에만 30일 동안 저장돼요.'
-          : '하루 동선 기록은 갤럭시 앱에서 켤 수 있어요. 웹 · 컴퓨터에서는 지금 위치만 남길 수 있어요.'}
+        {track.web
+          ? '켜 두면 다닌 길을 지도에 그려요. 컴퓨터 · 웹은 Tidy 창이 열려 있는 동안만 기록하고, 열 때마다 저절로 켜져요. 위치는 이 기기에만 30일 동안 저장돼요.'
+          : track.available
+            ? '켜 두면 다닌 길을 지도에 그려요. 알림창에 ‘오늘 이동 기록 중’이 떠 있는 동안 기록하고, 앱을 열면 저절로 켜져요. 위치는 이 폰에만 30일 동안 저장돼요.'
+            : '이 브라우저는 위치를 알 수 없어요. 하루 동선 기록은 갤럭시 앱에서 켤 수 있어요.'}
       </p>
       {healthSupported() && (
         <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">

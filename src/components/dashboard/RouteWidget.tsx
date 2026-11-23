@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useDayRoute } from '../../hooks/useDayRoute'
 import { stepsLabel, useDaySteps } from '../../hooks/useDaySteps'
 import { clock, distanceLabel } from '../../lib/route'
-import { trackAvailable } from '../../platform/locationTrack'
+import { trackAvailable, webTrack } from '../../platform/locationTrack'
 import type { WidgetBox } from './WidgetGrid'
 
 const RouteMap = lazy(() => import('../route/RouteMap'))
@@ -57,7 +57,7 @@ export default function RouteWidget({ today, box }: { today: string; box: Widget
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 px-4 pb-4 text-center text-xs break-keep text-slate-500">
           <MapPin className="mb-1 size-6 text-slate-300" aria-hidden />
-          {trackAvailable() ? '눌러서 이동 기록을 켜면 오늘 다닌 길이 지도에 보여요' : '폰 앱에서 이동 기록을 켜면 그 폰에서 다닌 길이 보여요'}
+          {webTrack() ? '이 창이 열려 있는 동안 다닌 길이 지도에 보여요' : trackAvailable() ? '눌러서 이동 기록을 켜면 오늘 다닌 길이 지도에 보여요' : '폰 앱에서 이동 기록을 켜면 그 폰에서 다닌 길이 보여요'}
         </div>
       )}
     </Link>
