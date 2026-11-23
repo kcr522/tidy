@@ -21,6 +21,7 @@ import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
 import { todoRepo } from '../../repositories/todoRepo'
+import { transactionRepo } from '../../repositories/transactionRepo'
 import ColorModeButton from '../common/ColorModeButton'
 import AskAmountPrompt from '../transactions/AskAmountPrompt'
 import { useToast } from '../common/Toast'
@@ -47,6 +48,11 @@ export default function AppLayout() {
 
   // 안드로이드 앱: 홈 화면 위젯에서 누른 곳으로 (메모 위젯의 메모 하나, 새 메모)
   useEffect(() => listenForWidgetRoutes((path) => navigate(path)), [navigate])
+  // 예전에 결제 알림으로 들어간 가계부 이름도 출금처만 남기기 (열 때마다, 고칠 게 없으면 아무것도 안 함)
+  useEffect(() => {
+    const t = setTimeout(() => void transactionRepo.cleanAutoMemos().catch(() => undefined), 3000)
+    return () => clearTimeout(t)
+  }, [])
   // 안드로이드 앱: "가계부에 기록할까요?" 알림을 누르면 가계부의 결제 알림 확인 화면으로
   useEffect(
     () =>
