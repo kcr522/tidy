@@ -130,7 +130,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
       )}
       <div className="mb-5 flex gap-2">
         <Button className="flex-1" onClick={onDeposit}>
-          🐷 저축 넣기
+          <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축 넣기
         </Button>
         <Button variant="secondary" className="flex-1" onClick={onAdd}>
           + 적금 추가
@@ -154,7 +154,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
               <li key={p.id}>
                 <button type="button" onClick={() => onOpen(p.id!)} className="w-full rounded-2xl bg-slate-50 p-4 text-left hover:bg-slate-100">
                   <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-grad-soft text-xl">🐷</span>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-grad-soft text-saving"><PiggyBank className="size-5" aria-hidden /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-bold text-slate-800">{p.name}</span>
                       <span className="block truncate text-xs text-slate-400">
@@ -212,7 +212,7 @@ function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { p
         <ChevronLeft className="size-4" aria-hidden /> 적금 목록
       </button>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-grad-soft text-2xl">🐷</span>
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-grad-soft text-saving"><PiggyBank className="size-6" aria-hidden /></span>
         <div className="min-w-0">
           <p className="truncate text-lg font-extrabold">{plan.name}</p>
           <p className="text-sm text-slate-500">

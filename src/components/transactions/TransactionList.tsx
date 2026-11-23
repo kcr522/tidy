@@ -1,3 +1,4 @@
+import { PiggyBank } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Transaction } from '../../db/types'
 import { categoryEmoji, isSaving } from '../../lib/categories'
@@ -26,7 +27,7 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
             <span className="font-medium text-slate-400">
               {g.income > 0 && <span className="mr-2 text-income">+{formatWon(g.income)}</span>}
               {g.expense > 0 && <span>-{formatWon(g.expense)}</span>}
-              {g.saving > 0 && <span className="ml-2 text-saving">🐷 {formatWon(g.saving)}</span>}
+              {g.saving > 0 && <span className="ml-2 text-saving"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> {formatWon(g.saving)}</span>}
             </span>
           </header>
           <ul className="pb-2">
@@ -59,7 +60,7 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                     </span>
                   </span>
                   <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : saving ? 'text-saving' : 'text-slate-900'}`}>
-                    {t.type === 'INCOME' ? '+' : saving ? '🐷 ' : '-'}
+                    {t.type === 'INCOME' ? '+' : saving ? <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> : '-'}
                     {formatWon(t.amount)}
                   </span>
                 </button>

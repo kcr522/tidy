@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, PiggyBank } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import type { SavingsPlan, Transaction } from '../../db/types'
 import { isSaving, SAVING_CATEGORY } from '../../lib/categories'
@@ -55,7 +55,7 @@ export function SavingsLogList({ log, plans, onOpen }: { log: Transaction[]; pla
             <span className="font-bold text-slate-600">
               {g.ym.slice(0, 4)}년 {Number(g.ym.slice(5, 7))}월
             </span>
-            <span className="font-bold text-saving">🐷 {formatWon(g.total)}</span>
+            <span className="flex items-center gap-1 font-bold text-saving"><PiggyBank className="size-4" aria-hidden /> {formatWon(g.total)}</span>
           </header>
           <ul className="divide-y divide-slate-200/70">
             {g.items.map((t) => {
@@ -123,7 +123,7 @@ export function DepositForm({ plans, today, onDone, onCancel }: { plans: Savings
         ...(account ? { account } : {}),
         ...(plan?.id != null ? { savingsId: plan.id } : {}),
       })
-      toast(`🐷 ${formatWon(a.value)} 저축했어요`)
+      toast(`${formatWon(a.value)} 저축했어요`)
       onDone()
     } catch {
       toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
@@ -149,7 +149,7 @@ export function DepositForm({ plans, today, onDone, onCancel }: { plans: Savings
                 aria-pressed={on}
                 className={`tap rounded-full px-3.5 py-2 text-sm font-semibold ${on ? 'bg-saving text-white' : 'bg-slate-100 text-slate-600'}`}
               >
-                🐷 {p ? p.name : '자유 저축 (적금 아님)'}
+                <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> {p ? p.name : '자유 저축 (적금 아님)'}
               </button>
             )
           })}
@@ -178,9 +178,9 @@ export function DepositForm({ plans, today, onDone, onCancel }: { plans: Savings
         </Field>
       )}
       <PayMethodPicker value={account} onChange={setAccount} label="어느 계좌에서 (선택)" />
-      <p className="text-xs text-slate-400 break-keep">저축은 지출 합계에 넣지 않고 가계부 🐷 저축 칸에 따로 모여요.</p>
+      <p className="text-xs text-slate-400 break-keep">저축은 지출 합계에 넣지 않고 저금통 안에 따로 모여요.</p>
       <Button type="submit" className="w-full">
-        🐷 저축 넣기
+        <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축 넣기
       </Button>
     </form>
   )

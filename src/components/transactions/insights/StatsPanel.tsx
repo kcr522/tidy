@@ -119,7 +119,7 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
               ))}
               {saving > 0 && (
                 <li>
-                  <ShareRow color={SAVING_COLOR} label="🐷 저축 (지출 아님)" amount={saving} percent={percentOf(saving, income > 0 ? income : expense + saving)} />
+                  <ShareRow color={SAVING_COLOR} label="저축 (지출 아님)" amount={saving} percent={percentOf(saving, income > 0 ? income : expense + saving)} />
                 </li>
               )}
               {income > 0 && remain > 0 && (

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, PiggyBank, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { PayMethod } from '../../db/types'
 import { formatWon } from '../../lib/format'
@@ -146,14 +146,14 @@ function MethodRow({ method: m, total, savings, first, last, onEdit, onMove, onR
           {total ? (
             <>
               이번 달 {total.expense > 0 && <b className="font-bold text-slate-700">-{formatWon(total.expense)}</b>}
-              {total.saving > 0 && <b className="ml-1 font-bold text-saving">🐷{formatWon(total.saving)}</b>}
+              {total.saving > 0 && <b className="ml-1 font-bold text-saving"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden />{formatWon(total.saving)}</b>}
               {total.income > 0 && <b className="ml-1 font-bold text-income">+{formatWon(total.income)}</b>} · {total.count}건
             </>
           ) : (
             '이번 달 기록 없음'
           )}
         </span>
-        {savings.length > 0 && <span className="block text-xs font-semibold text-brand-600 break-keep">🐷 {savings.join(', ')} 납입이 여기서 나가요</span>}
+        {savings.length > 0 && <span className="block text-xs font-semibold text-brand-600 break-keep"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> {savings.join(', ')} 납입이 여기서 나가요</span>}
       </span>
       <span className="flex shrink-0 items-center">
         <button type="button" className={iconBtn} disabled={first} onClick={() => onMove(-1)} aria-label={`${m.name} 위로`}>

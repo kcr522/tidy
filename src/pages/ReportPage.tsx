@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addMonths, format } from 'date-fns'
-import { BookHeart, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Flame, Wallet } from 'lucide-react'
+import { BookHeart, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Flame, PiggyBank, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import BudgetBar from '../components/budget/BudgetBar'
@@ -72,7 +72,7 @@ export default function ReportPage() {
             </div>
             {r.money.saving > 0 && (
               <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                🐷 저축으로 <b className="text-saving">{formatWon(r.money.saving)}</b> 모았어요 (쓴 돈에는 넣지 않았어요)
+                <PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축으로 <b className="text-saving">{formatWon(r.money.saving)}</b> 모았어요 (쓴 돈에는 넣지 않았어요)
               </p>
             )}
             {r.money.diffPct !== null && (
