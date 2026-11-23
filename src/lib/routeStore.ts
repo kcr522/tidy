@@ -32,6 +32,10 @@ export const routeStore = {
   listByDate(date: string): Promise<StoredPoint[]> {
     return getDb().points.where('date').equals(date).sortBy('t')
   },
+  /** 가장 최근에 남은 위치 (기록이 없는 날 지도를 어디에 둘지) */
+  latest(): Promise<StoredPoint | undefined> {
+    return getDb().points.orderBy('t').last()
+  },
   /** 기록이 있는 날들 (최근 순) */
   async dates(): Promise<string[]> {
     const keys = (await getDb().points.orderBy('date').uniqueKeys()) as string[]

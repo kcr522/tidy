@@ -1,7 +1,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
-import { MAX_ZOOM } from '../../lib/mapTile'
+import { MAX_ZOOM, OSM_TILE } from '../../lib/mapTile'
 import type { RoutePoint, RouteStop } from '../../lib/route'
 import { isNativeApp } from '../../platform/native'
 
@@ -16,12 +16,15 @@ interface Props {
   interactive?: boolean
   /** 고른 머문 곳 (번호) */
   focus?: number | null
+  /** 점이 하나도 없을 때 보여 줄 곳 (마지막으로 있던 곳). 없으면 서울시청 */
+  center?: { lat: number; lng: number } | null
   className?: string
 }
 
-// 지도 그림은 Tidy 서버가 OpenStreetMap 에서 받아 캐시해 둔 것 (src/lib/mapTile.ts, api/tile.ts). 폰 앱은 Tidy 사이트 주소로
+// 지도 그림: 이 기기에서 OpenStreetMap 에 바로 묻는다. 안 되면(막히거나 오류) Tidy 서버(api/tile.ts)가 대신 받아 온 그림으로 바꾼다.
+// (2026-11-23: Tidy 서버만 쓰니 서버 쪽에서 OSM 을 못 받아 지도가 비어 보였다)
 const SITE = (import.meta.env.VITE_TIDY_SERVER as string | undefined) || 'https://tidy-gules.vercel.app'
-const TILE = `${isNativeApp() ? SITE : ''}/api/tile?z={z}&x={x}&y={y}`
+const TILE_SOURCES = [OSM_TILE, `${isNativeApp() ? SITE : ''}/api/tile?z={z}&x={x}&y={y}`]
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const LINE = '#7c5cff'
 
@@ -34,7 +37,7 @@ function stopIcon(n: number, active: boolean) {
   })
 }
 
-export default function RouteMap({ points, stops, interactive = true, focus = null, className = '' }: Props) {
+export default function RouteMap({ points, stops, interactive = true, focus = null, center = null, className = '' }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const layer = useRef<L.LayerGroup | null>(null)
@@ -55,7 +58,21 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
       zoom: 12,
     })
     m.attributionControl.setPrefix(false)
-    L.tileLayer(TILE, { attribution: ATTRIBUTION, maxZoom: MAX_ZOOM }).addTo(m)
+    const tiles = L.tileLayer(TILE_SOURCES[0], { attribution: ATTRIBUTION, maxZoom: MAX_ZOOM }).addTo(m)
+    // 그림이 한 장도 안 오고 오류만 나면 다음 곳에서 받는다
+    let source = 0
+    let loaded = false
+    let errors = 0
+    tiles.on('tileload', () => {
+      loaded = true
+    })
+    tiles.on('tileerror', () => {
+      errors++
+      if (loaded || errors < 2 || source >= TILE_SOURCES.length - 1) return
+      source++
+      errors = 0
+      tiles.setUrl(TILE_SOURCES[source])
+    })
     layer.current = L.layerGroup().addTo(m)
     map.current = m
     // 위젯 크기가 바뀌면 (편집 중 크기 바꾸기) 지도도 맞춘다
@@ -74,7 +91,10 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
     const g = layer.current
     if (!m || !g) return
     g.clearLayers()
-    if (points.length === 0) return
+    if (points.length === 0) {
+      if (center) m.setView([center.lat, center.lng], 15, { animate: false })
+      return
+    }
     const latlngs = points.map((p) => L.latLng(p.lat, p.lng))
     L.polyline(latlngs, { color: '#fff', weight: 7, opacity: 0.9, lineJoin: 'round' }).addTo(g)
     L.polyline(latlngs, { color: LINE, weight: 4, opacity: 0.95, lineJoin: 'round' }).addTo(g)
@@ -86,7 +106,7 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
     stops.forEach((s) => bounds.extend([s.lat, s.lng]))
     if (focus != null && stops[focus]) m.setView([stops[focus].lat, stops[focus].lng], 16, { animate: interactive })
     else m.fitBounds(bounds, { padding: interactive ? [32, 32] : [18, 18], maxZoom: 16, animate: false })
-  }, [points, stops, focus, interactive])
+  }, [points, stops, focus, interactive, center])
 
   // 지도 그림이 오기 전(느린 인터넷 · 오프라인)에도 밝은 바탕
   return <div ref={el} style={{ background: '#eef1f5' }} className={`isolate z-0 overflow-hidden ${interactive ? '' : 'pointer-events-none'} ${className}`} />
