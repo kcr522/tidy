@@ -1,7 +1,8 @@
-import { MapPin, Route } from 'lucide-react'
+import { Footprints, MapPin, Route } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import { useDayRoute } from '../../hooks/useDayRoute'
+import { stepsLabel, useDaySteps } from '../../hooks/useDaySteps'
 import { clock, distanceLabel } from '../../lib/route'
 import { trackAvailable } from '../../platform/locationTrack'
 import type { WidgetBox } from './WidgetGrid'
@@ -11,6 +12,7 @@ const RouteMap = lazy(() => import('../route/RouteMap'))
 /** 대시보드 "이동 기록" 위젯: 오늘 다닌 길을 작은 지도로. 누르면 크게 보는 화면 */
 export default function RouteWidget({ today, box }: { today: string; box: WidgetBox }) {
   const day = useDayRoute(today)
+  const steps = useDaySteps(today)
   const s = day?.summary
   const has = (day?.points.length ?? 0) > 0
   const tall = box.py >= 230
@@ -20,7 +22,14 @@ export default function RouteWidget({ today, box }: { today: string; box: Widget
       <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-2 text-[15px] font-bold text-slate-800">
         <Route className="size-4 text-brand-600" aria-hidden />
         <span className="min-w-0 flex-1 truncate">이동 기록</span>
-        {has && s && <span className="shrink-0 text-xs font-semibold text-slate-500">{distanceLabel(s.km)}</span>}
+        {steps ? (
+          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-500">
+            <Footprints className="size-3.5 text-emerald-500" aria-hidden />
+            {stepsLabel(steps.steps)}걸음
+          </span>
+        ) : (
+          has && s && <span className="shrink-0 text-xs font-semibold text-slate-500">{distanceLabel(s.km)}</span>
+        )}
       </div>
       {has && day ? (
         <>
@@ -35,6 +44,8 @@ export default function RouteWidget({ today, box }: { today: string; box: Widget
                 <MapPin className="size-3.5" aria-hidden />
                 머문 곳 {s.stops.length}
               </span>
+              {steps && has && <span>{distanceLabel(s.km)}</span>}
+              {steps?.km != null && <span>걸은 거리 {distanceLabel(steps.km)}</span>}
               {s.first && s.last && (
                 <span>
                   {clock(s.first)} ~ {clock(s.last)}

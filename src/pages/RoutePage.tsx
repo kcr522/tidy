@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Crosshair, MapPin, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crosshair, Footprints, MapPin, Trash2 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -7,12 +7,14 @@ import PageHeader from '../components/common/PageHeader'
 import Switch from '../components/common/Switch'
 import { useToast } from '../components/common/Toast'
 import { useDayRoute } from '../hooks/useDayRoute'
+import { stepsLabel, useDaySteps } from '../hooks/useDaySteps'
 import { pullRoutePoints, useTrackSwitch } from '../hooks/useRouteTracking'
 import { useToday } from '../hooks/useToday'
 import { parseDateKey, toDateKey } from '../lib/date'
 import { formatDateLabel } from '../lib/format'
 import { clock, distanceLabel, durationLabel, KEEP_DAYS } from '../lib/route'
 import { routeStore } from '../lib/routeStore'
+import { connectHealth, healthConnected, healthSupported } from '../platform/health'
 import { currentPoint } from '../platform/locationTrack'
 
 const RouteMap = lazy(() => import('../components/route/RouteMap'))
@@ -37,6 +39,7 @@ export default function RoutePage() {
     setConfirmClear(false)
   }
   const day = useDayRoute(date)
+  const steps = useDaySteps(date)
   const latest = useLiveQuery(() => routeStore.latest().then((p) => (p ? { lat: p.lat, lng: p.lng } : null)), [])
   const track = useTrackSwitch()
   const toast = useToast()
@@ -64,6 +67,13 @@ export default function RoutePage() {
     } finally {
       setLocating(false)
     }
+  }
+
+  async function linkHealth() {
+    const r = await connectHealth().catch(() => 'unavailable' as const)
+    if (r === 'ok') toast('워치 걸음 수를 연결했어요')
+    else if (r === 'denied') toast('걸음 수 읽기를 허락해야 볼 수 있어요', 'error')
+    else toast('헬스 커넥트를 쓸 수 없어요. Play 스토어에서 헬스 커넥트를 설치해 주세요', 'error')
   }
 
   async function toggle() {
@@ -112,6 +122,28 @@ export default function RoutePage() {
               <Num label="움직인 거리" value={distanceLabel(s.km)} />
               <Num label="머문 곳" value={`${s.stops.length}곳`} />
               <Num label="기록 시간" value={s.first && s.last ? `${clock(s.first)}~${clock(s.last)}` : '-'} />
+            </div>
+          )}
+          {/* 워치 걸음 수 · 걸은 거리 (헬스 커넥트, 폰 앱만) */}
+          {healthSupported() && (
+            <div className="flex items-center gap-3 border-t border-slate-100 px-4 py-3">
+              <Footprints className="size-5 shrink-0 text-emerald-500" aria-hidden />
+              {steps ? (
+                <p className="min-w-0 flex-1 text-[15px] font-extrabold tabular-nums">
+                  {stepsLabel(steps.steps)}걸음
+                  {steps.km != null && <span className="ml-1.5 font-bold text-slate-500">· {distanceLabel(steps.km)} 걸음</span>}
+                  <span className="block text-[11px] font-normal text-slate-400">워치 · 삼성 헬스 (헬스 커넥트)</span>
+                </p>
+              ) : healthConnected() ? (
+                <p className="min-w-0 flex-1 text-sm text-slate-500">걸음 수를 아직 못 읽었어요. 삼성 헬스에서 헬스 커넥트 연결을 켜 주세요</p>
+              ) : (
+                <>
+                  <p className="min-w-0 flex-1 text-sm break-keep text-slate-600">워치 걸음 수 · 걸은 거리도 같이 볼까요?</p>
+                  <Button variant="secondary" onClick={linkHealth} className="min-h-9 shrink-0 px-3 text-sm">
+                    연결
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </section>
