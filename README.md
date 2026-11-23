@@ -354,7 +354,7 @@
 | 구분 | 사용 기술 |
 |---|---|
 | 언어 · 화면 | TypeScript · React 19 · Vite 8 · Tailwind CSS 4 |
-| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 직접 그린 SVG 차트 (차트 라이브러리 없음) · 지도는 Leaflet + CARTO 무료 지도(OpenStreetMap) |
+| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 직접 그린 SVG 차트 (차트 라이브러리 없음) · 지도는 Leaflet + OpenStreetMap (Tidy 서버가 받아 캐시) |
 | 저장 | IndexedDB (Dexie.js 4), 백업은 JSON |
 | 로그인 · 동기화 | Firebase Authentication (Google) · Cloud Firestore (Spark 무료 요금제) |
 | 서버 | Vercel 서버 함수 (Hobby 무료 요금제) |

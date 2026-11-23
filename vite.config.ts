@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
 import { adminEnvFrom, handleAdmin } from './src/lib/admin/adminServer.ts'
 import { handleAiProxy, proxyEnvFrom } from './src/lib/ai/proxyServer.ts'
+import { osmTileUrl, parseTile, TILE_USER_AGENT } from './src/lib/mapTile.ts'
 import { fetchIcal, IcalProxyError } from './src/lib/icalProxy.ts'
 import { captureSite, readPageContent } from './src/lib/scrap/pageContent.ts'
 import { buildPreview, PreviewError } from './src/lib/scrap/previewServer.ts'
@@ -75,6 +76,24 @@ function devPreviewApi(): Plugin {
           res.statusCode = err instanceof IcalProxyError ? err.status : 502
           res.setHeader('content-type', 'application/json; charset=utf-8')
           res.end(JSON.stringify({ error: err instanceof Error ? err.message : '가져오지 못했어요' }))
+        }
+      })
+      // 이동 기록 지도 그림 (배포 때는 api/tile.ts)
+      server.middlewares.use('/api/tile', async (req, res) => {
+        const q = new URL(req.url ?? '', 'http://localhost').searchParams
+        const t = parseTile(q.get('z'), q.get('x'), q.get('y'))
+        if (!t) {
+          res.statusCode = 400
+          return res.end('bad tile')
+        }
+        try {
+          const r = await fetch(osmTileUrl(t), { headers: { 'user-agent': TILE_USER_AGENT } })
+          res.statusCode = r.ok ? 200 : 502
+          res.setHeader('content-type', r.headers.get('content-type') ?? 'image/png')
+          res.end(Buffer.from(await r.arrayBuffer()))
+        } catch {
+          res.statusCode = 502
+          res.end('tile error')
         }
       })
     },
