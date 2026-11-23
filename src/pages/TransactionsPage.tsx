@@ -222,104 +222,10 @@ export default function TransactionsPage() {
     setEditor(null)
   }
 
-  return (
+  // 예산 · 필터: 목록에서는 위에, 달력에서는 달력 아래에 둔다 (달력이 바로 보이게)
+  const budgetAndFilters = (
     <>
-      <PageHeader
-        title="가계부"
-        action={
-          <div className="flex gap-1 sm:gap-2">
-            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setShowMenu('menu')} aria-label="예산, 차트, 통계, 고정 금액 메뉴" title="메뉴">
-              <Menu className="size-5" aria-hidden />
-            </Button>
-            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
-              <Camera className="size-5" aria-hidden />
-            </Button>
-            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
-              <PiggyBank className="size-[18px]" aria-hidden />
-              <span className="hidden sm:inline">적금</span>
-            </Button>
-            <Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
-              + <span className="hidden sm:inline">내역 </span>추가
-            </Button>
-          </div>
-        }
-      />
-
-      {pay.candidates.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowPay(true)}
-          className="mb-4 flex w-full items-center gap-3 rounded-3xl bg-brand-50 p-4 text-left ring-1 ring-brand-100 transition active:scale-[0.99]"
-        >
-          <span className="bg-grad on-grad flex size-10 shrink-0 items-center justify-center rounded-2xl">
-            <BellRing className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold text-slate-800">결제 알림 {pay.candidates.length}건이 와 있어요</span>
-            <span className="block truncate text-xs text-slate-500">
-              {pay.candidates
-                .slice(0, 2)
-                .map((c) => `${c.guess.merchant} ${formatWon(c.guess.amount)}`)
-                .join(' · ')}
-              {pay.candidates.length > 2 && ' …'} · 확인하고 기록하기
-            </span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-slate-400" aria-hidden />
-        </button>
-      )}
-      {pay.available && pay.granted === false && !promoHidden && (
-        <div className="mb-4 flex items-center gap-2 rounded-3xl bg-white p-3 pl-4 shadow-card">
-          <BellRing className="size-5 shrink-0 text-brand-500" aria-hidden />
-          <button type="button" onClick={() => setShowPayGuide(true)} className="min-w-0 flex-1 text-left text-sm">
-            <span className="font-semibold text-slate-800">카드 결제 알림으로 자동 기록</span>
-            <span className="block text-xs text-slate-500">한 번 켜 두면 결제할 때마다 기록할지 물어봐요 · 켜는 방법</span>
-          </button>
-          <button type="button" onClick={closePromo} className="tap rounded-full p-2 text-slate-400 hover:bg-slate-100" aria-label="안내 닫기">
-            <X className="size-4" aria-hidden />
-          </button>
-        </div>
-      )}
-
-      <MonthSummary
-        year={ym.year}
-        month={ym.month}
-        summary={summary}
-        onPrev={() => moveMonth(-1)}
-        onNext={() => moveMonth(1)}
-        onToday={
-          isThisMonth
-            ? undefined
-            : () => {
-                setYm(thisMonth)
-                setSelected(today)
-              }
-        }
-      />
-
       <BudgetStrip year={ym.year} month={ym.month} today={today} onOpen={() => setShowMenu('budget')} />
-
-      <div className="mb-4 flex justify-end">
-        <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
-          {(
-            [
-              ['list', '목록', List],
-              ['calendar', '달력', CalendarDays],
-            ] as const
-          ).map(([key, label, Icon]) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={view === key}
-              onClick={() => setView(key)}
-              className={`flex min-h-10 items-center gap-1 rounded-xl px-3 text-sm font-semibold ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
-            >
-              <Icon className="size-[18px]" aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {items !== undefined && items.length > 0 && (
         <div className="mb-4 space-y-2.5">
@@ -378,6 +284,107 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
+    </>
+  )
+
+  return (
+    <>
+      <PageHeader
+        title="가계부"
+        action={
+          <div className="flex gap-1 sm:gap-2">
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setShowMenu('menu')} aria-label="예산, 차트, 통계, 고정 금액 메뉴" title="메뉴">
+              <Menu className="size-5" aria-hidden />
+            </Button>
+            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
+              <Camera className="size-5" aria-hidden />
+            </Button>
+            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+              <PiggyBank className="size-[18px]" aria-hidden />
+              <span className="hidden sm:inline">적금</span>
+            </Button>
+            <Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
+              + <span className="hidden sm:inline">내역 </span>추가
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="-mt-2 mb-4 flex justify-end">
+        <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1" role="radiogroup" aria-label="보기 방식">
+          {(
+            [
+              ['list', '목록', List],
+              ['calendar', '달력', CalendarDays],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              onClick={() => setView(key)}
+              className={`flex min-h-10 items-center gap-1 rounded-xl px-3 text-sm font-semibold ${view === key ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
+            >
+              <Icon className="size-[18px]" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pay.candidates.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPay(true)}
+          className="mb-4 flex w-full items-center gap-3 rounded-3xl bg-brand-50 p-4 text-left ring-1 ring-brand-100 transition active:scale-[0.99]"
+        >
+          <span className="bg-grad on-grad flex size-10 shrink-0 items-center justify-center rounded-2xl">
+            <BellRing className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-slate-800">결제 알림 {pay.candidates.length}건이 와 있어요</span>
+            <span className="block truncate text-xs text-slate-500">
+              {pay.candidates
+                .slice(0, 2)
+                .map((c) => `${c.guess.merchant} ${formatWon(c.guess.amount)}`)
+                .join(' · ')}
+              {pay.candidates.length > 2 && ' …'} · 확인하고 기록하기
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-slate-400" aria-hidden />
+        </button>
+      )}
+      {pay.available && pay.granted === false && !promoHidden && (
+        <div className="mb-4 flex items-center gap-2 rounded-3xl bg-white p-3 pl-4 shadow-card">
+          <BellRing className="size-5 shrink-0 text-brand-500" aria-hidden />
+          <button type="button" onClick={() => setShowPayGuide(true)} className="min-w-0 flex-1 text-left text-sm">
+            <span className="font-semibold text-slate-800">카드 결제 알림으로 자동 기록</span>
+            <span className="block text-xs text-slate-500">한 번 켜 두면 결제할 때마다 기록할지 물어봐요 · 켜는 방법</span>
+          </button>
+          <button type="button" onClick={closePromo} className="tap rounded-full p-2 text-slate-400 hover:bg-slate-100" aria-label="안내 닫기">
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
+
+      <MonthSummary
+        year={ym.year}
+        month={ym.month}
+        summary={summary}
+        onPrev={() => moveMonth(-1)}
+        onNext={() => moveMonth(1)}
+        onToday={
+          isThisMonth
+            ? undefined
+            : () => {
+                setYm(thisMonth)
+                setSelected(today)
+              }
+        }
+      />
+
+      {view === 'list' && budgetAndFilters}
 
       {view === 'calendar' && items !== undefined && (
         <>
@@ -411,6 +418,8 @@ export default function TransactionsPage() {
           )}
         </>
       )}
+
+      {view === 'calendar' && budgetAndFilters}
 
       {view === 'calendar' || items === undefined || filtered === undefined ? null : items.length === 0 ? (
         <EmptyState
