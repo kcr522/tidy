@@ -11,7 +11,7 @@ interface MonthSummaryProps {
   onToday?: () => void
 }
 
-/** 월 이동 + 총 수입/지출/잔액 (FR-015, FR-016) */
+/** 월 이동 + 총 수입/지출/저축/잔액 (FR-015, FR-016). 저축은 지출에 넣지 않고 따로 (사용자 요청 2026-11-23) */
 export default function MonthSummary({ year, month, summary, onPrev, onNext, onToday }: MonthSummaryProps) {
   return (
     <section className="mb-5 card p-5">
@@ -29,9 +29,10 @@ export default function MonthSummary({ year, month, summary, onPrev, onNext, onT
           </button>
         )}
       </div>
-      <dl className="grid grid-cols-3 gap-2 text-center">
+      <dl className="grid grid-cols-4 gap-1.5 text-center sm:gap-2">
         <Item label="수입" value={formatWon(summary.income)} className="text-income" />
         <Item label="지출" value={formatWon(summary.expense)} className="text-expense" />
+        <Item label="🐷 저축" value={formatWon(summary.saving)} className="text-saving" />
         <Item
           label="잔액"
           value={`${summary.balance < 0 ? '-' : ''}${formatWon(Math.abs(summary.balance))}`}
@@ -54,7 +55,8 @@ function Item({ label, value, className }: { label: string; value: string; class
 
 /** 글자 수에 맞춘 글씨 크기: 1,533,263원(10자)까지는 그대로, 더 길면 작게 */
 export function amountSize(value: string): string {
-  if (value.length <= 10) return 'text-sm sm:text-base'
-  if (value.length <= 12) return 'text-[12px] sm:text-base'
-  return 'text-[11px] sm:text-sm'
+  if (value.length <= 8) return 'text-sm sm:text-base'
+  if (value.length <= 10) return 'text-[12px] sm:text-base'
+  if (value.length <= 12) return 'text-[11px] sm:text-base'
+  return 'text-[10px] sm:text-sm'
 }

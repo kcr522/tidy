@@ -28,7 +28,7 @@ describe('결제 수단과 시간 (2차)', () => {
     ]
     const totals = accountTotals(list)
     expect(totals.map((t) => t.account)).toEqual(['신한카드', '토스', '토스뱅크', NO_ACCOUNT])
-    expect(totals[1]).toEqual({ account: '토스', expense: 7000, income: 0, count: 2 })
+    expect(totals[1]).toEqual({ account: '토스', expense: 7000, saving: 0, income: 0, count: 2 })
     expect(filterByAccount(list, NO_ACCOUNT)).toHaveLength(1)
     expect(filterByAccount(list, null)).toHaveLength(5)
   })

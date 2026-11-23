@@ -361,7 +361,7 @@ export default function TransactionsPage() {
                       <>
                         {methodEmoji(a.account, methods ?? [])} {a.account}
                         {methods?.find((m) => m.name === a.account)?.last4 && <span className="ml-1 opacity-70">··{methods.find((m) => m.name === a.account)!.last4}</span>}
-                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
+                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : a.saving > 0 ? `🐷${formatWon(a.saving)}` : `+${formatWon(a.income)}`}</span>
                       </>
                     )}
                   </Chip>

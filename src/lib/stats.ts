@@ -1,6 +1,6 @@
 import { addDays, addMonths, addWeeks, addYears, startOfWeek } from 'date-fns'
 import type { Transaction, TransactionType } from '../db/types'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from './categories'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, isSaving } from './categories'
 import { parseDateKey, toDateKey } from './date'
 
 /** 차트·통계에서 묶는 단위 */
@@ -55,17 +55,20 @@ export function inPeriod(t: Transaction, p: Period): boolean {
 export interface PeriodTotal {
   period: Period
   income: number
+  /** 쓴 돈 (저축은 빼고) */
   expense: number
+  saving: number
 }
 
 /** 마지막 기간(today가 든 기간)부터 거슬러 count칸의 수입·지출 합계, 오래된 순 */
 export function totalsByPeriod(list: Transaction[], last: Period, count: number): PeriodTotal[] {
   const rows: PeriodTotal[] = []
-  for (let i = count - 1; i >= 0; i--) rows.push({ period: shiftPeriod(last, -i), income: 0, expense: 0 })
+  for (let i = count - 1; i >= 0; i--) rows.push({ period: shiftPeriod(last, -i), income: 0, expense: 0, saving: 0 })
   for (const t of list) {
     const row = rows.find((r) => inPeriod(t, r.period))
     if (!row) continue
     if (t.type === 'INCOME') row.income += t.amount
+    else if (isSaving(t)) row.saving += t.amount
     else row.expense += t.amount
   }
   return rows
@@ -79,12 +82,12 @@ export interface CategoryShare {
   percent: number
 }
 
-/** 카테고리별 합계, 많은 순. '기타'는 맨 뒤 */
+/** 카테고리별 합계, 많은 순. '기타'는 맨 뒤. 지출에는 저축을 넣지 않는다 */
 export function categoryShares(list: Transaction[], type: TransactionType): CategoryShare[] {
   const map = new Map<string, CategoryShare>()
   let total = 0
   for (const t of list) {
-    if (t.type !== type) continue
+    if (t.type !== type || (type === 'EXPENSE' && isSaving(t))) continue
     total += t.amount
     const row = map.get(t.category) ?? { category: t.category, amount: 0, count: 0, percent: 0 }
     row.amount += t.amount

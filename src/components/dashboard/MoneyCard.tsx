@@ -49,12 +49,18 @@ export default function MoneyCard({
           <p className="mt-0.5 text-[28px] leading-tight font-extrabold tracking-tight">
             {formatWon(summary.expense)}
           </p>
-          <dl className="mt-4 grid grid-cols-2 gap-2">
+          <dl
+            className={`mt-4 grid gap-2 ${summary.saving > 0 ? "grid-cols-3" : "grid-cols-2"}`}
+          >
             <Stat label="수입" value={formatWon(summary.income)} />
             <Stat
               label="오늘 지출"
               value={formatWon(todayExpense(items, today))}
             />
+            {/* 저축은 쓴 돈에 넣지 않고 따로 보여 준다 (사용자 요청 2026-11-23) */}
+            {summary.saving > 0 && (
+              <Stat label="🐷 저축" value={formatWon(summary.saving)} />
+            )}
           </dl>
           {budget ? (
             <div className="mt-4">

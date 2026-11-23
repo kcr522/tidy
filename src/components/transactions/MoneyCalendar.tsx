@@ -14,7 +14,7 @@ interface Props {
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
-/** 월간 가계부 달력: 날마다 수입(파랑)과 지출(빨강) */
+/** 월간 가계부 달력: 날마다 수입(파랑), 지출(빨강), 저축(초록) */
 export default function MoneyCalendar({ month, today, selected, items, onSelect, onAdd }: Props) {
   const days = useMemo(() => monthGrid(month), [month])
   const totals = useMemo(() => dailyTotals(items), [items])
@@ -37,12 +37,12 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
           return (
             <button
               key={d}
-              title={t ? `${t.income ? `수입 ${t.income.toLocaleString('ko-KR')}원 ` : ''}${t.expense ? `지출 ${t.expense.toLocaleString('ko-KR')}원` : ''}`.trim() : undefined}
+              title={t ? `${t.income ? `수입 ${t.income.toLocaleString('ko-KR')}원 ` : ''}${t.expense ? `지출 ${t.expense.toLocaleString('ko-KR')}원 ` : ''}${t.saving ? `저축 ${t.saving.toLocaleString('ko-KR')}원` : ''}`.trim() : undefined}
               type="button"
               role="gridcell"
               aria-selected={isSel}
               disabled={!inMonth}
-              aria-label={`${dayTitle(d)}${t?.income ? `, 수입 ${t.income}원` : ''}${t?.expense ? `, 지출 ${t.expense}원` : ''}`}
+              aria-label={`${dayTitle(d)}${t?.income ? `, 수입 ${t.income}원` : ''}${t?.expense ? `, 지출 ${t.expense}원` : ''}${t?.saving ? `, 저축 ${t.saving}원` : ''}`}
               onClick={() => onSelect(d)}
               onDoubleClick={() => onAdd(d)}
               className={`flex h-[68px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl px-0.5 pt-1 sm:px-1 text-right sm:h-20 ${
@@ -60,6 +60,7 @@ export default function MoneyCalendar({ month, today, selected, items, onSelect,
               <span className="mt-auto mb-1 flex min-w-0 flex-col text-[10px] leading-tight font-semibold tracking-tighter tabular-nums whitespace-nowrap sm:text-xs">
                 {t?.income ? <span className="overflow-hidden text-income">+{cellWon(t.income)}</span> : null}
                 {t?.expense ? <span className="overflow-hidden text-expense">-{cellWon(t.expense)}</span> : null}
+                {t?.saving ? <span className="overflow-hidden text-saving">🐷{cellWon(t.saving)}</span> : null}
               </span>
             </button>
           )

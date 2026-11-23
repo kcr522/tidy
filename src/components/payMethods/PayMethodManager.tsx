@@ -146,6 +146,7 @@ function MethodRow({ method: m, total, savings, first, last, onEdit, onMove, onR
           {total ? (
             <>
               이번 달 {total.expense > 0 && <b className="font-bold text-slate-700">-{formatWon(total.expense)}</b>}
+              {total.saving > 0 && <b className="ml-1 font-bold text-saving">🐷{formatWon(total.saving)}</b>}
               {total.income > 0 && <b className="ml-1 font-bold text-income">+{formatWon(total.income)}</b>} · {total.count}건
             </>
           ) : (

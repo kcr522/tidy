@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { budgetStatus } from '../../lib/budget'
-import { EXPENSE_CATEGORIES } from '../../lib/categories'
+import { EXPENSE_CATEGORIES, SAVING_CATEGORY } from '../../lib/categories'
 import { formatNumber, formatWon } from '../../lib/format'
 import { budgetRepo, TOTAL } from '../../repositories/budgetRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
@@ -46,7 +46,8 @@ export default function BudgetPanel({ today }: { today: string }) {
           식비, 쇼핑처럼 따로 정하고 싶은 것만 적어요.{catTotal > 0 && ` 지금 합계 ${formatWon(catTotal)}`}
         </p>
         <ul className="space-y-3">
-          {EXPENSE_CATEGORIES.map((c) => {
+          {/* 저축은 쓴 돈이 아니라서 예산에서 뺀다 */}
+          {EXPENSE_CATEGORIES.filter((c) => c !== SAVING_CATEGORY).map((c) => {
             const l = status.categories.find((x) => x.category === c)
             return (
               <li key={c} className="rounded-2xl border border-slate-100 p-3">

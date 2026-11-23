@@ -1,5 +1,6 @@
 import { addMonths, format, getDaysInMonth } from 'date-fns'
 import type { Bookmark, Budget, Diary, Habit, HabitCheck, Todo, Transaction } from '../db/types'
+import { isSaving, isSpending } from './categories'
 import { budgetStatus, type BudgetLine } from './budget'
 import { parseDateKey } from './date'
 
@@ -25,7 +26,10 @@ export interface MonthlyReport {
   ongoing: boolean
   money: {
     income: number
+    /** 쓴 돈 (저축은 빼고) */
     expense: number
+    /** 저축으로 모은 돈 */
+    saving: number
     prevExpense: number
     /** 지난달보다 몇 % 더(+) / 덜(-) 썼나. 지난달 기록이 없으면 null */
     diffPct: number | null
@@ -60,10 +64,11 @@ export function buildReport(i: ReportInput): MonthlyReport {
 
   // 돈
   const tx = i.transactions.filter((t) => inMonth(t.date))
-  const out = tx.filter((t) => t.type === 'EXPENSE')
+  const out = tx.filter(isSpending)
+  const saving = tx.reduce((s, t) => (isSaving(t) ? s + t.amount : s), 0)
   const income = tx.reduce((s, t) => (t.type === 'INCOME' ? s + t.amount : s), 0)
   const expense = out.reduce((s, t) => s + t.amount, 0)
-  const prevExpense = i.transactions.reduce((s, t) => (t.type === 'EXPENSE' && t.date.startsWith(prev) ? s + t.amount : s), 0)
+  const prevExpense = i.transactions.reduce((s, t) => (isSpending(t) && t.date.startsWith(prev) ? s + t.amount : s), 0)
   const byCat = new Map<string, number>()
   for (const t of out) byCat.set(t.category, (byCat.get(t.category) ?? 0) + t.amount)
   const top = [...byCat.entries()]
@@ -102,7 +107,7 @@ export function buildReport(i: ReportInput): MonthlyReport {
     ym,
     monthLabel: `${Number(ym.slice(5, 7))}월`,
     ongoing,
-    money: { income, expense, prevExpense, diffPct, top, biggest: big ? { memo: big.memo, category: big.category, amount: big.amount, date: big.date } : null, noSpendDays: lastDay - [...spentDays].filter((d) => Number(d.slice(8, 10)) <= lastDay).length, budget },
+    money: { income, expense, saving, prevExpense, diffPct, top, biggest: big ? { memo: big.memo, category: big.category, amount: big.amount, date: big.date } : null, noSpendDays: lastDay - [...spentDays].filter((d) => Number(d.slice(8, 10)) <= lastDay).length, budget },
     todos: { done, due: dueList.length, dueDone, rate: dueList.length ? pct(dueDone, dueList.length) : null },
     habits,
     diary,
@@ -123,6 +128,6 @@ export function headlineOf(r: MonthlyReport): string {
   if (r.todos.rate !== null && r.todos.rate >= 80) return `할 일을 ${r.todos.rate}%나 끝냈어요 💪`
   if (m.diffPct !== null && m.diffPct >= 10) return `지난달보다 ${m.diffPct}% 더 썼어요`
   if (r.diary.days >= 10) return `일기를 ${r.diary.days}일이나 썼어요 📔`
-  if (m.expense === 0 && r.todos.done === 0) return `${when} 기록이 아직 없어요`
+  if (m.expense === 0 && m.saving === 0 && r.todos.done === 0) return `${when} 기록이 아직 없어요`
   return `${when}도 수고했어요`
 }

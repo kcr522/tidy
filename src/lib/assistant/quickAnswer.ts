@@ -14,6 +14,7 @@ import type { Holiday } from '../holidays'
 import { ddayFor, dueDateIn } from '../recurring'
 import { isDueOn, progressOf } from '../savings'
 import { categoryShares } from '../stats'
+import { isSaving } from '../categories'
 
 export type QuickIntent =
   | { kind: 'schedule'; from: string; to: string; label: string }
@@ -187,7 +188,9 @@ function spendingAnswer(q: Extract<QuickIntent, { kind: 'spending' }>, data: Qui
     const income = list.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0)
     return income ? `\n같은 기간 수입은 ${won(income)}이에요.` : ''
   })()
-  return `${q.label} ${word}은 모두 ${won(total)}이에요 (${list.filter((t) => t.type === type).length}건).\n${q.income ? '들어온 곳' : '많이 쓴 곳'}:\n${top.join('\n')}${other}`
+  const saved = q.income ? 0 : list.filter(isSaving).reduce((s, t) => s + t.amount, 0)
+  const savedLine = saved ? `\n저축으로 넣은 ${won(saved)}은 지출에 넣지 않았어요.` : ''
+  return `${q.label} ${word}은 모두 ${won(total)}이에요 (${list.filter((t) => t.type === type && !(type === 'EXPENSE' && isSaving(t))).length}건).\n${q.income ? '들어온 곳' : '많이 쓴 곳'}:\n${top.join('\n')}${other}${savedLine}`
 }
 
 function budgetAnswer(data: QuickData, today: string): string {
