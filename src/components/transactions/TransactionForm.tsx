@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Calculator } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
 import { categoriesFor, categoryEmoji, SAVING_CATEGORY } from '../../lib/categories'
@@ -15,6 +16,7 @@ import Button from '../common/Button'
 import Field from '../common/FormField'
 import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
 import { inputClass } from '../common/formStyles'
+import AmountCalculator from './AmountCalculator'
 import MerchantAvatar from './MerchantAvatar'
 
 interface TransactionFormProps {
@@ -43,6 +45,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   const [account, setAccount] = useState(base?.account ?? '')
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
 
   const categories = categoriesFor(type)
   const merchant = matchMerchant(memo)
@@ -128,13 +131,36 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
             placeholder="0"
             value={amountText}
             onChange={(e) => changeAmount(e.target.value)}
-            className={`${inputClass(!!errors.amount)} pr-10 text-right text-lg font-bold`}
+            className={`${inputClass(!!errors.amount)} pr-10 pl-14 text-right text-lg font-bold`}
             aria-invalid={!!errors.amount}
             autoFocus={!initial}
           />
+          {/* 계산기 (사용자 요청 2026-11-20) */}
+          <button
+            type="button"
+            onClick={() => setCalcOpen((o) => !o)}
+            aria-label={calcOpen ? '계산기 닫기' : '계산기 열기'}
+            aria-expanded={calcOpen}
+            className={`absolute top-1/2 left-1.5 flex size-10 -translate-y-1/2 items-center justify-center rounded-xl transition-colors ${
+              calcOpen ? 'bg-brand-500 text-white' : 'bg-white text-slate-500 shadow-card'
+            }`}
+          >
+            <Calculator size={20} aria-hidden />
+          </button>
           <span className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500">원</span>
         </div>
       </Field>
+      {/* 라벨 밖에 둬야 빈 곳을 눌러도 금액칸에 포커스가 가지 않는다 (폰 키보드가 안 뜸) */}
+      {calcOpen && (
+        <AmountCalculator
+          initial={amountText}
+          onApply={(n) => {
+            setAmountText(formatNumber(n))
+            setErrors((e) => ({ ...e, amount: undefined }))
+          }}
+          onClose={() => setCalcOpen(false)}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         {/* 날짜 */}

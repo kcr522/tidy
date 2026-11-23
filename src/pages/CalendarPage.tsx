@@ -262,7 +262,7 @@ export default function CalendarPage() {
               <div
                 key={week.days[0]}
                 role="row"
-                // 줄마다 높이가 글자 길이에 맞게 늘어난다 (일정 이름이 세 줄까지 보이게, 사용자 요청 2026-11-13)
+                // 일정 줄은 폰에서 한 줄 높이라 주마다 높이가 거의 같다. 넓은 화면은 두 줄까지 늘어난다
                 className="grid min-h-[96px] flex-[1_0_auto] grid-cols-7 gap-x-[3px] sm:min-h-[110px]"
                 style={{ gridTemplateRows: `28px repeat(${week.lanes}, auto) minmax(26px, 1fr)` }}
               >
@@ -540,21 +540,24 @@ function clearOldDiaryView() {
   }
 }
 
-/** 막대 하나. 날짜 숫자 아래 줄(lane)에 놓이고, 이름이 길면 세 줄까지 줄바꿈한다 */
+/**
+ * 막대 하나. 날짜 숫자 아래 줄(lane)에 놓인다.
+ * 폰은 한 줄로 잘라 칸 높이를 고르게 하고, 넓은 화면은 두 줄까지 (사용자 요청 2026-11-21: 세 줄로 길게 늘어나 한 주만 길어 보였다)
+ */
 function BarView({ bar, dim }: { bar: Bar; dim: boolean }) {
   const style = { gridColumn: `${bar.col + 1} / span ${bar.span}`, gridRow: bar.lane + 2 }
   const round = `${bar.fromPrev ? 'rounded-l-none' : 'rounded-l-[3px]'} ${bar.toNext ? 'rounded-r-none' : 'rounded-r-[3px]'}`
-  const text = 'line-clamp-3 break-all text-[11px] leading-[13px] sm:text-xs sm:leading-[15px]'
+  const text = 'block overflow-hidden whitespace-nowrap text-clip text-[10.5px] leading-[14px] sm:line-clamp-2 sm:whitespace-normal sm:break-keep sm:wrap-anywhere sm:text-xs sm:leading-[15px]'
   if (bar.kind === 'todo') {
     const done = bar.todo?.isCompleted === 1
     return (
       <div
-        className={`pointer-events-none relative mx-0.5 mb-[2px] flex items-start gap-0.5 overflow-hidden rounded-[3px] bg-white py-[2px] pr-0.5 pl-[3px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_var(--color-slate-200)] ${dim ? 'opacity-50' : ''}`}
+        className={`pointer-events-none relative mx-0.5 mb-[2px] flex min-w-0 items-start gap-[2px] overflow-hidden rounded-[3px] bg-white py-[1px] pr-0.5 pl-[2px] sm:py-[2px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_var(--color-slate-200)] ${dim ? 'opacity-50' : ''}`}
         style={style}
         aria-hidden
       >
-        <span className={`mt-[3px] size-[7px] shrink-0 rounded-full ${done ? 'bg-slate-300' : 'bg-brand-500'}`} />
-        <span className={`${text} ${done ? 'text-slate-400 line-through' : ''}`}>{bar.title}</span>
+        <span className={`mt-[4px] size-[6px] shrink-0 rounded-full sm:size-[7px] ${done ? 'bg-slate-300' : 'bg-brand-500'}`} />
+        <span className={`min-w-0 ${text} ${done ? 'text-slate-400 line-through' : ''}`}>{bar.title}</span>
       </div>
     )
   }
@@ -562,7 +565,7 @@ function BarView({ bar, dim }: { bar: Bar; dim: boolean }) {
   const fg = bar.kind === 'holiday' ? '#ffffff' : eventFg(bar.event?.color)
   return (
     <div
-      className={`pointer-events-none relative mb-[2px] overflow-hidden px-[3px] py-[2px] font-semibold ${bar.fromPrev ? '' : 'ml-0.5'} ${bar.toNext ? '' : 'mr-0.5'} ${round} ${bar.span > 1 ? 'text-center' : ''} ${dim ? 'opacity-50' : ''}`}
+      className={`pointer-events-none relative mb-[2px] overflow-hidden px-[3px] py-[1px] font-semibold sm:py-[2px] ${bar.fromPrev ? '' : 'ml-0.5'} ${bar.toNext ? '' : 'mr-0.5'} ${round} ${bar.span > 1 ? 'text-center' : ''} ${dim ? 'opacity-50' : ''}`}
       style={{ ...style, background: bg, color: fg }}
       aria-hidden
     >

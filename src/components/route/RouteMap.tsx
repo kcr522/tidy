@@ -1,10 +1,12 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
+import { MAX_ZOOM } from '../../lib/mapTile'
 import type { RoutePoint, RouteStop } from '../../lib/route'
+import { isNativeApp } from '../../platform/native'
 
 /**
- * 하루 동선 지도 (Leaflet + 무료 지도 그림: OpenStreetMap 자료로 만든 CARTO 지도)
+ * 하루 동선 지도 (Leaflet + 무료 OpenStreetMap 지도 그림)
  * 이 파일은 지도를 볼 때만 따로 불러온다 (React.lazy). 앱을 처음 열 때 무게는 그대로다.
  */
 interface Props {
@@ -17,8 +19,10 @@ interface Props {
   className?: string
 }
 
-const TILE = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+// 지도 그림은 Tidy 서버가 OpenStreetMap 에서 받아 캐시해 둔 것 (src/lib/mapTile.ts, api/tile.ts). 폰 앱은 Tidy 사이트 주소로
+const SITE = (import.meta.env.VITE_TIDY_SERVER as string | undefined) || 'https://tidy-gules.vercel.app'
+const TILE = `${isNativeApp() ? SITE : ''}/api/tile?z={z}&x={x}&y={y}`
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const LINE = '#7c5cff'
 
 function stopIcon(n: number, active: boolean) {
@@ -51,7 +55,7 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
       zoom: 12,
     })
     m.attributionControl.setPrefix(false)
-    L.tileLayer(TILE, { attribution: ATTRIBUTION, subdomains: 'abcd', maxZoom: 19, detectRetina: false }).addTo(m)
+    L.tileLayer(TILE, { attribution: ATTRIBUTION, maxZoom: MAX_ZOOM }).addTo(m)
     layer.current = L.layerGroup().addTo(m)
     map.current = m
     // 위젯 크기가 바뀌면 (편집 중 크기 바꾸기) 지도도 맞춘다
