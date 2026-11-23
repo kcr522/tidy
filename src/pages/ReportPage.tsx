@@ -7,13 +7,13 @@ import BudgetBar from '../components/budget/BudgetBar'
 import PageHeader from '../components/common/PageHeader'
 import { db } from '../db/database'
 import { useToday } from '../hooks/useToday'
-import { categoryEmoji } from '../lib/categories'
 import { parseDateKey } from '../lib/date'
 import { formatDateLabel, formatWon } from '../lib/format'
 import { buildReport, prevMonth } from '../lib/monthlyReport'
 import { budgetRepo } from '../repositories/budgetRepo'
 import { habitRepo } from '../repositories/habitRepo'
 import { todoRepo } from '../repositories/todoRepo'
+import { CategoryIcon } from '../components/common/MoneyIcon'
 
 /** 처음 열면: 1~7일에는 지난달, 그 뒤로는 이번 달 */
 export function defaultReportMonth(today: string): string {
@@ -92,7 +92,7 @@ export default function ReportPage() {
                   {r.money.top.map((t, n) => (
                     <li key={t.category} className="flex items-center gap-2 text-sm">
                       <span className="w-4 text-center font-extrabold text-slate-400">{n + 1}</span>
-                      <span aria-hidden>{categoryEmoji(t.category)}</span>
+                      <CategoryIcon category={t.category} className="size-4 shrink-0 text-slate-500" />
                       <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{t.category}</span>
                       <span className="text-xs text-slate-400">{t.pct}%</span>
                       <span className="font-bold text-slate-900 tabular-nums">{formatWon(t.amount)}</span>

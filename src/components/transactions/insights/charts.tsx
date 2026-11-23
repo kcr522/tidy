@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { formatWon } from '../../../lib/format'
 
 export interface Segment {
@@ -88,7 +88,7 @@ export function ShareRow({
   sub,
 }: {
   color: string
-  label: string
+  label: ReactNode
   amount: number
   percent: number
   sub?: string

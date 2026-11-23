@@ -2,9 +2,9 @@ import { CalendarDays, Clock, HelpCircle, Pencil, Receipt, Repeat, StickyNote, T
 import { useState, type FormEvent, type ReactNode } from 'react'
 import type { Transaction } from '../../db/types'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { methodEmoji, methodLabel, PAY_KIND_LABEL } from '../../lib/payMethods'
+import { methodLabel, PAY_KIND_LABEL } from '../../lib/payMethods'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
-import { categoryEmoji } from '../../lib/categories'
+import { CategoryIcon, MethodIcon } from '../common/MoneyIcon'
 import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { inputClass } from '../common/formStyles'
@@ -42,11 +42,23 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
       <dl className="divide-y divide-slate-100 rounded-2xl bg-slate-50 px-4">
         <Row icon={<CalendarDays />} label="날짜" value={formatDateLabel(item.date)} />
         <Row icon={<Clock />} label="시간" value={item.time ? formatTimeLabel(item.time) : '기록 안 함'} muted={!item.time} />
-        <Row icon={<Tag />} label="카테고리" value={`${categoryEmoji(item.category)} ${item.category}`} />
+        <Row icon={<Tag />} label="카테고리" value={
+            <>
+              <CategoryIcon category={item.category} /> {item.category}
+            </>
+          } />
         <Row
           icon={<Wallet />}
           label="카드 · 계좌"
-          value={item.account ? `${methodEmoji(item.account, methods)} ${mine ? `${methodLabel(mine)} (${PAY_KIND_LABEL[mine.kind]})` : item.account}` : '기록 안 함'}
+          value={
+            item.account ? (
+              <>
+                <MethodIcon name={item.account} methods={methods} /> {mine ? `${methodLabel(mine)} (${PAY_KIND_LABEL[mine.kind]})` : item.account}
+              </>
+            ) : (
+              '기록 안 함'
+            )
+          }
           muted={!item.account}
         />
         {item.recurringId != null && <Row icon={<Repeat />} label="정기 내역" value="매달 자동으로 기록돼요" />}
@@ -67,7 +79,7 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
   )
 }
 
-function Row({ icon, label, value, muted = false }: { icon: ReactNode; label: string; value: string; muted?: boolean }) {
+function Row({ icon, label, value, muted = false }: { icon: ReactNode; label: string; value: ReactNode; muted?: boolean }) {
   return (
     <div className="flex items-center gap-3 py-3 text-[15px]">
       <span className="text-slate-400 [&>svg]:size-[18px]" aria-hidden>

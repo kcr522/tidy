@@ -8,7 +8,6 @@ import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { shrinkImage } from '../../lib/image'
 import { addMonthsKey, defaultSchedule, INTEREST_LABEL, maturity, progressOf, scheduleLabel, TAX_LABEL } from '../../lib/savings'
 import { draftSize, type SavingsDraft } from '../../lib/savingsText'
-import { methodEmoji } from '../../lib/payMethods'
 import { parseAmount } from '../../lib/validate'
 import { requestAlarmPermission } from '../../platform/alarms'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
@@ -20,6 +19,7 @@ import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 import PayMethodPicker from '../payMethods/PayMethodPicker'
 import { DepositForm, SavingsLogList, useSavingsLog } from './SavingsLog'
+import { MethodIcon } from '../common/MoneyIcon'
 
 type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan } | { mode: 'deposit' }
 
@@ -163,7 +163,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
                       </span>
                       {p.fromAccount && (
                         <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
-                          {methodEmoji(p.fromAccount, methods)} {p.fromAccount}에서 나가요
+                          <MethodIcon name={p.fromAccount} methods={methods} /> {p.fromAccount}에서 나가요
                         </span>
                       )}
                     </span>
@@ -243,7 +243,7 @@ function SavingsDetail({ plan, today, deposited, onBack, onEdit, onDelete }: { p
         {plan.autoDeposit !== 1 && pr.done > (deposited?.count ?? 0) && <Row sub label="넣을 차례였던 횟수" value={`${pr.done}회`} />}
         <Row label="다음 넣는 날" value={pr.next ? formatDateLabel(pr.next) : '다 넣었어요'} />
         <Row label="만기까지" value={pr.matured ? '만기됐어요 🎉' : `${pr.daysLeft}일`} />
-        <Row label="나가는 계좌" value={plan.fromAccount ? `${methodEmoji(plan.fromAccount, methods)} ${plan.fromAccount}` : plan.bank ? `${plan.bank} (정해 두지 않음)` : '정해 두지 않음'} />
+        <Row label="나가는 계좌" value={plan.fromAccount ? <><MethodIcon name={plan.fromAccount} methods={methods} /> {plan.fromAccount}</> : plan.bank ? `${plan.bank} (정해 두지 않음)` : '정해 두지 않음'} />
         <Row label="기록 방법" value={plan.autoDeposit === 1 ? '자동이체 (넣는 날 자동 기록)' : '습관 체크하면 기록'} />
         <Row
           label="알림"

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { PayMethod, PayMethodKind } from '../../db/types'
-import { guessKind, MAX_PAY_METHOD_NAME, PAY_KIND_EMOJI, PAY_KIND_LABEL, PAY_METHOD_KINDS } from '../../lib/payMethods'
+import { guessKind, MAX_PAY_METHOD_NAME, PAY_KIND_LABEL, PAY_METHOD_KINDS } from '../../lib/payMethods'
 import { PayMethodError, payMethodRepo, type PayMethodInput } from '../../repositories/payMethodRepo'
 import { inputClass } from '../common/formStyles'
+import { PayKindIcon } from '../common/MoneyIcon'
 
 interface Props {
   /** 고칠 카드 · 계좌 (없으면 새로 등록) */
@@ -51,7 +52,7 @@ export default function PayMethodEditor({ initial, name: presetName, onSaved, on
             }}
             className={`min-h-9 rounded-lg text-xs font-bold ${kind === k ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500'}`}
           >
-            {PAY_KIND_EMOJI[k]} {PAY_KIND_LABEL[k]}
+            <PayKindIcon kind={k} /> {PAY_KIND_LABEL[k]}
           </button>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Transaction } from '../../../db/types'
-import { categoryEmoji, isSaving } from '../../../lib/categories'
+import { isSaving } from '../../../lib/categories'
 import { formatWon } from '../../../lib/format'
 import {
   categoryColor,
@@ -17,6 +17,7 @@ import {
   type PeriodUnit,
 } from '../../../lib/stats'
 import { BarChart, DonutChart, Segmented, ShareRow } from './charts'
+import { CategoryIcon } from '../../common/MoneyIcon'
 
 const UNITS = [
   ['month', '이번 달'],
@@ -111,7 +112,11 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
                 <li key={s.category}>
                   <ShareRow
                     color={categoryColor(s.category)}
-                    label={`${categoryEmoji(s.category)} ${s.category}`}
+                    label={
+                      <>
+                        <CategoryIcon category={s.category} /> {s.category}
+                      </>
+                    }
                     amount={s.amount}
                     percent={income > 0 ? percentOf(s.amount, income) : s.percent}
                   />
@@ -142,7 +147,7 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
           <>
             <p className="mt-1 mb-4 text-sm text-slate-600">
               <b className="text-slate-900">
-                {categoryEmoji(earn[0].category)} {earn[0].category}
+                <CategoryIcon category={earn[0].category} /> {earn[0].category}
               </b>
               에서 가장 많이 벌었어요 ({earn[0].percent}%)
             </p>
@@ -157,7 +162,11 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
                 <li key={s.category}>
                   <ShareRow
                     color={categoryColor(s.category)}
-                    label={`${categoryEmoji(s.category)} ${s.category}`}
+                    label={
+                      <>
+                        <CategoryIcon category={s.category} /> {s.category}
+                      </>
+                    }
                     sub={`${s.count}건`}
                     amount={s.amount}
                     percent={s.percent}

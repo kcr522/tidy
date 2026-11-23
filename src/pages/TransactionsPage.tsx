@@ -23,8 +23,8 @@ import BudgetStrip from '../components/budget/BudgetStrip'
 import type { Transaction } from '../db/types'
 import { usePayNotify } from '../hooks/usePayNotify'
 import { useToday } from '../hooks/useToday'
-import { categoryEmoji, isSaving } from '../lib/categories'
-import { methodEmoji } from '../lib/payMethods'
+import { isSaving } from '../lib/categories'
+import { CategoryIcon, MethodIcon } from '../components/common/MoneyIcon'
 import { payMethodRepo } from '../repositories/payMethodRepo'
 import { dayTitle } from '../lib/calendar'
 import { formatWon } from '../lib/format'
@@ -262,7 +262,13 @@ export default function TransactionsPage() {
             {filterBy === 'category'
               ? [null, ...chips].map((c) => (
                   <Chip key={c ?? 'all'} active={category === c} onClick={() => setCategory(c)}>
-                    {c === null ? '전체' : `${categoryEmoji(c)} ${c}`}
+                    {c === null ? (
+                      '전체'
+                    ) : (
+                      <>
+                        <CategoryIcon category={c} /> {c}
+                      </>
+                    )}
                   </Chip>
                 ))
               : [null, ...accounts].map((a) => (
@@ -271,7 +277,7 @@ export default function TransactionsPage() {
                       '전체'
                     ) : (
                       <>
-                        {methodEmoji(a.account, methods ?? [])} {a.account}
+                        <MethodIcon name={a.account} methods={methods ?? []} /> {a.account}
                         {methods?.find((m) => m.name === a.account)?.last4 && <span className="ml-1 opacity-70">··{methods.find((m) => m.name === a.account)!.last4}</span>}
                         <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
                       </>

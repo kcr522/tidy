@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Calculator, PiggyBank } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
-import { categoriesFor, categoryEmoji, SAVING_CATEGORY } from '../../lib/categories'
+import { categoriesFor, SAVING_CATEGORY } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
@@ -181,7 +181,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
           </option>
           {categories.map((c) => (
             <option key={c} value={c}>
-              {categoryEmoji(c)} {c}
+              {c}
             </option>
           ))}
         </select>

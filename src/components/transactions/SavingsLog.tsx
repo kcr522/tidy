@@ -4,12 +4,12 @@ import { useMemo, useState, type FormEvent } from 'react'
 import type { SavingsPlan, Transaction } from '../../db/types'
 import { isSaving, SAVING_CATEGORY } from '../../lib/categories'
 import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
-import { methodEmoji } from '../../lib/payMethods'
 import { parseAmount } from '../../lib/validate'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
 import { depositMemo } from '../../repositories/savingsRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
 import Button from '../common/Button'
+import { MethodIcon } from '../common/MoneyIcon'
 import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
@@ -71,7 +71,7 @@ export function SavingsLogList({ log, plans, onOpen }: { log: Transaction[]; pla
                         {t.account && (
                           <>
                             {' · '}
-                            {methodEmoji(t.account, methods)} {t.account}
+                            <MethodIcon name={t.account} methods={methods} /> {t.account}
                           </>
                         )}
                       </span>

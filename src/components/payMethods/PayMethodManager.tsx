@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Pencil, PiggyBank, Plus, Trash2 } from 'lucide-
 import { useState } from 'react'
 import type { PayMethod } from '../../db/types'
 import { formatWon } from '../../lib/format'
-import { groupMethods, methodEmoji, methodLabel, PAY_KIND_EMOJI, PAY_KIND_LABEL } from '../../lib/payMethods'
+import { groupMethods, methodLabel, PAY_KIND_LABEL } from '../../lib/payMethods'
 import { inPeriod, periodOf } from '../../lib/stats'
 import { accountTotals, NO_ACCOUNT, type AccountTotal } from '../../lib/summary'
 import { payMethodRepo } from '../../repositories/payMethodRepo'
@@ -12,6 +12,7 @@ import { transactionRepo } from '../../repositories/transactionRepo'
 import ConfirmDialog from '../common/ConfirmDialog'
 import { useToast } from '../common/Toast'
 import PayMethodEditor from './PayMethodEditor'
+import { MethodIcon, PayKindIcon } from '../common/MoneyIcon'
 
 type Editing = { kind: 'new'; name?: string } | { kind: 'edit'; method: PayMethod } | null
 
@@ -46,7 +47,7 @@ export default function PayMethodManager({ today }: { today: string }) {
       {groupMethods(methods).map((g) => (
         <section key={g.kind}>
           <h3 className="mb-1.5 px-1 text-xs font-bold text-slate-400">
-            {PAY_KIND_EMOJI[g.kind]} {PAY_KIND_LABEL[g.kind]}
+            <PayKindIcon kind={g.kind} /> {PAY_KIND_LABEL[g.kind]}
           </h3>
           <ul className="space-y-2">
             {g.items.map((m, i) =>
@@ -90,8 +91,8 @@ export default function PayMethodManager({ today }: { today: string }) {
           <ul className="space-y-1.5">
             {unregistered.slice(0, 8).map((a) => (
               <li key={a.account} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3.5 py-2.5">
-                <span className="text-lg" aria-hidden>
-                  {methodEmoji(a.account)}
+                <span className="text-slate-500" aria-hidden>
+                  <MethodIcon name={a.account} className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-slate-700">{a.account}</span>
@@ -137,8 +138,8 @@ function MethodRow({ method: m, total, savings, first, last, onEdit, onMove, onR
   const iconBtn = 'flex size-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 disabled:opacity-30'
   return (
     <li className="flex items-center gap-3 rounded-2xl bg-slate-50 py-3 pr-2 pl-3.5">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-card" aria-hidden>
-        {PAY_KIND_EMOJI[m.kind]}
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-card" aria-hidden>
+        <PayKindIcon kind={m.kind} className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-bold text-slate-800">{methodLabel(m)}</span>
