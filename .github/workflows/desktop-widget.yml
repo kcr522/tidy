@@ -51,11 +51,13 @@ jobs:
           fi
           ls -la "${{ matrix.file }}"
 
+      # Actions 저장 공간이 꽉 차면 올리기가 실패하는데, 그래도 빌드는 성공이고 아래 릴리스 올리기는 해야 한다 (android.yml 과 같게)
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: ${{ matrix.file }}
           path: ${{ matrix.file }}
-          retention-days: 30
+          retention-days: 7
 
       - name: 릴리스에 올리기
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview/all-features'
@@ -64,7 +66,7 @@ jobs:
           tag_name: desktop-widget-latest
           name: Tidy 달력 위젯 (맥 · 윈도우)
           body: |
-            컴퓨터 바탕화면에 Tidy 달력을 띄우는 위젯 앱이에요. 바탕 투명도를 고를 수 있어요.
+            컴퓨터 바탕화면에 Tidy 달력을 띄우는 위젯 앱이에요. 바탕 투명도와 크기를 고를 수 있어요.
             - 맥: Tidy-Calendar-mac.dmg → 'Tidy 달력'을 응용 프로그램 폴더로. 처음 열 때 시스템 설정 → 개인정보 보호 및 보안 → '그래도 열기'
             - 윈도우(삼성 노트북): Tidy-Calendar-windows.exe 실행. 'Windows의 PC 보호'가 나오면 '추가 정보' → '실행'
           files: ${{ matrix.file }}
