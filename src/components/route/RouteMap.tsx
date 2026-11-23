@@ -2,7 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { MAX_ZOOM, OSM_TILE } from '../../lib/mapTile'
-import { speedPieces, type RoutePoint, type RouteStop } from '../../lib/route'
+import { drawPoints, smoothLine, speedPieces, type RoutePoint, type RouteStop } from '../../lib/route'
 import { isNativeApp } from '../../platform/native'
 
 /**
@@ -98,8 +98,9 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
     const latlngs = points.map((p) => L.latLng(p.lat, p.lng))
     // 테두리 한 줄 + 빠르기별 색 조각 (걷기 초록 → 차 빨강)
     // 테두리는 다크 모드면 어둡게 (index.css .tidy-route-outline)
-    L.polyline(latlngs, { color: '#fff', weight: 7, opacity: 0.9, lineJoin: 'round', lineCap: 'round', className: 'tidy-route-outline' }).addTo(g)
-    for (const piece of speedPieces(points)) L.polyline(piece.points, { color: piece.color, weight: 4, opacity: 1, lineJoin: 'round', lineCap: 'round' }).addTo(g)
+    const line = drawPoints(points)
+    L.polyline(smoothLine(line), { color: '#fff', weight: 7, opacity: 0.9, lineJoin: 'round', lineCap: 'round', className: 'tidy-route-outline' }).addTo(g)
+    for (const piece of speedPieces(line, true)) L.polyline(piece.points, { color: piece.color, weight: 4, opacity: 1, lineJoin: 'round', lineCap: 'round', smoothFactor: 1.5 }).addTo(g)
     // 시작(초록) · 끝(빨강)
     L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1 }).addTo(g)
     if (latlngs.length > 1) L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(g)

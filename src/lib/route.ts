@@ -160,17 +160,75 @@ export interface SpeedPiece {
   points: { lat: number; lng: number }[]
 }
 
-/** 선을 빠르기 색이 같은 조각들로 나눈다. 조각끼리 끝 점을 같이 써서 선이 끊기지 않는다 */
-export function speedPieces(points: RoutePoint[]): SpeedPiece[] {
+type LatLng = { lat: number; lng: number }
+
+/**
+ * a → b 사이를 부드러운 곡선 점들로 (centripetal Catmull-Rom, 사용자 요청 2026-11-23 "경로가 각지지 않게")
+ * 곡선은 원래 점을 그대로 지나가서 머문 곳 · 시작 · 끝 위치는 바뀌지 않는다. 돌려주는 점에 a 는 빼고 b 는 넣는다
+ */
+export function curveBetween(p0: LatLng, a: LatLng, b: LatLng, p3: LatLng, steps = 12): LatLng[] {
+  // 위도에 따라 경도 1도의 길이가 다르니 평면처럼 펴서 계산한다
+  const k = Math.cos((a.lat * Math.PI) / 180)
+  const P = [p0, a, b, p3].map((p) => ({ x: p.lng * k, y: p.lat }))
+  const knot = (u: { x: number; y: number }, v: { x: number; y: number }) => Math.max(1e-9, Math.hypot(v.x - u.x, v.y - u.y) ** 0.5)
+  const t0 = 0
+  const t1 = t0 + knot(P[0], P[1])
+  const t2 = t1 + knot(P[1], P[2])
+  const t3 = t2 + knot(P[2], P[3])
+  const lerp = (u: { x: number; y: number }, v: { x: number; y: number }, ta: number, tb: number, t: number) => {
+    const w = tb - ta < 1e-12 ? 0 : (t - ta) / (tb - ta)
+    return { x: u.x + (v.x - u.x) * w, y: u.y + (v.y - u.y) * w }
+  }
+  const out: LatLng[] = []
+  for (let i = 1; i <= steps; i++) {
+    if (i === steps) {
+      out.push({ lat: b.lat, lng: b.lng })
+      break
+    }
+    const t = t1 + ((t2 - t1) * i) / steps
+    const A1 = lerp(P[0], P[1], t0, t1, t)
+    const A2 = lerp(P[1], P[2], t1, t2, t)
+    const A3 = lerp(P[2], P[3], t2, t3, t)
+    const B1 = lerp(A1, A2, t0, t2, t)
+    const B2 = lerp(A2, A3, t1, t3, t)
+    const C = lerp(B1, B2, t1, t2, t)
+    out.push({ lat: C.y, lng: C.x / k })
+  }
+  return out
+}
+
+/** 선을 빠르기 색이 같은 조각들로 나눈다. 조각끼리 끝 점을 같이 써서 선이 끊기지 않는다. smooth 면 꺾인 곳을 둥글게 */
+export function speedPieces(points: RoutePoint[], smooth = false): SpeedPiece[] {
   const out: SpeedPiece[] = []
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]
     const b = points[i]
     const sec = Math.max(1, (b.t - a.t) / 1000)
     const color = speedColor((distanceM(a, b) / sec) * 3.6)
+    const tail = smooth && distanceM(a, b) > 5 ? curveBetween(points[i - 2] ?? a, a, b, points[i + 1] ?? b) : [{ lat: b.lat, lng: b.lng }]
     const last = out[out.length - 1]
-    if (last && last.color === color) last.points.push({ lat: b.lat, lng: b.lng })
-    else out.push({ color, points: [{ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }] })
+    if (last && last.color === color) last.points.push(...tail)
+    else out.push({ color, points: [{ lat: a.lat, lng: a.lng }, ...tail] })
+  }
+  return out
+}
+
+/** 테두리 선도 같은 곡선으로 */
+export function smoothLine(points: RoutePoint[]): LatLng[] {
+  return speedPieces(points, true).flatMap((p, i) => (i === 0 ? p.points : p.points.slice(1)))
+}
+
+/** 그릴 점만: 앞 점에서 20m(또는 정확도의 절반)도 안 움직인 점은 뺀다. 한곳에 있을 때 선이 지글지글 엉키지 않게. 마지막 점은 늘 남긴다 */
+export function drawPoints(points: RoutePoint[]): RoutePoint[] {
+  const out: RoutePoint[] = []
+  for (const p of points) {
+    const prev = out[out.length - 1]
+    if (!prev || distanceM(prev, p) >= Math.max(20, Math.min(prev.acc, p.acc) / 2)) out.push(p)
+  }
+  const last = points[points.length - 1]
+  if (last && out[out.length - 1] !== last) {
+    if (out.length > 1) out[out.length - 1] = last
+    else out.push(last)
   }
   return out
 }
