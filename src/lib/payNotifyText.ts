@@ -69,6 +69,27 @@ function clean(t: string): string {
     .trim()
 }
 
+/** 이름 앞에 붙는 칸 이름 ("가맹점: 다이소", "받는 분 홍길동") */
+const LABEL = /(이용\s*)?(가맹점(\s*명)?|사용처|결제처|거래처|출금처|입금처|상호(\s*명)?|받는\s*(분|사람|곳)|보낸\s*(분|사람)|적요|내용|메모)\s*[:：]?/g
+/** 이름 뒤에 남은 말끝 ("가 완료되었습니다", "에서 결제했어요") */
+const TAIL = /\s*(이|가|을|를|은|는|에서|으로|로|에)?\s*(완료\s*)?(되었습니다|되었어요|됐습니다|됐어요|했어요|했습니다|하였습니다|합니다|완료|안내|알림|입니다|예요|이에요)[.!]?\s*$/
+
+/** 가게(출금처) 이름만 남기기: 칸 이름, (주), 괄호 속 번호 · 덧말, 말끝을 지운다 */
+export function onlyName(t: string): string {
+  let s = t
+    .replace(LABEL, ' ')
+    .replace(/\(\s*(주|유|사|재)\s*\)|㈜|주식\s*회사|유한\s*회사/g, ' ')
+    .replace(/\([^()]*\d[^()]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  for (let i = 0; i < 3; i++) s = s.replace(TAIL, '').trim()
+  s = s.replace(/^(이|가|을|를|은|는|에서|으로|로)\s+/, '').replace(/(에서|으로)$/, '')
+  // 괄호 밖에 이름이 있으면 괄호 속 덧말("쿠팡(쿠페이)")은 뺀다
+  const outside = s.replace(/\([^()]*\)/g, ' ').replace(/\s+/g, ' ').trim()
+  if (hasName(outside)) s = outside
+  return s.replace(/^[\s\-–.~()]+|[\s\-–.~(]+$/g, '').replace(/\s+/g, ' ').trim()
+}
+
 /** 금액 후보: "6,100원", "6100원", "50,000"(쉼표), "출금50000"(낱말 바로 옆 숫자) */
 interface Money {
   value: number
@@ -135,8 +156,13 @@ export function readPayText(title: string, text: string, today: string): PayText
   const marker = /님께|님이|님에게|보낸\s*분|받는\s*분/.test(raw)
   // 금액 앞의 사람 이름 하나는 보통 계좌 주인 (KB "김채림 출금 50,000") — 토스처럼 "님께/님이"가 있으면 상대방
   const holderOnly = /^[가-힣]{2,4}$/.test(before) && !marker && !/^(이자|급여|월급|상여|용돈|캐시백|환급|환불|보험금)/.test(before) && /[가-힣]{2,4}[\s‖]*(출금|입금|이체)/.test(s.slice(0, money.index))
-  let merchant = (hasName(after) ? after : '') || (!holderOnly && hasName(before) ? before : '')
-  merchant = merchant.replace(/^(에서|으로|로)\s+|\s+(에서|으로|로)$/g, '').replace(/에서$/, '').trim().slice(0, 60)
+  // "쿠팡이츠에서 23,000원 결제…"처럼 "○○에서" 가 있으면 그게 가게
+  const at = /([가-힣A-Za-z0-9&'()\s]{2,30}?)에서\s*$/.exec(s.slice(0, money.index).split('‖').pop() ?? '')
+  const atName = at && !/(계좌|통장|카드|머니|페이|잔액)\s*$/.test(at[1]) ? onlyName(clean(at[1])) : ''
+  const afterName = onlyName(after)
+  const beforeName = holderOnly ? '' : onlyName(before)
+  let merchant = (hasName(atName) ? atName : '') || (hasName(afterName) ? afterName : '') || (hasName(beforeName) ? beforeName : '')
+  merchant = merchant.slice(0, 40).trim()
   if (!hasName(merchant)) merchant = income ? '입금' : '출금'
 
   return { type: income ? 'INCOME' : 'EXPENSE', amount: money.value, merchant, date, time, hint: raw }

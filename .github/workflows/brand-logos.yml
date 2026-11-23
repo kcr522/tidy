@@ -1,0 +1,44 @@
+# 가계부 가게 로고: 브랜드 공식 앱 아이콘을 받아 public/brands/ 에 올린다 (scripts/brand-logos.mjs)
+# src/lib/merchants.ts 에 브랜드 app: 을 더하면 이 작업이 그 브랜치에 아이콘을 올려 준다.
+name: Brand logos
+
+on:
+  workflow_dispatch:
+    inputs:
+      find:
+        description: '앱 찾기만 (띄어쓰기로 이름 여러 개, 비우면 아이콘 받기)'
+        required: false
+  push:
+    branches: ['claude/**', 'feat/**']
+    paths: ['src/lib/merchants.ts', 'scripts/brand-logos.mjs', 'scripts/brand-find.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  logos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 앱 찾기
+        if: ${{ inputs.find != '' || hashFiles('scripts/brand-find.txt') != '' }}
+        env:
+          FIND: ${{ inputs.find }}
+        run: |
+          if [ -n "$FIND" ]; then node scripts/brand-logos.mjs find $FIND; else xargs -d '\n' -a scripts/brand-find.txt node scripts/brand-logos.mjs find; fi
+      - name: 아이콘 받기
+        if: ${{ inputs.find == '' }}
+        run: node scripts/brand-logos.mjs get
+      - name: 바뀐 아이콘 올리기
+        if: ${{ always() && inputs.find == '' }}
+        run: |
+          git add public/brands
+          if git diff --cached --quiet; then echo '바뀐 아이콘 없음'; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898+github-actions[bot]@users.noreply.github.com'
+          git commit -m '가게 로고 아이콘 받기 (Brand logos)'
+          git push
