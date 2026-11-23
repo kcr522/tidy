@@ -23,6 +23,11 @@ public class EventWidget extends TidyBaseWidget {
     private static final int[] TITLE_IDS = {R.id.widget_ev_title1, R.id.widget_ev_title2, R.id.widget_ev_title3, R.id.widget_ev_title4, R.id.widget_ev_title5};
 
     @Override
+    int baseCellsW() {
+        return 4;
+    }
+
+    @Override
     String kind() {
         return "event";
     }

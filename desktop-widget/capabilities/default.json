@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2/capability",
   "identifier": "widget",
-  "description": "Tidy 웹의 /widget 화면이 창을 옮기고 닫을 수 있게",
+  "description": "Tidy 웹의 /widget 화면이 창을 옮기고, 크기를 바꾸고, 닫을 수 있게",
   "windows": ["main"],
   "remote": {
     "urls": ["https://tidy-gules.vercel.app/*", "https://*.vercel.app/*"]
   },
-  "permissions": ["core:window:allow-start-dragging", "core:window:allow-close", "core:window:allow-minimize"]
+  "permissions": ["core:window:allow-start-dragging", "core:window:allow-start-resize-dragging", "core:window:allow-set-size", "core:window:allow-close", "core:window:allow-minimize"]
 }

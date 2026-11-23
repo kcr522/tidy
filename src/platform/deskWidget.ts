@@ -31,6 +31,43 @@ export function closeDeskWidget(): void {
   void tauri()?.invoke('plugin:window|close', { label: 'main' }).catch(() => undefined)
 }
 
+/** 위젯 창 크기 한계 (화면 기준 px). 최소는 desktop-widget/src/main.rs 의 min_inner_size 와 같다 */
+export const DESK_MIN_SIZE = { width: 260, height: 240 }
+export const DESK_MAX_SIZE = { width: 1400, height: 1400 }
+
+/** − / + 버튼 한 번에 바뀌는 창 크기. 가로세로 비율은 그대로 둔다 */
+export function nextDeskSize(width: number, height: number, step: 1 | -1): { width: number; height: number } {
+  const f = step > 0 ? 1.15 : 1 / 1.15
+  const max = Math.min(DESK_MAX_SIZE.width / width, DESK_MAX_SIZE.height / height)
+  const min = Math.max(DESK_MIN_SIZE.width / width, DESK_MIN_SIZE.height / height)
+  const k = Math.min(max, Math.max(min, f))
+  return { width: Math.round(width * k), height: Math.round(height * k) }
+}
+
+/**
+ * 위젯 창 크기 바꾸기. 크기는 위젯 앱이 기억해서 다음에 켤 때도 그대로다 (tauri-plugin-window-state).
+ * 예전에 받은 위젯 앱은 이 권한이 없어서 false 를 돌려준다 (새로 받아야 한다).
+ */
+export async function resizeDeskWidget(step: 1 | -1): Promise<boolean> {
+  const t = tauri()
+  if (!t) return false
+  const value = { Logical: nextDeskSize(window.innerWidth, window.innerHeight, step) }
+  return t.invoke('plugin:window|set_size', { label: 'main', value }).then(
+    () => true,
+    () => false,
+  )
+}
+
+/** 오른쪽 아래 손잡이를 끌어 창 크기를 마음대로 바꾸기 */
+export async function startDeskResize(): Promise<boolean> {
+  const t = tauri()
+  if (!t) return false
+  return t.invoke('plugin:window|start_resize_dragging', { label: 'main', value: 'SouthEast' }).then(
+    () => true,
+    () => false,
+  )
+}
+
 /** 컴퓨터 위젯 바탕 투명도 (%). 폰 위젯 투명도와 따로 이 위젯 앱 안에 저장한다 */
 const OPACITY_KEY = 'tidy-desk-opacity'
 export const DESK_DEFAULT_OPACITY = 85
