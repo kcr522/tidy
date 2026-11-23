@@ -45,7 +45,7 @@ export const BRANDS: Brand[] = [
   withApp('com.oliveyoung', b('올리브영', 'oliveyoung.co.kr', '#9BCB3C', '쇼핑', ['oliveyoung', 'cj올리브영', '올영'], '올영')),
   withApp('com.emart.today', b('이마트', 'emart.com', '#FFB300', '쇼핑', ['emart', '이마트에브리데이'])),
   withApp('com.socialapps.homeplus', b('홈플러스', 'homeplus.co.kr', '#E2001A', '쇼핑', ['homeplus'])),
-  withApp('com.lottemart.lmscp', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
+  withWiki('롯데마트|en:Lotte Mart', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
   withApp('com.costco.dmc.store', b('코스트코', 'costco.co.kr', '#005DAA', '쇼핑', ['costco'])),
   withApp('com.coupang.mobile', b('쿠팡', 'coupang.com', '#E52528', '쇼핑', ['coupang'])),
   withApp('com.musinsa.store', b('무신사', 'musinsa.com', '#111111', '쇼핑', ['musinsa'])),
@@ -70,7 +70,7 @@ export const BRANDS: Brand[] = [
   withApp('com.naverfin.payapp', b('네이버페이', 'naver.com', '#03C75A', '쇼핑', ['naverpay', '네이버'], 'N')),
   // 편의점
   withApp('com.bgfcu.membership', b('CU', 'cu.bgfretail.com', '#652F8D', '식비', ['씨유', 'bgf리테일'])),
-  withApp('com.gsr.gs25', b('GS25', 'gs25.gsretail.com', '#00A0E2', '식비', ['지에스25', 'gs리테일'], 'GS25')),
+  withWiki('GS25|en:GS25', b('GS25', 'gs25.gsretail.com', '#00A0E2', '식비', ['지에스25', 'gs리테일'], 'GS25')),
   withApp('kr.co.kork7app', b('세븐일레븐', '7-eleven.co.kr', '#008061', '식비', ['7eleven', '7-eleven', '코리아세븐'], '7')),
   withApp('kr.co.emart24.everse', b('이마트24', 'emart24.co.kr', '#FFB81C', '식비', ['emart24'])),
   // 카페·디저트
@@ -85,7 +85,7 @@ export const BRANDS: Brand[] = [
   withApp('kr.co.baskinrobbins.client', b('배스킨라빈스', 'baskinrobbins.co.kr', '#FF1F8E', '식비', ['베스킨라빈스', 'baskinrobbins', '배라'])),
   withWiki('던킨|en:Dunkin Donuts', b('던킨', 'dunkindonuts.co.kr', '#FF671F', '식비', ['던킨도너츠', 'dunkin'])),
   withApp('com.pb.android', b('파리바게뜨', 'paris.co.kr', '#1F3B73', '식비', ['파리바게트', 'parisbaguette'])),
-  withWiki('뚜레쥬르|en:Tous les Jours', b('뚜레쥬르', 'tlj.co.kr', '#00704A', '식비', ['touslesjours'])),
+  withApp('kr.co.tlj.app', b('뚜레쥬르', 'tlj.co.kr', '#00704A', '식비', ['touslesjours'])),
   withApp('com.easymembership.gongcha', b('공차', 'gong-cha.co.kr', '#B5121B', '식비', ['gongcha'])),
   withApp('com.coffeebeankorea.purpleorder', b('커피빈', 'coffeebeankorea.com', '#5F259F', '식비', ['coffeebean', '커피빈앤티리프'])),
   withApp('com.sulbing.mobile.app', b('설빙', 'sulbing.com', '#E4E1D9', '식비', ['sulbing'])),

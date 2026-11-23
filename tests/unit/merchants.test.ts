@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { brandShort, brandTextColor, matchMerchant } from '../../src/lib/merchants'
+import { BRANDS, brandShort, brandTextColor, logoUrls, matchMerchant } from '../../src/lib/merchants'
 
 const d = (t: string) => matchMerchant(t)?.display ?? null
 
@@ -59,5 +59,18 @@ describe('isUnclearMerchant', () => {
     expect(isUnclearMerchant('NICE*배달의민족')).toBe(false)
     expect(isUnclearMerchant('동네 분식')).toBe(false)
     expect(isUnclearMerchant('')).toBe(false)
+  })
+})
+
+describe('가게 로고 파일', () => {
+  it('앱 아이콘 · 위키백과 로고를 쓰는 브랜드는 public/brands 에 그림이 있다', async () => {
+    const { existsSync } = await import('node:fs')
+    const missing = BRANDS.filter((b) => b.app || b.wiki).filter((b) => !existsSync(`public${logoUrls(b)[0]}`)).map((b) => b.name)
+    expect(missing).toEqual([])
+  })
+  it('다이소 · 올리브영 · 롯데리아는 앱에 넣어 둔 로고를 먼저 쓴다', () => {
+    for (const name of ['다이소 운남점', '올리브영 수완점', '롯데리아 첨단점', 'GS25 운남점', '노브랜드버거 수완점']) {
+      expect(logoUrls(matchMerchant(name)!.brand)[0]).toMatch(/^\/brands\//)
+    }
   })
 })

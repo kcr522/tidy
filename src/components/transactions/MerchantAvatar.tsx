@@ -34,7 +34,7 @@ export default function MerchantAvatar({ brand, category, size = 40 }: { brand: 
     )
   }
 
-  // 앱 아이콘은 동그라미를 꽉 채우고, 로고 그림 · 홈페이지 아이콘은 여백을 둔다
+  // 앱 아이콘은 동그라미를 꽉 채우고, 옆으로 긴 로고 그림(.png)은 넓게, 홈페이지 아이콘은 여백을 둔다
   const appIcon = urls[tried].endsWith('.webp')
   return (
     <span className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-slate-200" style={style} aria-hidden>
@@ -44,7 +44,7 @@ export default function MerchantAvatar({ brand, category, size = 40 }: { brand: 
         alt=""
         loading="lazy"
         referrerPolicy="no-referrer"
-        className={appIcon ? 'size-full object-cover' : 'size-[62%] object-contain'}
+        className={appIcon ? 'size-full object-cover' : urls[tried].endsWith('.png') ? 'w-[84%] object-contain' : 'size-[62%] object-contain'}
         // 아이콘이 없으면 구글이 16px 기본 지구본을 준다 → 너무 작으면 다음 것(결국 글자 동그라미)
         onLoad={(e) => e.currentTarget.naturalWidth < 24 && next()}
         onError={next}
