@@ -1,3 +1,4 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, ChevronRight, Crosshair, MapPin, Trash2 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -36,6 +37,7 @@ export default function RoutePage() {
     setConfirmClear(false)
   }
   const day = useDayRoute(date)
+  const latest = useLiveQuery(() => routeStore.latest().then((p) => (p ? { lat: p.lat, lng: p.lng } : null)), [])
   const track = useTrackSwitch()
   const toast = useToast()
   const s = day?.summary
@@ -91,16 +93,20 @@ export default function RoutePage() {
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] md:items-start">
         <section className="card overflow-hidden p-0">
-          {has && day ? (
+          {/* 기록이 없는 날에도 지도는 보인다 (마지막으로 있던 곳 둘레) */}
+          <div className="relative">
             <Suspense fallback={<div className="h-[58dvh] min-h-72 bg-slate-100" />}>
-              <RouteMap points={day.points} stops={day.summary.stops} focus={focus} className="h-[58dvh] min-h-72" />
+              <RouteMap points={day?.points ?? []} stops={day?.summary.stops ?? []} focus={focus} center={has ? null : (latest ?? null)} className="h-[58dvh] min-h-72" />
             </Suspense>
-          ) : (
-            <div className="flex h-72 flex-col items-center justify-center gap-2 px-6 text-center text-sm break-keep text-slate-500">
-              <MapPin className="size-8 text-slate-300" aria-hidden />
-              {day === undefined ? '불러오는 중…' : date === today ? '오늘은 아직 남은 위치가 없어요' : '이 날은 남은 위치가 없어요'}
-            </div>
-          )}
+            {!has && (
+              <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-4">
+                <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-card">
+                  <MapPin className="size-3.5 text-slate-400" aria-hidden />
+                  {day === undefined ? '불러오는 중…' : date === today ? '오늘은 아직 남은 위치가 없어요' : '이 날은 남은 위치가 없어요'}
+                </span>
+              </div>
+            )}
+          </div>
           {has && s && (
             <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 text-center">
               <Num label="움직인 거리" value={distanceLabel(s.km)} />

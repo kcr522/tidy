@@ -7,8 +7,12 @@ export async function GET(req: Request): Promise<Response> {
   const t = parseTile(q.get('z'), q.get('x'), q.get('y'))
   if (!t) return new Response('bad tile', { status: 400, headers: { 'cache-control': 'no-store' } })
   try {
-    const res = await fetch(osmTileUrl(t), { headers: { 'user-agent': TILE_USER_AGENT, accept: 'image/png' }, signal: AbortSignal.timeout(10000) })
-    if (!res.ok) return new Response('tile error', { status: 502, headers: { 'cache-control': 'no-store' } })
+    const res = await fetch(osmTileUrl(t), { headers: { 'user-agent': TILE_USER_AGENT, referer: 'https://tidy-gules.vercel.app/', accept: 'image/png' }, signal: AbortSignal.timeout(10000) })
+    // 어떤 이유로 못 받았는지 남긴다 (Vercel 로그 · 응답 머리글)
+    if (!res.ok) {
+      console.warn('tile upstream', res.status, osmTileUrl(t))
+      return new Response(`tile error ${res.status}`, { status: 502, headers: { 'cache-control': 'no-store', 'x-upstream-status': String(res.status) } })
+    }
     return new Response(await res.arrayBuffer(), {
       headers: {
         'content-type': res.headers.get('content-type') ?? 'image/png',
@@ -17,7 +21,8 @@ export async function GET(req: Request): Promise<Response> {
         'access-control-allow-origin': '*',
       },
     })
-  } catch {
+  } catch (err) {
+    console.warn('tile fetch failed', err instanceof Error ? err.message : err)
     return new Response('tile error', { status: 502, headers: { 'cache-control': 'no-store' } })
   }
 }
