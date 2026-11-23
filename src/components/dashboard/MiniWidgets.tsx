@@ -520,52 +520,128 @@ export function HabitWeekWidget({ habits: all, checks, today, box, onToggle }: H
 
 // ───────────── 할 일 기록 잔디 ─────────────
 
-const HEAT = ['bg-slate-100', 'bg-brand-100', 'bg-brand-500/45', 'bg-brand-500/75', 'bg-brand-600']
+/** 잔디 진하기: 빈 칸도 어떤 배경 위에서든 보이게 살짝 진하게, 칠한 칸은 또렷하게 */
+const HEAT = ['bg-slate-500/10', 'bg-brand-500/30', 'bg-brand-500/55', 'bg-brand-500/80', 'bg-brand-600']
+/** 왼쪽 요일 글자 (일요일부터 7줄 중 월 · 수 · 금만) */
+const TRACK_DAYS = ['', '월', '', '수', '', '금', '']
 
-/** 끝낸 할 일 수로 칠한 잔디 (최근 몇 주). 왼쪽엔 숫자 요약 */
+/**
+ * 끝낸 할 일 수로 칠한 잔디 (최근 몇 주).
+ * 칸 크기는 위젯 높이에 맞춰 키우고, 남는 너비만큼 주를 더 보여 준다.
+ * 위에는 달, 왼쪽에는 요일, 아래에는 적게~많이 범례. 넓으면 왼쪽에 숫자 요약
+ */
 export function TrackerWidget({ todos, today, box }: { todos: Todo[]; today: string; box: WidgetBox }) {
   const byDay = useMemo(() => doneByDay(todos), [todos])
-  const showStats = box.px >= 330
-  const cell = 12
-  const gap = 3
-  const gridW = box.px - 32 - (showStats ? 130 : 0)
+  const innerW = box.px - 32
+  const innerH = box.py - 32 - 30
+  const side = innerW >= 440
+  const monthH = 14
+  const showLegend = innerH >= 150
+  const labelW = 16
+  const gridH = innerH - monthH - (showLegend ? 20 : 0)
+  const gridW = innerW - labelW - (side ? 134 : 0)
+  // 높이에 맞춘 칸 크기. 다만 너무 커져서 16주보다 적게 보이면 그만큼 줄인다
+  const byH = Math.floor((gridH - 6 * 3) / 7)
+  const byW = Math.floor((gridW + 3) / 16 - 3)
+  const cell = Math.max(9, Math.min(22, byH, Math.max(12, byW)))
+  const gap = cell >= 16 ? 4 : 3
   const weeks = Math.max(4, Math.min(53, Math.floor((gridW + gap) / (cell + gap))))
   const rows = 7
   // 이번 주 일요일 기준으로 weeks 주 거슬러 올라간다
   const lastSun = addDays(today, -parseDateKey(today).getDay())
   const start = addDays(lastSun, -(weeks - 1) * 7)
   const cols = Array.from({ length: weeks }, (_, w) => Array.from({ length: rows }, (_, d) => addDays(start, w * 7 + d)))
+  // 달이 바뀌는 주 위에 'N월'. 맨 앞 주는 다음 달 글자와 붙지 않을 때만 그 달을 적는다
+  const starts = cols.map((col) => col.find((k) => k.endsWith('-01')))
+  const firstStart = starts.findIndex(Boolean)
+  let lastLabel = -9
+  const months = cols.map((col, i) => {
+    const label = starts[i] ?? (i === 0 && (firstStart < 0 || firstStart >= 3) ? col[6] : undefined)
+    if (!label || i - lastLabel < 3) return ''
+    lastLabel = i
+    return `${+label.slice(5, 7)}월`
+  })
 
   const total = [...byDay.values()].reduce((a, b) => a + b, 0)
   const week = Array.from({ length: 7 }, (_, i) => byDay.get(addDays(today, -i)) ?? 0).reduce((a, b) => a + b, 0)
   let streak = 0
   for (let k = byDay.get(today) ? today : addDays(today, -1); byDay.get(k); k = addDays(k, -1)) streak++
 
+  const stats = [
+    { label: '모두', value: total, unit: '개' },
+    { label: '최근 7일', value: week, unit: '개' },
+    { label: '연속', value: streak, unit: '일' },
+  ]
+  const sq = { width: cell, height: cell }
+  const radius = cell >= 14 ? 4 : 3
+
   return (
     <WidgetShell to="/todos">
-      <Title icon={<Flame className="size-4 text-orange-500" aria-hidden />}>할 일 기록</Title>
-      <div className="flex min-h-0 flex-1 items-center gap-4">
-        {showStats && (
-          <dl className="grid w-[114px] shrink-0 grid-cols-[auto_1fr] items-baseline gap-x-2 gap-y-1 text-xs text-slate-500">
-            <dt>모두</dt>
-            <dd className="text-right text-lg font-extrabold text-slate-900 tabular-nums">{total}</dd>
-            <dt>이번 주</dt>
-            <dd className="text-right text-lg font-extrabold text-slate-900 tabular-nums">{week}</dd>
-            <dt>연속</dt>
-            <dd className="text-right text-lg font-extrabold text-slate-900 tabular-nums">
-              {streak}
-              <span className="text-xs font-semibold text-slate-500">일</span>
-            </dd>
+      <Title
+        icon={<Flame className="size-4 text-orange-500" aria-hidden />}
+        right={
+          !side && (
+            <span className="shrink-0 text-xs font-semibold text-slate-500 tabular-nums">
+              최근 7일 <b className="text-slate-900">{week}</b>개{streak > 0 && <> · 🔥 <b className="text-slate-900">{streak}</b>일</>}
+            </span>
+          )
+        }
+      >
+        할 일 기록
+      </Title>
+      <div className="flex min-h-0 flex-1 items-center gap-5">
+        {side && (
+          <dl className="grid w-[114px] shrink-0 grid-cols-[auto_1fr] items-baseline gap-x-2 gap-y-1.5 text-xs text-slate-500">
+            {stats.map((s) => (
+              <div key={s.label} className="contents">
+                <dt>{s.label}</dt>
+                <dd className="text-right text-lg font-extrabold text-slate-900 tabular-nums">
+                  {s.value}
+                  <span className="ml-0.5 text-xs font-semibold text-slate-500">{s.unit}</span>
+                </dd>
+              </div>
+            ))}
           </dl>
         )}
-        <div className="flex min-w-0 flex-1 justify-end gap-[3px]" aria-label="최근 끝낸 할 일 잔디">
-          {cols.map((col, i) => (
-            <div key={i} className="flex flex-col gap-[3px]">
-              {col.map((k) => (
-                <span key={k} className={`size-3 rounded-[3px] ${k > today ? 'opacity-0' : HEAT[heatLevel(byDay.get(k) ?? 0)]}`} title={`${k} ${byDay.get(k) ?? 0}개`} />
+        <div className="flex min-w-0 flex-1 justify-center">
+          <div className="flex flex-col">
+            <div className="flex" style={{ gap }} aria-label="최근 끝낸 할 일 잔디">
+              <div className="flex flex-col" style={{ gap, width: labelW - gap, paddingTop: monthH }}>
+                {TRACK_DAYS.map((d, i) => (
+                  <span key={i} className="flex items-center text-[10px] leading-none text-slate-400" style={{ height: cell }}>
+                    {d}
+                  </span>
+                ))}
+              </div>
+              {cols.map((col, i) => (
+                <div key={col[0]} className="flex flex-col" style={{ gap }}>
+                  <span className="relative" style={{ height: monthH - gap }}>
+                    {months[i] && <span className="absolute left-0 top-0 whitespace-nowrap text-[10px] font-semibold leading-none text-slate-400">{months[i]}</span>}
+                  </span>
+                  {col.map((k) => (
+                    <span
+                      key={k}
+                      style={{ ...sq, borderRadius: radius }}
+                      className={k > today ? '' : `${HEAT[heatLevel(byDay.get(k) ?? 0)]} ${k === today ? 'outline outline-[1.5px] outline-offset-1 outline-slate-500/70' : ''}`}
+                      title={k > today ? undefined : `${k} ${byDay.get(k) ?? 0}개`}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
+            {showLegend && (
+              <div className="mt-2 flex w-full items-center justify-between gap-2 text-[10px] text-slate-400" style={{ paddingLeft: labelW }}>
+                <span className="truncate">{total === 0 ? '할 일을 끝내면 그날 칸이 칠해져요' : `최근 ${weeks}주`}</span>
+                <span className="flex shrink-0 items-center gap-1">
+                  적게
+                  {HEAT.map((c) => (
+                    <span key={c} className={`size-2.5 rounded-[3px] ${c}`} />
+                  ))}
+                  많이
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </WidgetShell>
