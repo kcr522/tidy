@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Crosshair, Footprints, MapPin, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crosshair, Footprints, MapPin, Maximize2, Trash2, X } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -12,7 +12,7 @@ import { pullRoutePoints, useTrackSwitch } from '../hooks/useRouteTracking'
 import { useToday } from '../hooks/useToday'
 import { parseDateKey, toDateKey } from '../lib/date'
 import { formatDateLabel } from '../lib/format'
-import { clock, distanceLabel, durationLabel, KEEP_DAYS } from '../lib/route'
+import { clock, distanceLabel, durationLabel, KEEP_DAYS, SPEED_COLORS } from '../lib/route'
 import { routeStore } from '../lib/routeStore'
 import { connectHealth, healthConnected, healthSupported } from '../platform/health'
 import { currentPoint } from '../platform/locationTrack'
@@ -33,11 +33,19 @@ export default function RoutePage() {
   const [focus, setFocus] = useState<number | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [big, setBig] = useState(false)
   const setDate = (next: string) => {
     setDateRaw(next)
     setFocus(null)
     setConfirmClear(false)
   }
+  // 크게 보기: 뒤로 가기 · Esc 로 닫는다
+  useEffect(() => {
+    if (!big) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setBig(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [big])
   const day = useDayRoute(date)
   const steps = useDaySteps(date)
   const latest = useLiveQuery(() => routeStore.latest().then((p) => (p ? { lat: p.lat, lng: p.lng } : null)), [])
@@ -104,10 +112,16 @@ export default function RoutePage() {
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] md:items-start">
         <section className="card overflow-hidden p-0">
           {/* 기록이 없는 날에도 지도는 보인다 (마지막으로 있던 곳 둘레) */}
-          <div className="relative">
+          <div className="relative isolate">
             <Suspense fallback={<div className="h-[58dvh] min-h-72 bg-slate-100" />}>
               <RouteMap points={day?.points ?? []} stops={day?.summary.stops ?? []} focus={focus} center={has ? null : (latest ?? null)} className="h-[58dvh] min-h-72" />
             </Suspense>
+            {has && (
+              <button type="button" onClick={() => setBig(true)} className="tap absolute top-3 right-3 z-[500] flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-card" aria-label="지도 크게 보기">
+                <Maximize2 className="size-3.5" aria-hidden />
+                크게
+              </button>
+            )}
             {!has && (
               <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-4">
                 <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-card">
@@ -117,6 +131,7 @@ export default function RoutePage() {
               </div>
             )}
           </div>
+          {has && <SpeedLegend className="border-t border-slate-100 px-4 py-2" />}
           {has && s && (
             <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 text-center">
               <Num label="움직인 거리" value={distanceLabel(s.km)} />
@@ -205,7 +220,46 @@ export default function RoutePage() {
           </section>
         </div>
       </div>
+      {/* 크게 보기 (운동 앱 지도처럼 화면 가득). 다크 모드면 지도도 어둡게 */}
+      {big && day && (
+        <div className="fixed inset-0 z-[48] flex flex-col bg-white" role="dialog" aria-label="이동 기록 지도 크게 보기">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3">
+            <p className="min-w-0 flex-1 text-[15px] font-extrabold tabular-nums">
+              {s ? `${distanceLabel(s.km)} 이동` : ''}
+              {steps && <span className="ml-1.5 font-bold text-slate-500">· {stepsLabel(steps.steps)}걸음</span>}
+              <span className="block text-xs font-normal text-slate-500">{date === today ? `오늘 · ${formatDateLabel(date)}` : formatDateLabel(date)}{s?.first && s.last ? ` · ${clock(s.first)}~${clock(s.last)}` : ''}</span>
+            </p>
+            <button type="button" onClick={() => setBig(false)} className="tap flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-600" aria-label="닫기">
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
+          <Suspense fallback={<div className="flex-1 bg-slate-100" />}>
+            <RouteMap points={day.points} stops={[]} className="min-h-0 flex-1" />
+          </Suspense>
+          <SpeedLegend className="px-4 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]" />
+        </div>
+      )}
     </>
+  )
+}
+
+/** 선 색 뜻 (빠르기) */
+function SpeedLegend({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 ${className}`}>
+      {SPEED_COLORS.map((c) => (
+        <span key={c.color} className="flex items-center gap-1">
+          <span className="h-1.5 w-4 rounded-full" style={{ background: c.color }} aria-hidden />
+          {c.label}
+        </span>
+      ))}
+      <span className="flex items-center gap-1">
+        <span className="size-2 rounded-full bg-[#22c55e]" aria-hidden />
+        시작
+        <span className="ml-1 size-2 rounded-full bg-[#ef4444]" aria-hidden />
+        끝
+      </span>
+    </div>
   )
 }
 

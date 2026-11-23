@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanPoints, distanceM, durationLabel, findStops, summarize, type RoutePoint } from '../../src/lib/route'
+import { cleanPoints, distanceM, durationLabel, findStops, speedColor, speedPieces, summarize, type RoutePoint } from '../../src/lib/route'
 
 const MIN = 60 * 1000
 const T0 = new Date(2026, 10, 21, 9, 0).getTime()
@@ -59,5 +59,24 @@ describe('이동 기록', () => {
     expect(durationLabel(35 * MIN)).toBe('35분')
     expect(durationLabel(80 * MIN)).toBe('1시간 20분')
     expect(durationLabel(120 * MIN)).toBe('2시간')
+  })
+})
+
+describe('speedPieces', () => {
+  it('빠르기가 바뀌는 곳에서 색 조각을 나누고 끝 점을 같이 쓴다', () => {
+    const t = 1_700_000_000_000
+    // 1분에 50m (3km/h, 걷기) → 1분에 1km (60km/h, 차)
+    const pts = [
+      { t, lat: 37.5, lng: 127, acc: 5 },
+      { t: t + 60000, lat: 37.50045, lng: 127, acc: 5 },
+      { t: t + 120000, lat: 37.5009, lng: 127, acc: 5 },
+      { t: t + 180000, lat: 37.5099, lng: 127, acc: 5 },
+    ]
+    const pieces = speedPieces(pts)
+    expect(pieces).toHaveLength(2)
+    expect(pieces[0].color).toBe(speedColor(3))
+    expect(pieces[0].points).toHaveLength(3)
+    expect(pieces[1].color).toBe(speedColor(60))
+    expect(pieces[1].points[0]).toEqual({ lat: 37.5009, lng: 127 })
   })
 })

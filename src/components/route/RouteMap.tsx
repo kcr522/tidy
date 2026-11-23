@@ -2,7 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { MAX_ZOOM, OSM_TILE } from '../../lib/mapTile'
-import type { RoutePoint, RouteStop } from '../../lib/route'
+import { speedPieces, type RoutePoint, type RouteStop } from '../../lib/route'
 import { isNativeApp } from '../../platform/native'
 
 /**
@@ -96,11 +96,13 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
       return
     }
     const latlngs = points.map((p) => L.latLng(p.lat, p.lng))
-    L.polyline(latlngs, { color: '#fff', weight: 7, opacity: 0.9, lineJoin: 'round' }).addTo(g)
-    L.polyline(latlngs, { color: LINE, weight: 4, opacity: 0.95, lineJoin: 'round' }).addTo(g)
-    // 시작 · 지금(마지막) 위치
-    L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#10b981', fillOpacity: 1 }).addTo(g)
-    if (latlngs.length > 1) L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 3, fillColor: '#3b82f6', fillOpacity: 1 }).addTo(g)
+    // 테두리 한 줄 + 빠르기별 색 조각 (걷기 초록 → 차 빨강)
+    // 테두리는 다크 모드면 어둡게 (index.css .tidy-route-outline)
+    L.polyline(latlngs, { color: '#fff', weight: 7, opacity: 0.9, lineJoin: 'round', lineCap: 'round', className: 'tidy-route-outline' }).addTo(g)
+    for (const piece of speedPieces(points)) L.polyline(piece.points, { color: piece.color, weight: 4, opacity: 1, lineJoin: 'round', lineCap: 'round' }).addTo(g)
+    // 시작(초록) · 끝(빨강)
+    L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1 }).addTo(g)
+    if (latlngs.length > 1) L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(g)
     stops.forEach((s, i) => L.marker([s.lat, s.lng], { icon: stopIcon(i + 1, focus === i), interactive: false, keyboard: false }).addTo(g))
     const bounds = L.latLngBounds(latlngs)
     stops.forEach((s) => bounds.extend([s.lat, s.lng]))
@@ -108,6 +110,6 @@ export default function RouteMap({ points, stops, interactive = true, focus = nu
     else m.fitBounds(bounds, { padding: interactive ? [32, 32] : [18, 18], maxZoom: 16, animate: false })
   }, [points, stops, focus, interactive, center])
 
-  // 지도 그림이 오기 전(느린 인터넷 · 오프라인)에도 밝은 바탕
-  return <div ref={el} style={{ background: '#eef1f5' }} className={`isolate z-0 overflow-hidden ${interactive ? '' : 'pointer-events-none'} ${className}`} />
+  // 다크 모드면 지도 그림도 어둡게 (index.css .tidy-map). 그림이 오기 전에도 바탕색
+  return <div ref={el} className={`tidy-map isolate z-0 overflow-hidden ${interactive ? '' : 'pointer-events-none'} ${className}`} />
 }

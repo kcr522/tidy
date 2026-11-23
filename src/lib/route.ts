@@ -142,3 +142,35 @@ export function durationLabel(ms: number): string {
 export function distanceLabel(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`
 }
+
+/** 빠르기별 선 색 (사용자 요청 2026-11-23, 운동 앱처럼): 걷기 초록 → 빠른 걸음 노랑 → 자전거 주황 → 차 빨강 */
+export const SPEED_COLORS = [
+  { max: 6, color: '#34d399', label: '걷기' },
+  { max: 12, color: '#facc15', label: '빠른 걸음 · 뛰기' },
+  { max: 30, color: '#fb923c', label: '자전거' },
+  { max: Infinity, color: '#f43f5e', label: '차 · 대중교통' },
+] as const
+
+export function speedColor(kmh: number): string {
+  return (SPEED_COLORS.find((c) => kmh <= c.max) ?? SPEED_COLORS[SPEED_COLORS.length - 1]).color
+}
+
+export interface SpeedPiece {
+  color: string
+  points: { lat: number; lng: number }[]
+}
+
+/** 선을 빠르기 색이 같은 조각들로 나눈다. 조각끼리 끝 점을 같이 써서 선이 끊기지 않는다 */
+export function speedPieces(points: RoutePoint[]): SpeedPiece[] {
+  const out: SpeedPiece[] = []
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    const sec = Math.max(1, (b.t - a.t) / 1000)
+    const color = speedColor((distanceM(a, b) / sec) * 3.6)
+    const last = out[out.length - 1]
+    if (last && last.color === color) last.points.push({ lat: b.lat, lng: b.lng })
+    else out.push({ color, points: [{ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }] })
+  }
+  return out
+}
