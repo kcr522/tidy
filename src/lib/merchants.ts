@@ -45,7 +45,7 @@ export const BRANDS: Brand[] = [
   withApp('com.oliveyoung', b('올리브영', 'oliveyoung.co.kr', '#9BCB3C', '쇼핑', ['oliveyoung', 'cj올리브영', '올영'], '올영')),
   withApp('com.emart.today', b('이마트', 'emart.com', '#FFB300', '쇼핑', ['emart', '이마트에브리데이'])),
   withApp('com.socialapps.homeplus', b('홈플러스', 'homeplus.co.kr', '#E2001A', '쇼핑', ['homeplus'])),
-  withWiki('롯데마트|en:Lotte Mart', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
+  withWiki('롯데마트|en:Lotte Mart|commons:Lotte Mart logo', b('롯데마트', 'lottemart.com', '#E60012', '쇼핑', ['lottemart'])),
   withApp('com.costco.dmc.store', b('코스트코', 'costco.co.kr', '#005DAA', '쇼핑', ['costco'])),
   withApp('com.coupang.mobile', b('쿠팡', 'coupang.com', '#E52528', '쇼핑', ['coupang'])),
   withApp('com.musinsa.store', b('무신사', 'musinsa.com', '#111111', '쇼핑', ['musinsa'])),

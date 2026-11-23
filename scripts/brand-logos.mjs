@@ -47,6 +47,17 @@ async function wikiLogo(titles) {
   const ua = { 'user-agent': 'TidyBrandLogos/1.0 (github.com/kcr522/tidy)' }
   for (const t of titles.split('|')) {
     const [lang, title] = t.includes(':') ? t.split(':') : ['ko', t]
+    if (lang === 'commons') {
+      // 위키미디어 공용에서 파일 찾기 ('commons:Lotte Mart logo')
+      const api = 'https://commons.wikimedia.org/w/api.php?format=json&action=query'
+      const found = await (await fetch(`${api}&list=search&srnamespace=6&srlimit=5&srsearch=${encodeURIComponent(title)}`, { headers: ua })).json()
+      const file = found.query?.search?.map((r) => r.title).find((f) => /logo|로고/i.test(f))
+      if (!file) continue
+      const info = await (await fetch(`${api}&prop=imageinfo&iiprop=url&iiurlwidth=256&titles=${encodeURIComponent(file)}`, { headers: ua })).json()
+      const url = Object.values(info.query?.pages ?? {})[0]?.imageinfo?.[0]?.thumburl
+      if (url) return { url, name: file }
+      continue
+    }
     const base = `https://${lang}.wikipedia.org/w/api.php?format=json&action=query&redirects=1`
     const list = await (await fetch(`${base}&prop=images&imlimit=100&titles=${encodeURIComponent(title)}`, { headers: ua })).json()
     const files = Object.values(list.query?.pages ?? {}).flatMap((p) => (p.images ?? []).map((i) => i.title))
