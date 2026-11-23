@@ -56,7 +56,7 @@ const AGENDA_ROW = 26
 /** 달력 한 주 줄 기본 높이 (칸 24 + 줄 간격 4) */
 const CAL_ROW = 28
 /** 달력 칸이 커질 수 있는 최대 높이 */
-const CAL_CELL_MAX = 40
+const CAL_CELL_MAX = 46
 
 /**
  * 큰 요일·날짜, 칸이 넉넉하면 이번 달 달력까지.
@@ -129,8 +129,10 @@ export function DateWidget({ today, box, events }: DateProps) {
           ))}
         </div>
       )}
+      {/* 일정이 적어 자리가 남으면 위 · 목록 · 달력 사이로 고르게 나뉜다 */}
+      {showCal && (rows > 0 || empty) && <span className="h-3 shrink-0" aria-hidden />}
       {showCal && (rows > 0 || empty) && (
-        <div className="mt-3 flex min-h-0 flex-col border-t border-slate-100 pt-2.5">
+        <div className="my-auto flex min-h-0 flex-col border-t border-slate-100 pt-2.5">
           <p className="mb-1 text-[12px] font-bold text-slate-400">다가오는 일정</p>
           {empty ? (
             <p className="flex h-[26px] items-center text-[13px] text-slate-400">일정이 없어요 · 눌러서 추가</p>
