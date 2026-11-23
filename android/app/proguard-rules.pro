@@ -33,3 +33,5 @@
 }
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 -dontwarn com.getcapacitor.**
+# 워치 걸음 수 (헬스 커넥트 플러그인 @capgo/capacitor-health): 웹 화면에서 이름으로 불린다
+-keep class app.capgo.plugin.health.** { *; }

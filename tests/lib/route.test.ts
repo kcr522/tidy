@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanPoints, distanceM, durationLabel, findStops, summarize, type RoutePoint } from '../../src/lib/route'
+import { cleanPoints, curveBetween, distanceM, drawPoints, durationLabel, findStops, smoothLine, speedColor, speedPieces, summarize, type RoutePoint } from '../../src/lib/route'
 
 const MIN = 60 * 1000
 const T0 = new Date(2026, 10, 21, 9, 0).getTime()
@@ -59,5 +59,58 @@ describe('이동 기록', () => {
     expect(durationLabel(35 * MIN)).toBe('35분')
     expect(durationLabel(80 * MIN)).toBe('1시간 20분')
     expect(durationLabel(120 * MIN)).toBe('2시간')
+  })
+})
+
+describe('speedPieces', () => {
+  it('빠르기가 바뀌는 곳에서 색 조각을 나누고 끝 점을 같이 쓴다', () => {
+    const t = 1_700_000_000_000
+    // 1분에 50m (3km/h, 걷기) → 1분에 1km (60km/h, 차)
+    const pts = [
+      { t, lat: 37.5, lng: 127, acc: 5 },
+      { t: t + 60000, lat: 37.50045, lng: 127, acc: 5 },
+      { t: t + 120000, lat: 37.5009, lng: 127, acc: 5 },
+      { t: t + 180000, lat: 37.5099, lng: 127, acc: 5 },
+    ]
+    const pieces = speedPieces(pts)
+    expect(pieces).toHaveLength(2)
+    expect(pieces[0].color).toBe(speedColor(3))
+    expect(pieces[0].points).toHaveLength(3)
+    expect(pieces[1].color).toBe(speedColor(60))
+    expect(pieces[1].points[0]).toEqual({ lat: 37.5009, lng: 127 })
+  })
+})
+
+describe('부드러운 선', () => {
+  it('곡선은 원래 점을 지나고 끝 점에서 끝난다', () => {
+    const a = { lat: 37.5, lng: 127 }
+    const b = { lat: 37.501, lng: 127.001 }
+    const pts = curveBetween({ lat: 37.499, lng: 127 }, a, b, { lat: 37.501, lng: 127.002 })
+    expect(pts).toHaveLength(12)
+    expect(pts[pts.length - 1]).toEqual(b)
+    for (const p of pts) {
+      expect(p.lat).toBeGreaterThan(37.499)
+      expect(p.lat).toBeLessThan(37.502)
+    }
+  })
+  it('smoothLine 은 시작 · 끝 점이 그대로다', () => {
+    const t = 1_700_000_000_000
+    const pts = [0, 1, 2, 3].map((i) => ({ t: t + i * 60000, lat: 37.5 + i * 0.001, lng: 127 + (i % 2) * 0.001, acc: 5 }))
+    const line = smoothLine(pts)
+    expect(line[0]).toEqual({ lat: pts[0].lat, lng: pts[0].lng })
+    expect(line[line.length - 1]).toEqual({ lat: pts[3].lat, lng: pts[3].lng })
+    expect(line.length).toBeGreaterThan(pts.length * 4)
+  })
+  it('drawPoints 는 제자리 흔들림을 빼고 마지막 점은 남긴다', () => {
+    const t = 1_700_000_000_000
+    const pts = [
+      { t, lat: 37.5, lng: 127, acc: 10 },
+      { t: t + 1, lat: 37.50005, lng: 127, acc: 10 },
+      { t: t + 2, lat: 37.501, lng: 127, acc: 10 },
+      { t: t + 3, lat: 37.50101, lng: 127, acc: 10 },
+    ]
+    const out = drawPoints(pts)
+    expect(out).toHaveLength(2)
+    expect(out[1]).toBe(pts[3])
   })
 })

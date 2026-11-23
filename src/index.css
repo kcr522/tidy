@@ -319,3 +319,12 @@ html.desk-widget #root {
   background: transparent !important;
   background-image: none !important;
 }
+
+/* 이동 기록 지도 (src/components/route/RouteMap.tsx): 다크 모드면 OpenStreetMap 그림을 뒤집어 어둡게 (키 필요 없음, 사용자 요청 2026-11-23) */
+.tidy-map { background: #eef1f5; }
+.dark .tidy-map { background: #1b2333; }
+.dark .tidy-map .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(0.9) contrast(0.85) saturate(0.6); }
+.dark .tidy-map .tidy-route-outline { stroke: #0b1220; stroke-opacity: 0.6; }
+.dark .tidy-map .leaflet-control-attribution { background: rgb(15 23 42 / 0.75); color: #94a3b8; }
+.dark .tidy-map .leaflet-control-attribution a { color: #a5b4fc; }
+.dark .tidy-map .leaflet-bar a { background: #1e293b; color: #e2e8f0; border-color: #334155; }
