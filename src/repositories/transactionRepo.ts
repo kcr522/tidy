@@ -2,6 +2,7 @@ import { db as defaultDb, type TidyDB } from '../db/database'
 import type { Transaction, TransactionType } from '../db/types'
 import { nowIso } from '../lib/date'
 import { normalizeName } from '../lib/merchants'
+import { memoFixes } from '../lib/memoCleanup'
 
 /** 화면에서 입력받는 값 (id, 생성/수정 시각 제외) */
 export interface TransactionInput {
@@ -95,6 +96,18 @@ export function createTransactionRepo(database: TidyDB = defaultDb) {
         if (a) count.set(a, (count.get(a) ?? 0) + 1)
       })
       return [...count.entries()].sort((x, y) => y[1] - x[1]).slice(0, limit).map(([a]) => a)
+    },
+
+    /** 예전에 결제 알림으로 들어간 이름의 군더더기 걷기 ("가맹점: GS25 운남점" → "GS25 운남점"). 고친 개수 */
+    async cleanAutoMemos(): Promise<number> {
+      const [list, aliases] = await Promise.all([database.transactions.toArray(), database.merchantAliases.toArray()])
+      const fixes = memoFixes(list, new Set(aliases.map((a) => a.raw)))
+      if (!fixes.length) return 0
+      const now = nowIso()
+      await database.transaction('rw', database.transactions, async () => {
+        for (const f of fixes) await database.transactions.update(f.id, { memo: f.memo, updatedAt: now })
+      })
+      return fixes.length
     },
 
     /** 선택한 달의 내역 (month: 1~12) */
