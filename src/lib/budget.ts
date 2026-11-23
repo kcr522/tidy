@@ -1,5 +1,6 @@
 import { getDaysInMonth } from 'date-fns'
 import type { Budget, Transaction } from '../db/types'
+import { isSpending } from './categories'
 import { parseDateKey } from './date'
 
 /** 이만큼 쓰면 "조심" 색으로 바뀌고 알려 준다 (%) */
@@ -45,7 +46,7 @@ export function budgetStatus(budgets: Budget[], items: Transaction[], ym: string
   const byCat = new Map<string, number>()
   let spent = 0
   for (const t of items) {
-    if (t.type !== 'EXPENSE' || !t.date.startsWith(ym)) continue
+    if (!isSpending(t) || !t.date.startsWith(ym)) continue
     spent += t.amount
     byCat.set(t.category, (byCat.get(t.category) ?? 0) + t.amount)
   }

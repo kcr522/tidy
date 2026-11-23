@@ -3,6 +3,7 @@ import { BarChart3, CalendarCheck, CreditCard, ChevronLeft, ChevronRight, PieCha
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { budgetStatus } from '../../../lib/budget'
+import { isSpending } from '../../../lib/categories'
 import { formatWon } from '../../../lib/format'
 import { budgetRepo } from '../../../repositories/budgetRepo'
 import BudgetPanel from '../../budget/BudgetPanel'
@@ -34,10 +35,10 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
   const inMonth = (items ?? []).filter((t) => inPeriod(t, month))
   const top = categoryShares(inMonth, 'EXPENSE')[0]
   const income = inMonth.reduce((s, t) => (t.type === 'INCOME' ? s + t.amount : s), 0)
-  const expense = inMonth.reduce((s, t) => (t.type === 'EXPENSE' ? s + t.amount : s), 0)
+  const expense = inMonth.reduce((s, t) => (isSpending(t) ? s + t.amount : s), 0)
   const active = (rules ?? []).filter((r) => r.isActive === 1)
-  const fixedOut = active.reduce((s, r) => (r.type === 'EXPENSE' ? s + r.amount : s), 0)
-  const topMethod = accountTotals(inMonth.filter((t) => t.type === 'EXPENSE')).find((a) => a.account !== NO_ACCOUNT)
+  const fixedOut = active.reduce((s, r) => (isSpending(r) ? s + r.amount : s), 0)
+  const topMethod = accountTotals(inMonth.filter(isSpending)).find((a) => a.account !== NO_ACCOUNT)
   const budget = budgets ? budgetStatus(budgets, inMonth, today.slice(0, 7), today).total : null
 
   return (

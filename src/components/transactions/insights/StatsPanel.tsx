@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Transaction } from '../../../db/types'
-import { categoryEmoji } from '../../../lib/categories'
+import { categoryEmoji, isSaving } from '../../../lib/categories'
 import { formatWon } from '../../../lib/format'
 import {
   categoryColor,
@@ -24,6 +24,7 @@ const UNITS = [
 ] as const
 const INCOME_COLOR = '#3182f6'
 const EXPENSE_COLOR = '#f04452'
+const SAVING_COLOR = '#0b97a5'
 
 /** 통계: 수입 중 몇 %를 어디에 썼는지, 수입은 어디서 왔는지 */
 export default function StatsPanel({ items, today }: { items: Transaction[]; today: string }) {
@@ -39,10 +40,12 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
 
   const income = earn.reduce((s, x) => s + x.amount, 0)
   const expense = spend.reduce((s, x) => s + x.amount, 0)
-  const remain = income - expense
+  // 저축은 쓴 돈이 아니라 따로 모은 돈 (사용자 요청 2026-11-23)
+  const saving = useMemo(() => inP.reduce((s, t) => (isSaving(t) ? s + t.amount : s), 0), [inP])
+  const remain = income - expense - saving
   const usedPct = percentOf(expense, income)
   // 수입이 있으면 수입을 100%로, 없으면 지출 합계를 100%로
-  const base = income > 0 ? Math.max(income, expense) : expense
+  const base = income > 0 ? Math.max(income, expense + saving) : expense + saving
 
   const tabLabel = offset === 0 ? (unit === 'month' ? '이번 달' : '올해') : periodLabel(period)
 
@@ -81,10 +84,11 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
             <>
               {tabLabel} 수입 <b className="text-slate-900">{formatWon(income)}</b> 중{' '}
               <b className="text-expense">{usedPct}%</b>를 썼어요.{' '}
+              {saving > 0 && <>저축으로 <b className="text-saving">{formatWon(saving)}</b> 모았고, </>}
               {remain >= 0 ? `${formatWon(remain)} 남았어요.` : `${formatWon(-remain)} 더 썼어요.`}
             </>
-          ) : expense > 0 ? (
-            `${tabLabel}에는 수입 기록이 없어서, 쓴 돈 ${formatWon(expense)}을 100%로 보여 드려요.`
+          ) : expense + saving > 0 ? (
+            `${tabLabel}에는 수입 기록이 없어서, 쓴 돈${saving > 0 ? '과 저축' : ''} ${formatWon(expense + saving)}을 100%로 보여 드려요.`
           ) : (
             `${tabLabel}에는 아직 기록이 없어요.`
           )}
@@ -94,6 +98,7 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
             <DonutChart
               segments={[
                 ...spend.map((s) => ({ key: s.category, label: s.category, value: s.amount, color: categoryColor(s.category) })),
+                ...(saving > 0 ? [{ key: '__saving', label: '저축', value: saving, color: SAVING_COLOR }] : []),
                 ...(income > 0 && remain > 0 ? [{ key: '__remain', label: '남은 돈', value: remain, color: REMAIN_COLOR }] : []),
               ]}
               total={base}
@@ -112,13 +117,18 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
                   />
                 </li>
               ))}
+              {saving > 0 && (
+                <li>
+                  <ShareRow color={SAVING_COLOR} label="🐷 저축 (지출 아님)" amount={saving} percent={percentOf(saving, income > 0 ? income : expense + saving)} />
+                </li>
+              )}
               {income > 0 && remain > 0 && (
                 <li>
                   <ShareRow color="#d1d6db" label="💚 남은 돈" amount={remain} percent={percentOf(remain, income)} />
                 </li>
               )}
             </ul>
-            <p className="mt-1 text-right text-[11px] text-slate-400">{income > 0 ? '% = 수입 대비' : '% = 지출 대비'}</p>
+            <p className="mt-1 text-right text-[11px] text-slate-400">{income > 0 ? '% = 수입 대비' : saving > 0 ? '% = 지출 + 저축 대비' : '% = 지출 대비'}</p>
           </>
         )}
       </section>
@@ -176,14 +186,14 @@ export default function StatsPanel({ items, today }: { items: Transaction[]; tod
 
       {/* 3. 수입과 지출 흐름 */}
       <section className="rounded-3xl bg-slate-50 p-4">
-        <h3 className="mb-3 text-base font-extrabold">수입과 지출 흐름</h3>
+        <h3 className="mb-3 text-base font-extrabold">수입 · 지출 · 저축 흐름</h3>
         <BarChart
-          data={trend.map((r) => ({ key: r.period.start, label: periodLabel(r.period, true), values: [r.income, r.expense] }))}
-          colors={[INCOME_COLOR, EXPENSE_COLOR]}
-          names={['수입', '지출']}
+          data={trend.map((r) => ({ key: r.period.start, label: periodLabel(r.period, true), values: [r.income, r.expense, r.saving] }))}
+          colors={[INCOME_COLOR, EXPENSE_COLOR, SAVING_COLOR]}
+          names={['수입', '지출', '저축']}
           selected={period.start}
           onSelect={(k) => setOffset(offset - trend.findIndex((r) => r.period.start === period.start) + trend.findIndex((r) => r.period.start === k))}
-          ariaLabel="최근 6개 기간 수입과 지출 막대 그래프"
+          ariaLabel="최근 6개 기간 수입, 지출, 저축 막대 그래프"
         />
       </section>
     </div>

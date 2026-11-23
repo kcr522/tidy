@@ -33,6 +33,7 @@
 
   --color-income: #3182f6;
   --color-expense: #f04452;
+  --color-saving: #0b97a5;
 
   --shadow-card: 0 2px 16px rgb(25 31 40 / 0.05);
   --shadow-float: 0 6px 20px color-mix(in srgb, var(--color-brand-500) 30%, transparent);
@@ -129,6 +130,7 @@
 
   --color-income: #5b9dff;
   --color-expense: #ff626e;
+  --color-saving: #3cc5d0;
   --color-red-50: #3a1d22;
   --color-red-400: #ff7c86;
   --color-red-500: #f04452;

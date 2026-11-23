@@ -12,7 +12,7 @@ describe('카테고리 필터 (FR-018, US6 시나리오 2)', () => {
   it('식비를 고르면 식비만 남고 합계도 식비 기준', () => {
     const food = filterByCategory(list, '식비')
     expect(food).toHaveLength(2)
-    expect(monthSummary(food)).toEqual({ income: 0, expense: 21000, balance: -21000 })
+    expect(monthSummary(food)).toEqual({ income: 0, expense: 21000, saving: 0, balance: -21000 })
   })
 
   it('null이면 전체', () => {

@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Transaction } from '../../../db/types'
-import { categoryEmoji } from '../../../lib/categories'
+import { categoryEmoji, isSpending } from '../../../lib/categories'
 import { formatDateLabel, formatWon } from '../../../lib/format'
 import { sortTransactions } from '../../../repositories/transactionRepo'
 import {
@@ -43,7 +43,7 @@ export default function ChartPanel({ items, today }: { items: Transaction[]; tod
   const shares = useMemo(() => categoryShares(inSel, 'EXPENSE'), [inSel])
   const expense = shares.reduce((s, x) => s + x.amount, 0)
   const prevPeriod = shiftPeriod(selected, -1)
-  const prevExpense = items.reduce((s, t) => (t.type === 'EXPENSE' && inPeriod(t, prevPeriod) ? s + t.amount : s), 0)
+  const prevExpense = items.reduce((s, t) => (isSpending(t) && inPeriod(t, prevPeriod) ? s + t.amount : s), 0)
   const diff = expense - prevExpense
   const isCurrent = selected.start === current.start
 
@@ -111,7 +111,7 @@ export default function ChartPanel({ items, today }: { items: Transaction[]; tod
           <ul className="divide-y divide-slate-100">
             {shares.map((s) => {
               const isOpen = open === s.category
-              const list = isOpen ? sortTransactions(inSel.filter((t) => t.type === 'EXPENSE' && t.category === s.category)) : []
+              const list = isOpen ? sortTransactions(inSel.filter((t) => isSpending(t) && t.category === s.category)) : []
               return (
                 <li key={s.category}>
                   <button

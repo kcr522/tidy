@@ -1,5 +1,6 @@
 import { addDays, addMonths, endOfMonth, format, getDay, getDaysInMonth } from 'date-fns'
 import type { Budget, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, Todo, Transaction } from '../db/types'
+import { isSpending } from './categories'
 import { cellWon } from './calendar'
 import { parseDateKey } from './date'
 import { holidaysBetween } from './holidays'
@@ -133,7 +134,7 @@ export function buildWidgetSummary(todos: Todo[], transactions: Transaction[], t
   const spendByDate = new Map<string, number>()
   const months: Record<string, number> = {}
   for (const t of transactions) {
-    if (t.type !== 'EXPENSE') continue
+    if (!isSpending(t)) continue
     spendByDate.set(t.date, (spendByDate.get(t.date) ?? 0) + t.amount)
     if (!locked) {
       const ym = t.date.slice(0, 7)
@@ -184,7 +185,7 @@ function buildCal(transactions: Transaction[], events: CalendarEvent[], diaries:
     cal[ym] = month
     if (locked) continue
     for (const t of transactions) {
-      if (t.type !== 'EXPENSE' || t.date.slice(0, 7) !== ym) continue
+      if (!isSpending(t) || t.date.slice(0, 7) !== ym) continue
       const d = String(Number(t.date.slice(8)))
       month.s[d] = (month.s[d] ?? 0) + t.amount
     }

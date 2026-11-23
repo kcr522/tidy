@@ -22,11 +22,11 @@ describe('monthSummary (FR-015)', () => {
       tx({ amount: 1_000_000 }),
       tx({ amount: 240_000 }),
     ])
-    expect(s).toEqual({ income: 3_500_000, expense: 1_240_000, balance: 2_260_000 })
+    expect(s).toEqual({ income: 3_500_000, expense: 1_240_000, saving: 0, balance: 2_260_000 })
   })
 
   it('내역이 없으면 모두 0', () => {
-    expect(monthSummary([])).toEqual({ income: 0, expense: 0, balance: 0 })
+    expect(monthSummary([])).toEqual({ income: 0, expense: 0, saving: 0, balance: 0 })
   })
 })
 

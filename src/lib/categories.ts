@@ -1,4 +1,4 @@
-import type { TransactionType } from '../db/types'
+import type { Transaction, TransactionType } from '../db/types'
 
 /** 기본 카테고리 (spec FR-013) */
 export const EXPENSE_CATEGORIES = [
@@ -41,4 +41,19 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export function categoryEmoji(category: string): string {
   return CATEGORY_EMOJI[category] ?? '📦'
+}
+
+// ───────────── 저축 ─────────────
+
+/** 저축 카테고리: 지출로 세지 않고 따로 모은다 (사용자 요청 2026-11-23) */
+export const SAVING_CATEGORY = '저축'
+
+/** 저축으로 넣은 돈인가: 지출 쪽에 적었어도 카테고리가 저축이거나 적금에서 자동으로 적힌 것 */
+export function isSaving(t: Pick<Transaction, 'type' | 'category'> & { savingsId?: number }): boolean {
+  return t.type === 'EXPENSE' && (t.category === SAVING_CATEGORY || t.savingsId != null)
+}
+
+/** 진짜 쓴 돈인가 (저축은 빼고) */
+export function isSpending(t: Pick<Transaction, 'type' | 'category'> & { savingsId?: number }): boolean {
+  return t.type === 'EXPENSE' && !isSaving(t)
 }

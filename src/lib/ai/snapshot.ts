@@ -1,9 +1,10 @@
 import type { Transaction } from '../../db/types'
+import { isSpending } from '../categories'
 import { MAX_ITEMS, type SpendingSnapshot } from './prompts'
 
 /** 이번 달 내역에서 오늘 소비 요약을 만든다 (AI에 보낼 내용) */
 export function buildSnapshot(monthItems: Transaction[], today: string): SpendingSnapshot {
-  const expenses = monthItems.filter((t) => t.type === 'EXPENSE')
+  const expenses = monthItems.filter((t) => isSpending(t))
   const todays = expenses
     .filter((t) => t.date === today)
     .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.createdAt.localeCompare(b.createdAt))

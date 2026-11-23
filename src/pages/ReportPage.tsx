@@ -70,6 +70,11 @@ export default function ReportPage() {
               <Num label="쓴 돈" value={formatWon(r.money.expense)} className="text-expense" />
               <Num label="들어온 돈" value={formatWon(r.money.income)} className="text-income" />
             </div>
+            {r.money.saving > 0 && (
+              <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                🐷 저축으로 <b className="text-saving">{formatWon(r.money.saving)}</b> 모았어요 (쓴 돈에는 넣지 않았어요)
+              </p>
+            )}
             {r.money.diffPct !== null && (
               <p className="mt-2 text-sm text-slate-600">
                 지난달({formatWon(r.money.prevExpense)})보다 <b className={r.money.diffPct > 0 ? 'text-expense' : 'text-income'}>{Math.abs(r.money.diffPct)}% {r.money.diffPct > 0 ? '더' : '덜'}</b> 썼어요

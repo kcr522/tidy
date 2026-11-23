@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Bell, BellOff, ChevronLeft, ImagePlus, Pencil, PiggyBank, Sparkles, Trash2, X } from 'lucide-react'
 import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { Freq, InterestType, SavingsPlan, TaxType } from '../../db/types'
+import type { Freq, InterestType, SavingsPlan, TaxType, Transaction } from '../../db/types'
 import { SavingsAiError } from '../../lib/ai/savingsPrompt'
 import { readSavings } from '../../lib/ai/savingsAi'
 import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
@@ -19,15 +19,17 @@ import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 import PayMethodPicker from '../payMethods/PayMethodPicker'
+import { DepositForm, SavingsLogList, useSavingsLog } from './SavingsLog'
 
-type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan }
+type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan } | { mode: 'deposit' }
 
-/** 가계부 → 적금: 목록, 자세히(만기 금액 계산), 입력 창 */
-export default function SavingsManager({ today, startWith }: { today: string; startWith?: 'new' }) {
+/** 가계부 → 저축: 모은 돈, 저축 넣기, 적금 목록, 저축 내역 전체, 적금 자세히(만기 금액 계산), 입력 창 */
+export default function SavingsManager({ today, startWith, onOpenTransaction }: { today: string; startWith?: 'new' | 'deposit'; onOpenTransaction?: (t: Transaction) => void }) {
   const plans = useLiveQuery(() => savingsRepo.list(), [])
   // 실제로 가계부에 기록된 납입 (적금 id → 합계, 횟수)
   const deposited = useLiveQuery(() => savingsRepo.depositedTotals(), [])
-  const [view, setView] = useState<View>(startWith === 'new' ? { mode: 'form' } : { mode: 'list' })
+  const log = useSavingsLog()
+  const [view, setView] = useState<View>(startWith === 'new' ? { mode: 'form' } : startWith === 'deposit' ? { mode: 'deposit' } : { mode: 'list' })
   const [deleting, setDeleting] = useState<SavingsPlan | null>(null)
   const toast = useToast()
 
@@ -59,12 +61,23 @@ export default function SavingsManager({ today, startWith }: { today: string; st
 
   return (
     <>
-      {view.mode === 'form' ? (
+      {view.mode === 'deposit' ? (
+        plans && <DepositForm plans={plans} today={today} onDone={() => setView({ mode: 'list' })} onCancel={() => setView({ mode: 'list' })} />
+      ) : view.mode === 'form' ? (
         <SavingsForm key={view.plan?.id ?? 'new'} initial={view.plan} today={today} onSubmit={save} onCancel={() => setView(view.plan?.id != null ? { mode: 'detail', id: view.plan.id } : { mode: 'list' })} />
       ) : detail ? (
         <SavingsDetail plan={detail} today={today} deposited={deposited?.get(detail.id!)} onBack={() => setView({ mode: 'list' })} onEdit={() => setView({ mode: 'form', plan: detail })} onDelete={() => setDeleting(detail)} />
       ) : (
-        <SavingsList plans={plans} deposited={deposited} today={today} onOpen={(id) => setView({ mode: 'detail', id })} onAdd={() => setView({ mode: 'form' })} />
+        <SavingsList
+          plans={plans}
+          deposited={deposited}
+          log={log}
+          today={today}
+          onOpen={(id) => setView({ mode: 'detail', id })}
+          onAdd={() => setView({ mode: 'form' })}
+          onDeposit={() => setView({ mode: 'deposit' })}
+          onOpenTransaction={onOpenTransaction}
+        />
       )}
       <ConfirmDialog
         open={deleting !== null}
@@ -81,22 +94,49 @@ export default function SavingsManager({ today, startWith }: { today: string; st
 
 type Deposited = Map<number, { count: number; amount: number }>
 
-function SavingsList({ plans, deposited, today, onOpen, onAdd }: { plans?: SavingsPlan[]; deposited?: Deposited; today: string; onOpen: (id: number) => void; onAdd: () => void }) {
+interface ListProps {
+  plans?: SavingsPlan[]
+  deposited?: Deposited
+  log?: Transaction[]
+  today: string
+  onOpen: (id: number) => void
+  onAdd: () => void
+  onDeposit: () => void
+  onOpenTransaction?: (t: Transaction) => void
+}
+
+function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, onOpenTransaction }: ListProps) {
   const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
   const totals = useMemo(() => {
     if (!plans) return null
-    return plans.reduce((acc, p) => ({ saved: acc.saved + (deposited?.get(p.id!)?.amount ?? 0), net: acc.net + maturity(p).netTotal }), { saved: 0, net: 0 })
-  }, [plans, deposited])
+    return plans.reduce((acc, p) => ({ net: acc.net + maturity(p).netTotal }), { net: 0 })
+  }, [plans])
+  // 모은 돈: 적금 납입 + 자유 저축 + 예전 기록까지 가계부의 저축 전부
+  const saved = (log ?? []).reduce((s, t) => s + t.amount, 0)
+  const ym = today.slice(0, 7)
+  const thisMonth = (log ?? []).reduce((s, t) => (t.date.startsWith(ym) ? s + t.amount : s), 0)
 
   return (
     <div>
-      {plans && plans.length > 0 && totals && (
+      {((plans && plans.length > 0) || saved > 0) && totals && (
         <section className="bg-grad on-grad mb-4 rounded-3xl p-5 shadow-float">
           <p className="text-sm font-semibold opacity-85">지금까지 모은 돈</p>
-          <p className="text-[28px] leading-tight font-extrabold tracking-tight">{formatWon(totals.saved)}</p>
-          <p className="mt-1 text-sm font-semibold opacity-90">만기에 받을 돈 (세후) {formatWon(totals.net)}</p>
+          <p className="text-[28px] leading-tight font-extrabold tracking-tight">{formatWon(saved)}</p>
+          <p className="mt-1 text-sm font-semibold opacity-90">
+            이번 달 {formatWon(thisMonth)}
+            {plans && plans.length > 0 && ` · 만기에 받을 돈 (세후) ${formatWon(totals.net)}`}
+          </p>
         </section>
       )}
+      <div className="mb-5 flex gap-2">
+        <Button className="flex-1" onClick={onDeposit}>
+          🐷 저축 넣기
+        </Button>
+        <Button variant="secondary" className="flex-1" onClick={onAdd}>
+          + 적금 추가
+        </Button>
+      </div>
+      <h3 className="mb-2 text-base font-extrabold text-slate-900">적금</h3>
       {plans === undefined ? null : plans.length === 0 ? (
         <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center">
           <PiggyBank className="mx-auto size-9 text-slate-300" aria-hidden />
@@ -147,9 +187,8 @@ function SavingsList({ plans, deposited, today, onOpen, onAdd }: { plans?: Savin
           })}
         </ul>
       )}
-      <Button className="mt-4 w-full" onClick={onAdd}>
-        + 적금 추가
-      </Button>
+      <h3 className="mt-6 mb-2 text-base font-extrabold text-slate-900">저축 내역</h3>
+      {log && plans && <SavingsLogList log={log} plans={plans} onOpen={onOpenTransaction} />}
     </div>
   )
 }

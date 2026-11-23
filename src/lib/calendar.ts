@@ -1,5 +1,6 @@
 import { addDays, addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns'
 import type { Todo, Transaction } from '../db/types'
+import { isSaving, isSpending } from './categories'
 import { parseDateKey, toDateKey } from './date'
 
 /** 이번 달 키 (YYYY-MM) */
@@ -58,22 +59,29 @@ export function todosOn(todos: Todo[], dateKey: string): Todo[] {
     .sort((a, b) => a.isCompleted - b.isCompleted || a.createdAt.localeCompare(b.createdAt))
 }
 
-/** 그날 지출 합계 (FR-107) */
+/** 그날 지출 합계 (FR-107, 저축은 빼고) */
 export function expenseOn(transactions: Transaction[], dateKey: string): number {
-  return transactions.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === dateKey ? sum + t.amount : sum), 0)
+  return transactions.reduce((sum, t) => (isSpending(t) && t.date === dateKey ? sum + t.amount : sum), 0)
+}
+
+/** 그날 저축한 돈 */
+export function savingOn(transactions: Transaction[], dateKey: string): number {
+  return transactions.reduce((sum, t) => (isSaving(t) && t.date === dateKey ? sum + t.amount : sum), 0)
 }
 
 export interface DayMoney {
   income: number
   expense: number
+  saving: number
 }
 
-/** 날짜별 수입·지출 합계 (가계부 달력) */
+/** 날짜별 수입·지출·저축 합계 (가계부 달력) */
 export function dailyTotals(transactions: Transaction[]): Map<string, DayMoney> {
   const map = new Map<string, DayMoney>()
   for (const t of transactions) {
-    const d = map.get(t.date) ?? { income: 0, expense: 0 }
+    const d = map.get(t.date) ?? { income: 0, expense: 0, saving: 0 }
     if (t.type === 'INCOME') d.income += t.amount
+    else if (isSaving(t)) d.saving += t.amount
     else d.expense += t.amount
     map.set(t.date, d)
   }

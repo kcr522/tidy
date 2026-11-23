@@ -1,22 +1,27 @@
 import type { Priority, Todo, Transaction } from '../db/types'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from './categories'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, isSaving, isSpending } from './categories'
 
 export interface MonthSummary {
   income: number
+  /** 쓴 돈 (저축은 빼고) */
   expense: number
-  /** 수입 − 지출 */
+  /** 저축으로 넣은 돈 */
+  saving: number
+  /** 수입 − 지출 − 저축 (손에 남은 돈) */
   balance: number
 }
 
-/** 월 합계 (FR-015) */
+/** 월 합계 (FR-015). 저축은 지출에 넣지 않고 따로 센다 */
 export function monthSummary(list: Transaction[]): MonthSummary {
   let income = 0
   let expense = 0
+  let saving = 0
   for (const t of list) {
     if (t.type === 'INCOME') income += t.amount
+    else if (isSaving(t)) saving += t.amount
     else expense += t.amount
   }
-  return { income, expense, balance: income - expense }
+  return { income, expense, saving, balance: income - expense - saving }
 }
 
 /**
@@ -28,9 +33,9 @@ export function usageRate(summary: Pick<MonthSummary, 'income' | 'expense'>): nu
   return Math.round((summary.expense / summary.income) * 100)
 }
 
-/** 오늘 지출 합계 (FR-051) */
+/** 오늘 지출 합계 (FR-051, 저축은 빼고) */
 export function todayExpense(list: Transaction[], today: string): number {
-  return list.reduce((sum, t) => (t.type === 'EXPENSE' && t.date === today ? sum + t.amount : sum), 0)
+  return list.reduce((sum, t) => (isSpending(t) && t.date === today ? sum + t.amount : sum), 0)
 }
 
 // ───────────── 카테고리 필터 (FR-018) ─────────────
@@ -61,6 +66,8 @@ export function accountOf(t: Transaction): string {
 export interface AccountTotal {
   account: string
   expense: number
+  /** 이 계좌에서 저축으로 넣은 돈 */
+  saving: number
   income: number
   count: number
 }
@@ -70,14 +77,15 @@ export function accountTotals(list: Transaction[]): AccountTotal[] {
   const map = new Map<string, AccountTotal>()
   for (const t of list) {
     const key = accountOf(t)
-    const row = map.get(key) ?? { account: key, expense: 0, income: 0, count: 0 }
-    if (t.type === 'EXPENSE') row.expense += t.amount
-    else row.income += t.amount
+    const row = map.get(key) ?? { account: key, expense: 0, saving: 0, income: 0, count: 0 }
+    if (t.type === 'INCOME') row.income += t.amount
+    else if (isSaving(t)) row.saving += t.amount
+    else row.expense += t.amount
     row.count += 1
     map.set(key, row)
   }
   return [...map.values()].sort(
-    (a, b) => Number(a.account === NO_ACCOUNT) - Number(b.account === NO_ACCOUNT) || b.expense - a.expense || b.income - a.income,
+    (a, b) => Number(a.account === NO_ACCOUNT) - Number(b.account === NO_ACCOUNT) || b.expense - a.expense || b.saving - a.saving || b.income - a.income,
   )
 }
 
@@ -89,8 +97,10 @@ export function filterByAccount(list: Transaction[], account: string | null): Tr
 export interface DayGroup {
   date: string
   items: Transaction[]
-  /** 그날의 지출 합계 */
+  /** 그날의 지출 합계 (저축은 빼고) */
   expense: number
+  /** 그날 저축한 돈 */
+  saving: number
   /** 그날의 수입 합계 */
   income: number
 }
@@ -101,11 +111,12 @@ export function groupByDate(list: Transaction[]): DayGroup[] {
   for (const t of list) {
     let group = groups.at(-1)
     if (!group || group.date !== t.date) {
-      group = { date: t.date, items: [], expense: 0, income: 0 }
+      group = { date: t.date, items: [], expense: 0, saving: 0, income: 0 }
       groups.push(group)
     }
     group.items.push(t)
     if (t.type === 'INCOME') group.income += t.amount
+    else if (isSaving(t)) group.saving += t.amount
     else group.expense += t.amount
   }
   return groups

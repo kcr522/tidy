@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Transaction } from '../../db/types'
-import { categoryEmoji } from '../../lib/categories'
+import { categoryEmoji, isSaving } from '../../lib/categories'
 import { formatDateLabel, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { methodEmoji } from '../../lib/payMethods'
@@ -26,11 +26,13 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
             <span className="font-medium text-slate-400">
               {g.income > 0 && <span className="mr-2 text-income">+{formatWon(g.income)}</span>}
               {g.expense > 0 && <span>-{formatWon(g.expense)}</span>}
+              {g.saving > 0 && <span className="ml-2 text-saving">🐷 {formatWon(g.saving)}</span>}
             </span>
           </header>
           <ul className="pb-2">
             {g.items.map((t) => {
               const m = matchMerchant(t.memo)
+              const saving = isSaving(t)
               return (
               <li key={t.id}>
                 <button
@@ -56,8 +58,8 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                       {!t.originalMemo && isUnclearMerchant(t.memo) && <span className="font-semibold text-amber-600"> · ❓ 어디서 썼나요?</span>}
                     </span>
                   </span>
-                  <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : 'text-slate-900'}`}>
-                    {t.type === 'INCOME' ? '+' : '-'}
+                  <span className={`shrink-0 text-[15px] font-bold ${t.type === 'INCOME' ? 'text-income' : saving ? 'text-saving' : 'text-slate-900'}`}>
+                    {t.type === 'INCOME' ? '+' : saving ? '🐷 ' : '-'}
                     {formatWon(t.amount)}
                   </span>
                 </button>

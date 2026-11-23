@@ -267,7 +267,7 @@ export default function TransactionsPage() {
                       <>
                         {methodEmoji(a.account, methods ?? [])} {a.account}
                         {methods?.find((m) => m.name === a.account)?.last4 && <span className="ml-1 opacity-70">··{methods.find((m) => m.name === a.account)!.last4}</span>}
-                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : `+${formatWon(a.income)}`}</span>
+                        <span className="ml-1.5 font-bold opacity-80">{a.expense > 0 ? `-${formatWon(a.expense)}` : a.saving > 0 ? `🐷${formatWon(a.saving)}` : `+${formatWon(a.income)}`}</span>
                       </>
                     )}
                   </Chip>
@@ -299,9 +299,9 @@ export default function TransactionsPage() {
             <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="적금" title="적금">
+            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="저축 · 적금" title="저축 · 적금">
               <PiggyBank className="size-[18px]" aria-hidden />
-              <span className="hidden sm:inline">적금</span>
+              <span className="hidden sm:inline">저축</span>
             </Button>
             <Button className="px-4! whitespace-nowrap sm:px-5!" onClick={() => setEditor({ mode: 'add' })} aria-label="내역 추가">
               + <span className="hidden sm:inline">내역 </span>추가
@@ -374,6 +374,7 @@ export default function TransactionsPage() {
         summary={summary}
         onPrev={() => moveMonth(-1)}
         onNext={() => moveMonth(1)}
+        onSaving={() => setShowSavings(true)}
         onToday={
           isThisMonth
             ? undefined
@@ -545,8 +546,16 @@ export default function TransactionsPage() {
 
       {showMenu && <MoneyMenu onClose={() => setShowMenu(null)} today={today} initialView={showMenu} />}
 
-      <Modal open={showSavings} title="적금" onClose={() => setShowSavings(false)}>
-        {showSavings && <SavingsManager today={today} />}
+      <Modal open={showSavings} title="저축 · 적금" onClose={() => setShowSavings(false)}>
+        {showSavings && (
+          <SavingsManager
+            today={today}
+            onOpenTransaction={(item) => {
+              setShowSavings(false)
+              setEditor({ mode: 'view', item })
+            }}
+          />
+        )}
       </Modal>
 
       <ConfirmDialog

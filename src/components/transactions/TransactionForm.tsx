@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Calculator } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
-import { categoriesFor, categoryEmoji } from '../../lib/categories'
+import { categoriesFor, categoryEmoji, SAVING_CATEGORY } from '../../lib/categories'
 import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
@@ -185,6 +185,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
             </option>
           ))}
         </select>
+        {type === 'EXPENSE' && category === SAVING_CATEGORY && <p className="mt-1.5 text-xs font-semibold text-saving">🐷 저축은 지출 합계에 넣지 않고 저축 칸에 따로 모여요</p>}
       </Field>
 
       {/* 어떤 카드 · 계좌로 (사용자 요청 2026-11-17) */}

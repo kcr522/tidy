@@ -12,6 +12,8 @@ export interface TransactionInput {
   memo: string
   time?: string
   account?: string
+  /** 적금에 넣은 저축이면 그 적금 id */
+  savingsId?: number
 }
 
 /** 해당 달의 [시작일, 다음 달 시작일) — YYYY-MM-DD */
