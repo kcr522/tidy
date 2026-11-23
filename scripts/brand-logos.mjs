@@ -2,7 +2,8 @@
 // 구글 아이콘 서비스(favicon)는 다이소 · 롯데리아 · GS25 같은 곳에서 아이콘이 없거나 흐려서, 앱 아이콘을 앱 안에 넣어 둔다.
 //
 //   node scripts/brand-logos.mjs find 다이소 올리브영 …  → 검색 결과 위 3개 (패키지 | 앱 이름) 를 보여 준다
-//   node scripts/brand-logos.mjs get                      → src/lib/merchants.ts 의 app: 패키지마다 아이콘을 받는다
+//   node scripts/brand-logos.mjs get                      → src/lib/merchants.ts 의 withApp(패키지) 마다 앱 아이콘을,
+//                                                            withWiki(문서) 마다 위키백과 로고 그림을 받는다
 //
 // 손으로 돌리기 어려우면 GitHub Actions 의 'Brand logos' 를 돌린다 (받은 아이콘을 그 브랜치에 올려 준다).
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -41,23 +42,47 @@ async function find(queries) {
   }
 }
 
+/** 위키백과 문서의 대표 그림(보통 로고) → PNG */
+async function wikiLogo(title) {
+  const api = `https://ko.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail|name&pithumbsize=256&redirects=1&titles=${encodeURIComponent(title)}`
+  const res = await fetch(api, { headers: { 'user-agent': 'TidyBrandLogos/1.0 (github.com/kcr522/tidy)' } })
+  const pages = Object.values((await res.json()).query?.pages ?? {})
+  const thumb = pages[0]?.thumbnail?.source
+  if (!thumb) throw new Error('위키백과 그림 없음')
+  return { url: thumb, name: pages[0].pageimage }
+}
+
+async function save(file, url, label) {
+  const res = await fetch(url, { headers: { 'user-agent': 'TidyBrandLogos/1.0 (github.com/kcr522/tidy)' } })
+  if (!res.ok) throw new Error(`그림 ${res.status}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  await writeFile(`public/brands/${file}`, buf)
+  console.log(`GET\t${file}\t${label}\t${buf.length}B`)
+}
+
 async function get() {
   const src = await readFile('src/lib/merchants.ts', 'utf8')
-  const ids = [...new Set([...src.matchAll(/app:\s*'([\w.]+)'/g)].map((m) => m[1]))]
+  const apps = [...new Set([...src.matchAll(/withApp\('([\w.]+)'/g)].map((m) => m[1]))]
+  const wikis = [...src.matchAll(/withWiki\('([^']+)', b\('[^']+', '([^']+)'/g)].map((m) => ({ title: m[1], domain: m[2] }))
   await mkdir('public/brands', { recursive: true })
   let bad = 0
-  for (const id of ids) {
+  for (const id of apps) {
     try {
       const d = await details(id)
       if (!d.image) throw new Error('아이콘 주소 없음')
-      const res = await fetch(`${d.image.replace(/=[^/]*$/, '')}=s${SIZE}-rw`, { headers: { 'user-agent': UA } })
-      if (!res.ok) throw new Error(`아이콘 ${res.status}`)
-      const buf = Buffer.from(await res.arrayBuffer())
-      await writeFile(`public/brands/${id}.webp`, buf)
-      console.log(`GET\t${id}\t${d.title}\t${d.dev}\t${buf.length}B`)
+      await save(`${id}.webp`, `${d.image.replace(/=[^/]*$/, '')}=s${SIZE}-rw`, `${d.title} | ${d.dev}`)
     } catch (e) {
       bad++
       console.log(`GET\t${id}\tERROR\t${e.message}`)
+    }
+  }
+  for (const w of wikis) {
+    try {
+      const { url, name } = await wikiLogo(w.title)
+      await save(`${w.domain}.png`, url, `${w.title} | ${name}`)
+    } catch (e) {
+      bad++
+      console.log(`GET\t${w.domain}\tERROR\t${e.message}`)
     }
   }
   if (bad) process.exitCode = 1

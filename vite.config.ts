@@ -142,6 +142,12 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'tidy-fonts', expiration: { maxEntries: 120 } },
           },
+          // 앱에 넣어 둔 가게 로고 (public/brands): 처음 볼 때 받아 두고 오프라인에서도 보여 준다
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/brands/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tidy-brand-logos', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 180 } },
+          },
           // 가게 로고: 한 번 받으면 기기에 저장해 두고 오프라인에서도 보여 준다
           {
             urlPattern: ({ url }) => (url.hostname === 'www.google.com' && url.pathname.startsWith('/s2/favicons')) || url.hostname.endsWith('.gstatic.com'),
