@@ -14,6 +14,7 @@ import BackupReminder from '../components/dashboard/BackupReminder'
 import ReportTeaser from '../components/dashboard/ReportTeaser'
 import PaydayCard from '../components/dashboard/PaydayCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
+import RouteWidget from '../components/dashboard/RouteWidget'
 import { DateWidget, DdayWidget, HabitWeekWidget, ProgressWidget, TimelineWidget, TodoListWidget, TrackerWidget } from '../components/dashboard/MiniWidgets'
 import WidgetGrid from '../components/dashboard/WidgetGrid'
 import HabitForm from '../components/habits/HabitForm'
@@ -148,6 +149,8 @@ export default function DashboardPage() {
         return card(<AiFeedbackCard items={transactions ?? []} today={today} />)
       case 'payday':
         return card(<PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />)
+      case 'route':
+        return <RouteWidget today={today} box={box} />
       case 'scrap':
         return card(
           <UnreadScrapCard unread={unread ?? []} linked={linked ?? new Map()} onAdd={() => setSheet({ kind: 'scrap' })} onOpen={open} onConvert={setConverting} onViewTodo={viewTodos} />,

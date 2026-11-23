@@ -3,7 +3,7 @@
  */
 import type { User } from 'firebase/auth'
 import { firebaseReady } from '../firebaseConfig'
-import { loadFirebase, onUserChange, signInWithGoogle, signOutGoogle } from '../../platform/firebase'
+import { loadFirebase, onUserChange, signInWithEmail, signInWithGoogle, signOutGoogle } from '../../platform/firebase'
 import { planFirstSync, startSync, stopSync, stopSyncAndForget } from './engine'
 import { loadSync, setLoginSkipped } from './state'
 
@@ -116,6 +116,12 @@ export async function login(): Promise<void> {
     if (!(err instanceof Error && err.message.includes('이동'))) setFlag(REDIRECT_KEY, false)
     throw err
   }
+}
+
+/** 이메일 + 비밀번호로 로그인 (테스트 계정) */
+export async function loginWithEmail(email: string, password: string): Promise<void> {
+  await watch()
+  await signInWithEmail(email, password)
 }
 
 /** 이 기기와 클라우드 둘 다 데이터가 있을 때 고른 쪽으로 시작 */

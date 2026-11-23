@@ -5,6 +5,7 @@ import { login, logout } from '../../lib/sync/account'
 import { pushNow } from '../../lib/sync/engine'
 import { setLoginSkipped } from '../../lib/sync/state'
 import { GoogleAuthError } from '../../platform/googleAuth'
+import EmailLogin from '../account/EmailLogin'
 import { GoogleLogo } from '../account/LoginScreen'
 import Button from '../common/Button'
 import Modal from '../common/Modal'
@@ -135,6 +136,9 @@ export default function AccountCard() {
             <GoogleLogo />
             Google로 로그인
           </button>
+          <div className="mt-4">
+            <EmailLogin onDone={() => setLoginSkipped(false)} />
+          </div>
         </>
       )}
 

@@ -67,6 +67,7 @@
 - 일정 색 21가지, 날짜 칸 **이모티콘 스티커**, 일정 메모에 사진 · 파일 첨부
 - **구글 캘린더 연동**: 내 구글 캘린더를 최대 5개까지 색별로 불러오고, Tidy 일정을 구글로 보내기
 - **일기**: 하루 글 + 사진 10장 타임라인(찍은 시간 · 한 줄 메모), 자동 저장, 일기 달력과 대표 사진, 아이폰 사진(HEIC)
+- **오늘 이동 기록**: 갤럭시 앱에서 켜 두면 다닌 길을 지도에 그리고, 10분 넘게 머문 곳과 시간 · 움직인 거리를 보여 줘요 (위치는 이 폰에만 30일)
 
 ### 🗒️ 메모
 - 제목 · 글에 **사진 · 영상 · 파일**(하나 50MB까지)을 같이 넣고, 쓰는 대로 자동 저장
@@ -97,6 +98,12 @@
 ## 화면 미리보기
 
 > 만들면서 찍은 실제 화면이에요. 새 기능이 생길 때마다 [docs/screenshots](docs/screenshots)에 더해요.
+
+**오늘 이동 기록** (대시보드 위젯 → 크게 보기 → 머문 곳 누르기 → 일기에서 그날 경로)
+
+| 대시보드 위젯 | 이동 기록 | 머문 곳 | 일기 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/route-1-widget.png" width="200"> | <img src="docs/screenshots/route-2-page.png" width="200"> | <img src="docs/screenshots/route-3-focus.png" width="200"> | <img src="docs/screenshots/route-4-diary.png" width="200"> |
 
 **메모** (쓴 시각 기록 · 사진 · 영상 · 파일 · 색깔 파일집 · 검색)
 
@@ -347,12 +354,12 @@
 | 구분 | 사용 기술 |
 |---|---|
 | 언어 · 화면 | TypeScript · React 19 · Vite 8 · Tailwind CSS 4 |
-| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 직접 그린 SVG 차트 (차트 라이브러리 없음) |
+| 디자인 | Pretendard 글씨체 · Lucide 아이콘 · 직접 그린 SVG 차트 (차트 라이브러리 없음) · 지도는 Leaflet + CARTO 무료 지도(OpenStreetMap) |
 | 저장 | IndexedDB (Dexie.js 4), 백업은 JSON |
 | 로그인 · 동기화 | Firebase Authentication (Google) · Cloud Firestore (Spark 무료 요금제) |
 | 서버 | Vercel 서버 함수 (Hobby 무료 요금제) |
 | 웹 · 컴퓨터 앱 | PWA (오프라인, 홈 화면 · 앱 설치) |
-| 폰 앱 | Capacitor 8 + 직접 만든 안드로이드 플러그인(지문, 위젯, 공유받기, 앱 안 캡처, 업데이트) |
+| 폰 앱 | Capacitor 8 + 직접 만든 안드로이드 플러그인(지문, 위젯, 공유받기, 앱 안 캡처, 업데이트, 이동 기록) |
 | AI (무료) | Gemini 무료 → Groq 무료(예비) → 기본 모드(규칙). 글자 인식은 기기 안 Tesseract.js, 아이폰 사진은 heic-to |
 | 테스트 | Vitest (단위 테스트 430개 넘게), Playwright (화면 확인 · 스크린샷) |
 | 배포 | GitHub Actions가 APK를 만들어 Releases에 올림, Vercel이 웹을 자동 배포 |

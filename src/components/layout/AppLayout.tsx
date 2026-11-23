@@ -10,6 +10,7 @@ import { useAutoBackup } from '../../hooks/useAutoBackup'
 import { useDeviceCalendarSync } from '../../hooks/useDeviceCalendarSync'
 import { useGoogleCalendarSync } from '../../hooks/useGoogleCalendarSync'
 import { useGooglePush } from '../../hooks/useGooglePush'
+import { useRouteTracking } from '../../hooks/useRouteTracking'
 import { syncAlarms } from '../../platform/alarms'
 import { loadPayFilter, onPayFilterChange } from '../../lib/payNotifyFilter'
 import { listenPayNotify, syncPayNotifyFilter } from '../../platform/payNotify'
@@ -37,6 +38,9 @@ export default function AppLayout() {
   const today = useToday()
   const toast = useToast()
   const navigate = useNavigate()
+
+  // 안드로이드 앱: 폰이 쌓아 둔 이동 기록 가져오기 · 켜 둔 기록 다시 시작
+  useRouteTracking()
 
   // 안드로이드 앱: 인스타그램·X 에서 "공유 → Tidy" 로 들어온 링크를 스크랩 저장 창으로
   useEffect(() => listenForShares((path) => navigate(path)), [navigate])

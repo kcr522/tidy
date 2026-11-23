@@ -69,6 +69,26 @@ describe('todoRepo', () => {
     await db?.delete()
   })
 
+  it('메모 · 참고 사진: 저장, 비우면 지움, 반복하면 다음 할 일에도 따라감', async () => {
+    db = new TidyDB('todo-memo-test')
+    const repo = createTodoRepo(db)
+    const pic = { name: 'ref.png', type: 'image/png', size: 3, src: 'data:image/png;base64,AAAA' }
+    const id = await repo.add({ title: '발표 준비', dueDate: TODAY, priority: 'MEDIUM', memo: '  3쪽 표 먼저  ', attachments: [pic], repeat: { every: 'day' } })
+    let t = await repo.get(id)
+    expect(t?.memo).toBe('3쪽 표 먼저')
+    expect(t?.attachments).toEqual([pic])
+
+    await repo.toggleComplete(id, TODAY)
+    const next = (await db.todos.toArray()).find((x) => x.id !== id)
+    expect(next?.memo).toBe('3쪽 표 먼저')
+    expect(next?.attachments).toEqual([pic])
+
+    await repo.update(id, { title: '발표 준비', dueDate: TODAY, priority: 'MEDIUM', memo: '   ', attachments: [] })
+    t = await repo.get(id)
+    expect(t?.memo).toBeUndefined()
+    expect(t?.attachments).toBeUndefined()
+  })
+
   it('추가, 완료 체크/해제, 수정, 삭제 (US2)', async () => {
     db = new TidyDB('todo-repo-test')
     const repo = createTodoRepo(db)

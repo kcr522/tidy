@@ -1,14 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, BellOff, Repeat } from 'lucide-react'
+import { Bell, BellOff, NotebookPen, Repeat } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import type { Priority, Todo, TodoRepeat } from '../../db/types'
+import type { Attachment, Priority, Todo, TodoRepeat } from '../../db/types'
 import { parseDateKey, todayKey } from '../../lib/date'
 import { repeatLabel, WEEK_ORDER, WEEKDAY_SHORT } from '../../lib/todoRepeat'
 import { timeLabel } from '../../lib/todoAlarms'
-import { MAX_TITLE_LENGTH, validateTitle } from '../../lib/validate'
+import { MAX_TITLE_LENGTH, MAX_TODO_MEMO_LENGTH, validateTitle } from '../../lib/validate'
 import { requestAlarmPermission } from '../../platform/alarms'
 import { todoCategoryRepo } from '../../repositories/todoCategoryRepo'
 import type { TodoInput } from '../../repositories/todoRepo'
+import AttachmentField from '../common/AttachmentField'
 import Button from '../common/Button'
 import Field from '../common/FormField'
 import HandwriteButton, { appendHandwritten } from '../common/HandwriteButton'
@@ -37,6 +38,8 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
   const [categoryId, setCategoryId] = useState<number | undefined>(initial ? initial.categoryId : defaultCategoryId)
   const [remindAt, setRemindAt] = useState(initial?.remindAt ?? '')
   const [repeat, setRepeat] = useState<TodoRepeat | undefined>(initial?.repeat)
+  const [memo, setMemo] = useState(initial?.memo ?? '')
+  const [files, setFiles] = useState<Attachment[]>(initial?.attachments ?? [])
   const [permNote, setPermNote] = useState<string>()
   const categories = useLiveQuery(() => todoCategoryRepo.list(), [])
   const [error, setError] = useState<string>()
@@ -89,7 +92,7 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
     setError(undefined)
     setSaving(true)
     try {
-      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId, remindAt: dueDate && remindAt ? remindAt : undefined, repeat: dueDate ? repeat : undefined })
+      await onSubmit({ title: result.value, dueDate: dueDate || null, priority, categoryId, remindAt: dueDate && remindAt ? remindAt : undefined, repeat: dueDate ? repeat : undefined, memo: memo.trim() || undefined, attachments: files })
     } finally {
       setSaving(false)
     }
@@ -111,6 +114,28 @@ export default function TodoForm({ initial, defaultDueDate = null, defaultCatego
           <HandwriteButton compact label="할 일" className="self-center" onText={(t) => setTitle((old) => appendHandwritten(old, t, false, MAX_TITLE_LENGTH))} />
         </div>
       </Field>
+
+      <div>
+        <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600">
+          <NotebookPen className="size-4" aria-hidden /> 메모 · 참고 (선택)
+        </span>
+        <div className="flex gap-2">
+          <textarea
+            value={memo}
+            maxLength={MAX_TODO_MEMO_LENGTH}
+            rows={2}
+            placeholder="예: 3쪽 표 먼저 정리, 참고 링크나 준비물"
+            onChange={(e) => setMemo(e.target.value)}
+            className={`${inputClass()} min-h-[4.5rem] resize-y py-2.5 leading-relaxed`}
+            aria-label="메모 · 참고 글"
+          />
+          <HandwriteButton compact label="메모" className="self-start" onText={(t) => setMemo((old) => appendHandwritten(old, t, true, MAX_TODO_MEMO_LENGTH))} />
+        </div>
+        <div className="mt-2">
+          <AttachmentField value={files} onChange={setFiles} acceptDrop addLabel="참고 사진 · 파일 넣기" />
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">목록에서 할 일 아래에 작게 보여요</p>
+      </div>
 
       <Field label="마감일 (선택)">
         <div className="flex gap-2">

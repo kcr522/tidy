@@ -25,6 +25,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PayNotifyPlugin.class);
         // 삼성 캘린더(폰 캘린더) 읽고 쓰기 (DeviceCalendarPlugin)
         registerPlugin(DeviceCalendarPlugin.class);
+        // 오늘 이동 기록 켜고 끄기 · 쌓인 위치 가져가기 (LocationTrackPlugin, LocationTrackService)
+        registerPlugin(LocationTrackPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

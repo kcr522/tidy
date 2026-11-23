@@ -81,7 +81,7 @@ function isTodo(v: unknown): v is Todo {
   return (
     isObj(v) && isId(v.id) && isStr(v.title) && isFlag(v.isCompleted) && (v.completedAt === null || isStr(v.completedAt)) &&
     (v.dueDate === null || isStr(v.dueDate)) && (v.priority === 'HIGH' || v.priority === 'MEDIUM' || v.priority === 'LOW') &&
-    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && (v.categoryId === undefined || isNum(v.categoryId)) && isOptStr(v.remindAt) && (v.repeat === undefined || isTodoRepeat(v.repeat)) && (v.repeatNextId === undefined || isNum(v.repeatNextId)) && isStr(v.createdAt) && isStr(v.updatedAt)
+    (v.bookmarkId === undefined || isNum(v.bookmarkId)) && (v.categoryId === undefined || isNum(v.categoryId)) && isOptStr(v.remindAt) && (v.repeat === undefined || isTodoRepeat(v.repeat)) && (v.repeatNextId === undefined || isNum(v.repeatNextId)) && isOptStr(v.memo) && isAttachmentList(v.attachments) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 

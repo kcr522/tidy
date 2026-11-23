@@ -13,6 +13,7 @@ import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
 import WidgetCard from '../components/settings/WidgetCard'
 import PayNotifyCard from '../components/settings/PayNotifyCard'
+import RouteTrackCard from '../components/settings/RouteTrackCard'
 import { inputClass } from '../components/common/formStyles'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
@@ -144,6 +145,8 @@ export default function SettingsPage() {
         <GoogleCalendarCard />
 
         <DeviceCalendarCard />
+
+        <RouteTrackCard />
 
         <AutoBackupCard />
 
