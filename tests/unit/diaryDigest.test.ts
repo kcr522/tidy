@@ -31,3 +31,15 @@ describe('하루 정리 자동으로 채우기', () => {
     expect(cleanDigest(raw, hours)).toBe('오전 8시 · 출근했음\n오후 1시 · 점심 먹음')
   })
 })
+
+describe('하루 정리 보기 좋게', () => {
+  it('시간 줄은 시간과 내용으로 나눈다', async () => {
+    const { parseDigest } = await import('../../src/lib/ai/diaryDigest')
+    expect(parseDigest('오전 12시 · 잠\n오후 12시 · 점심\n오늘 좋았다')).toEqual([
+      { time: '오전 12시', hour: 0, body: '잠' },
+      { time: '오후 12시', hour: 12, body: '점심' },
+      { body: '오늘 좋았다' },
+    ])
+    expect(parseDigest('그냥 쓴 일기')).toBeNull()
+  })
+})

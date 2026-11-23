@@ -130,3 +130,29 @@ export async function digestDiary(chosen: AiSettings, hours: DigestHour[], signa
     throw new DigestError(err instanceof Error && err.message ? err.message : '지금은 AI에 연결하지 못했어요')
   }
 }
+
+/** 하루 정리 글을 보기 좋게 그릴 줄들. 시간 줄은 시간과 내용으로 나누고, 다른 줄은 글만 */
+export interface DigestLine {
+  /** '오전 9시' (시간 줄이 아니면 없음) */
+  time?: string
+  /** 0~23 (시간 줄일 때) */
+  hour?: number
+  body: string
+}
+
+/** 자동 정리 모양("오전 9시 · …") 줄이 하나도 없으면 null: 그냥 글로 보여 준다 */
+export function parseDigest(text: string): DigestLine[] | null {
+  const out: DigestLine[] = []
+  let found = false
+  for (const raw of text.split('\n')) {
+    const l = raw.trim()
+    if (!l) continue
+    const m = l.match(/^(오([전후]) (\d{1,2})시)\s*[·:\-–]\s*(.*)$/)
+    const h = m ? Number(m[3]) : NaN
+    if (m && h >= 1 && h <= 12) {
+      found = true
+      out.push({ time: m[1], hour: (h % 12) + (m[2] === '후' ? 12 : 0), body: m[4] })
+    } else out.push({ body: l })
+  }
+  return found ? out : null
+}
