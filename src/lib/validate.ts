@@ -3,6 +3,8 @@
 export const MAX_AMOUNT = 999_999_999
 export const MAX_TITLE_LENGTH = 100
 export const MAX_MEMO_LENGTH = 200
+/** 할 일 메모·참고 글 최대 길이 */
+export const MAX_TODO_MEMO_LENGTH = 1000
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 

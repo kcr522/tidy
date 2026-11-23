@@ -6,7 +6,7 @@
  * - 위치는 순서로 정한다: 앞에서부터 빈 곳에 채워 넣는다 (CSS grid dense)
  */
 
-export type DashWidgetKind = 'date' | 'timeline' | 'progress' | 'dday' | 'todos' | 'habitWeek' | 'tracker' | 'money' | 'ai' | 'payday' | 'scrap'
+export type DashWidgetKind = 'date' | 'timeline' | 'progress' | 'dday' | 'todos' | 'habitWeek' | 'tracker' | 'money' | 'ai' | 'payday' | 'scrap' | 'route'
 
 export interface DashWidget {
   kind: DashWidgetKind
@@ -32,6 +32,7 @@ export const WIDGET_INFO: Record<DashWidgetKind, { name: string; desc: string; m
   ai: { name: 'AI 한마디', desc: '이번 달 소비 이야기', minW: 2, minH: 2 },
   payday: { name: '월급날', desc: '다음 월급까지', minW: 2, minH: 2 },
   scrap: { name: '안 읽은 스크랩', desc: '저장해 둔 링크', minW: 2, minH: 3 },
+  route: { name: '이동 기록', desc: '오늘 다닌 길을 지도에', minW: 2, minH: 2 },
 }
 
 export const ALL_KINDS = Object.keys(WIDGET_INFO) as DashWidgetKind[]
@@ -44,6 +45,7 @@ const PHONE: DashWidget[] = [
   { kind: 'date', w: 4, h: 4 },
   { kind: 'progress', w: 4, h: 1 },
   { kind: 'timeline', w: 4, h: 5 },
+  { kind: 'route', w: 4, h: 4 },
   { kind: 'todos', w: 4, h: 4 },
   { kind: 'habitWeek', w: 4, h: 3 },
   { kind: 'tracker', w: 4, h: 2 },
@@ -65,6 +67,7 @@ const MID: DashWidget[] = [
   { kind: 'ai', w: 4, h: 6 },
   { kind: 'payday', w: 4, h: 4 },
   { kind: 'scrap', w: 4, h: 4 },
+  { kind: 'route', w: 4, h: 4 },
 ]
 
 const WIDE: DashWidget[] = [
@@ -79,6 +82,7 @@ const WIDE: DashWidget[] = [
   { kind: 'money', w: 4, h: 5 },
   { kind: 'ai', w: 4, h: 5 },
   { kind: 'scrap', w: 4, h: 5 },
+  { kind: 'route', w: 4, h: 5 },
 ]
 
 export function defaultLayout(cols: GridCols): DashWidget[] {
@@ -170,6 +174,25 @@ export function saveLayout(cols: GridCols, list: DashWidget[]): void {
     window.dispatchEvent(new Event(EVENT))
   } catch {
     // 저장 공간이 없으면 이번만 바뀐 채로 둔다
+  }
+}
+
+/** 저장해 둔 모든 배치(폰 · 중간 · 넓은 화면)에 이 위젯이 없으면 맨 앞에 넣는다 (이동 기록을 켤 때) */
+export function addWidgetEverywhere(kind: DashWidgetKind): void {
+  const all = readAll()
+  let changed = false
+  for (const cols of GRID_COLS) {
+    const list = cleanLayout(all[cols], cols)
+    if (!list || list.some((x) => x.kind === kind)) continue
+    all[cols] = addWidget(list, kind, cols)
+    changed = true
+  }
+  if (!changed) return
+  try {
+    localStorage.setItem(KEY, JSON.stringify(all))
+    window.dispatchEvent(new Event(EVENT))
+  } catch {
+    // 무시
   }
 }
 

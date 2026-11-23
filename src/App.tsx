@@ -21,6 +21,7 @@ const BookmarksPage = lazyPage(() => import('./pages/BookmarksPage'))
 const SharePage = lazyPage(() => import('./pages/SharePage'))
 const SearchPage = lazyPage(() => import('./pages/SearchPage'))
 const ReportPage = lazyPage(() => import('./pages/ReportPage'))
+const RoutePage = lazyPage(() => import('./pages/RoutePage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const AdminPage = lazyPage(() => import('./pages/AdminPage'))
 const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage'))
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="share" element={<SharePage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="report" element={<ReportPage />} />
+        <Route path="route" element={<RoutePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
