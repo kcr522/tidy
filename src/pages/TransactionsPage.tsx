@@ -299,7 +299,8 @@ export default function TransactionsPage() {
             <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">
               <Camera className="size-5" aria-hidden />
             </Button>
-            <Button variant="secondary" className="w-11 px-0! sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="저축 · 적금" title="저축 · 적금">
+            {/* 폰은 저금통을 달 옆(🐷)으로 옮겨 위쪽 버튼 줄을 줄인다 */}
+            <Button variant="secondary" className="max-sm:hidden sm:w-auto sm:px-3.5!" onClick={() => setShowSavings(true)} aria-label="저축 · 적금" title="저축 · 적금">
               <PiggyBank className="size-[18px]" aria-hidden />
               <span className="hidden sm:inline">저축</span>
             </Button>
