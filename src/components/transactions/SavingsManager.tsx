@@ -18,10 +18,10 @@ import Field from '../common/FormField'
 import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 import PayMethodPicker from '../payMethods/PayMethodPicker'
-import { DepositForm, SavingsLogList, useSavingsLog } from './SavingsLog'
+import { DepositForm, LinkSavingForm, SavingsLogList, useSavingsLog } from './SavingsLog'
 import { MethodIcon } from '../common/MoneyIcon'
 
-type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan } | { mode: 'deposit' }
+type View = { mode: 'list' } | { mode: 'detail'; id: number } | { mode: 'form'; plan?: SavingsPlan } | { mode: 'deposit' } | { mode: 'link'; item: Transaction }
 
 /** 가계부 → 저축: 모은 돈, 저축 넣기, 적금 목록, 저축 내역 전체, 적금 자세히(만기 금액 계산), 입력 창 */
 export default function SavingsManager({ today, startWith, onOpenTransaction }: { today: string; startWith?: 'new' | 'deposit'; onOpenTransaction?: (t: Transaction) => void }) {
@@ -61,7 +61,19 @@ export default function SavingsManager({ today, startWith, onOpenTransaction }: 
 
   return (
     <>
-      {view.mode === 'deposit' ? (
+      {view.mode === 'link' ? (
+        plans && (
+          <LinkSavingForm
+            key={view.item.id}
+            item={log?.find((t) => t.id === view.item.id) ?? view.item}
+            plans={plans}
+            today={today}
+            onDone={() => setView({ mode: 'list' })}
+            onCancel={() => setView({ mode: 'list' })}
+            onEdit={onOpenTransaction && (() => onOpenTransaction(view.item))}
+          />
+        )
+      ) : view.mode === 'deposit' ? (
         plans && <DepositForm plans={plans} today={today} onDone={() => setView({ mode: 'list' })} onCancel={() => setView({ mode: 'list' })} />
       ) : view.mode === 'form' ? (
         <SavingsForm key={view.plan?.id ?? 'new'} initial={view.plan} today={today} onSubmit={save} onCancel={() => setView(view.plan?.id != null ? { mode: 'detail', id: view.plan.id } : { mode: 'list' })} />
@@ -76,7 +88,7 @@ export default function SavingsManager({ today, startWith, onOpenTransaction }: 
           onOpen={(id) => setView({ mode: 'detail', id })}
           onAdd={() => setView({ mode: 'form' })}
           onDeposit={() => setView({ mode: 'deposit' })}
-          onOpenTransaction={onOpenTransaction}
+          onOpenSaving={(item) => setView({ mode: 'link', item })}
         />
       )}
       <ConfirmDialog
@@ -102,10 +114,10 @@ interface ListProps {
   onOpen: (id: number) => void
   onAdd: () => void
   onDeposit: () => void
-  onOpenTransaction?: (t: Transaction) => void
+  onOpenSaving: (t: Transaction) => void
 }
 
-function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, onOpenTransaction }: ListProps) {
+function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, onOpenSaving }: ListProps) {
   const methods = useLiveQuery(() => payMethodRepo.list(), []) ?? []
   const totals = useMemo(() => {
     if (!plans) return null
@@ -188,7 +200,7 @@ function SavingsList({ plans, deposited, log, today, onOpen, onAdd, onDeposit, o
         </ul>
       )}
       <h3 className="mt-6 mb-2 text-base font-extrabold text-slate-900">저축 내역</h3>
-      {log && plans && <SavingsLogList log={log} plans={plans} onOpen={onOpenTransaction} />}
+      {log && plans && <SavingsLogList log={log} plans={plans} onOpen={onOpenSaving} />}
     </div>
   )
 }

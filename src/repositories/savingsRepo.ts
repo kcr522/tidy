@@ -116,6 +116,24 @@ export function createSavingsRepo(database: TidyDB = defaultDb) {
       else await database.transactions.where('savingsId').equals(savingsId).filter((t) => t.date === date).delete()
     },
 
+    /**
+     * 이미 적힌 저축이 어느 적금 돈인지 정한다 (planId가 없으면 자유 저축으로 되돌린다).
+     * 적금에 넣으면 그 적금 습관도 그날 체크해 둔다 (사용자 요청 2026-11-24)
+     */
+    async link(transactionId: number, planId: number | null): Promise<void> {
+      await database.transaction('rw', tables, async () => {
+        const t = await database.transactions.get(transactionId)
+        if (!t) return
+        const plan = planId != null ? await database.savings.get(planId) : undefined
+        const now = nowIso()
+        // undefined 를 넣으면 Dexie 가 칸을 지운다 → 자유 저축
+        await database.transactions.update(transactionId, { category: '저축', savingsId: plan?.id, updatedAt: now })
+        if (plan?.habitId != null && !(await database.habitChecks.get([plan.habitId, t.date]))) {
+          await database.habitChecks.add({ habitId: plan.habitId, date: t.date, createdAt: now })
+        }
+      })
+    },
+
     /** 적금별로 가계부에 기록된 납입 (적금 id → 횟수, 합계) */
     async depositedTotals(): Promise<Map<number, { count: number; amount: number }>> {
       const map = new Map<number, { count: number; amount: number }>()
