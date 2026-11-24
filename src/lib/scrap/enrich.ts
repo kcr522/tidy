@@ -1,9 +1,11 @@
 // 스크랩을 저장한 뒤 서버가 읽은 본문(동영상 캡션·글)을 같이 남기고, AI 없이 짧은 제목을 만든다
 import type { Bookmark } from '../../db/types'
+import { db } from '../../db/database'
 import { bookmarkRepo } from '../../repositories/bookmarkRepo'
+import { scrapMediaRepo } from '../../repositories/scrapMediaRepo'
 import { cleanCaption, detectSource, isNameOnlySocialTitle, simpleTitle, socialCaptionFromTitle, tidyTitle, type LinkSource } from './link'
 import { domainOf } from '../validate'
-import { fetchLinkPreview } from './fetchPreview'
+import { fetchLinkPreview, type LinkPreview } from './fetchPreview'
 import { fetchPageText } from './pageApi'
 
 /** 저장할 설명 길이 */
@@ -51,10 +53,11 @@ export async function enrichScrap(b: Bookmark): Promise<void> {
   const source = (b.source as LinkSource | undefined) ?? detectSource(b.url)
   const page = await fetchPageText(b.url, AbortSignal.timeout(20000)).catch(() => ({ text: '', caption: '' }))
   const fields: { title?: string; description?: string } = {}
+  let meta: LinkPreview | null = null
   // 저장할 때 미리보기를 못 받아 제목이 주소 · 사이트 이름뿐이면 한 번 더 받아 본다 (AI 없이 페이지 정보로)
   if (source !== 'instagram' && source !== 'x' && (isGenericTitle(b) || !b.description?.trim())) {
     try {
-      const meta = await fetchLinkPreview(b.url, AbortSignal.timeout(15000))
+      meta = await fetchLinkPreview(b.url, AbortSignal.timeout(15000))
       if (isGenericTitle(b) && meta.title && !isGenericTitle({ ...b, title: meta.title })) fields.title = meta.title.slice(0, 100)
       if (!b.description?.trim() && meta.description) fields.description = meta.description
     } catch {
@@ -75,6 +78,41 @@ export async function enrichScrap(b: Bookmark): Promise<void> {
     if (t && t !== b.title) fields.title = t
   }
   await bookmarkRepo.patch(b.id, fields)
+  // 카드 사진(썸네일)이 없으면 미리보기 사진을 받아 둔다 (가져온 인스타 스크랩, 다른 기기에서 저장한 스크랩)
+  await fillThumb(b.id, b.url, meta).catch(() => undefined)
+}
+
+/** 사진(썸네일 · 캡처)이 하나도 없는 스크랩인가 */
+export async function hasNoMedia(id: number): Promise<boolean> {
+  return (await db.scrapMedia.where('bookmarkId').equals(id).count()) === 0
+}
+
+/** 썸네일이 없으면 미리보기에서 사진을 받아 저장한다. 받았으면 true */
+export async function fillThumb(id: number, url: string, got?: LinkPreview | null): Promise<boolean> {
+  if (!(await hasNoMedia(id))) return false
+  const meta = got ?? (await fetchLinkPreview(url, AbortSignal.timeout(15000)))
+  if (!meta.thumb) return false
+  await scrapMediaRepo.setThumb(id, meta.thumb)
+  return true
+}
+
+/** 사진 없는 스크랩들에 썸네일 채우기 (둘씩, 뒤에서). 채운 수 */
+export async function fillThumbs(list: Bookmark[], signal?: AbortSignal): Promise<number> {
+  const todo = list.filter((b) => b.id != null)
+  let next = 0
+  let n = 0
+  const worker = async () => {
+    while (next < todo.length && !signal?.aborted) {
+      const b = todo[next++]
+      try {
+        if (await fillThumb(b.id!, b.url)) n++
+      } catch {
+        // 비공개 · 지워진 게시물은 건너뛴다
+      }
+    }
+  }
+  await Promise.all([worker(), worker()])
+  return n
 }
 
 /** 예전에 저장한 스크랩의 "Instagram의 OO님 : "…"" 제목을 짧은 제목으로 (한 번만, 인터넷 없이) */

@@ -20,7 +20,7 @@ import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
 import { detectSource } from '../lib/scrap/link'
 import { applyTidy, planTidy, undoTidy, type TidyResult } from '../lib/scrap/autoTidy'
-import { enrichMany, enrichScrap, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
+import { enrichMany, enrichScrap, fillThumbs, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
 import { makeSuggester } from '../lib/scrap/suggest'
 import { openUrl } from '../platform/openUrl'
@@ -172,6 +172,29 @@ export default function BookmarksPage() {
       setTidy(r.moved || filled ? result : null)
     })().catch(() => setTidy(null))
   }, [all, loadedCategories])
+
+  // 카드 사진이 없는 스크랩(가져온 인스타, 다른 기기에서 저장한 것)은 미리보기 사진을 받아 채운다. 하루 한 번, 뒤에서
+  const thumbStarted = useRef(false)
+  useEffect(() => {
+    if (!all?.length || !covers || thumbStarted.current || tidy?.kind === 'running') return
+    const KEY = 'tidy.scrap.thumbFill.day'
+    const today = new Date().toDateString()
+    try {
+      if (localStorage.getItem(KEY) === today) return
+    } catch {
+      return
+    }
+    const missing = all.filter((b) => b.id != null && !covers.has(b.id))
+    thumbStarted.current = true
+    if (!missing.length) return
+    void fillThumbs(missing).then(() => {
+      try {
+        localStorage.setItem(KEY, today)
+      } catch {
+        // 다음에 다시
+      }
+    })
+  }, [all, covers, tidy])
 
   function closeTidy() {
     setTidy(null)
