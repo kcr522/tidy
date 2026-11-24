@@ -8,6 +8,8 @@ import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { merchantAliasRepo } from '../../repositories/merchantAliasRepo'
+import { savingsRepo } from '../../repositories/savingsRepo'
+import { PlanChips } from './SavingsLog'
 import { MAX_MEMO_LENGTH, parseAmount, validateMemo } from '../../lib/validate'
 import { MAX_ACCOUNT_LENGTH } from '../../lib/accounts'
 import PayMethodPicker from '../payMethods/PayMethodPicker'
@@ -43,6 +45,9 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   // 새 내역은 지금 시각으로 채운다
   const [time, setTime] = useState(() => (base ? (base.time ?? '') : format(new Date(), 'HH:mm')))
   const [account, setAccount] = useState(base?.account ?? '')
+  // 저축이면 어느 적금 돈인지 (0 = 자유 저축)
+  const [savingsId, setSavingsId] = useState(base?.savingsId ?? 0)
+  const plans = useLiveQuery(() => savingsRepo.list(), [])
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
@@ -96,6 +101,8 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
         // 비우면 undefined → 수정할 때 예전 값이 지워진다
         time: time || undefined,
         account: acc || undefined,
+        // 저축이 아니거나 자유 저축이면 적금 연결을 지운다
+        savingsId: type === 'EXPENSE' && category === SAVING_CATEGORY && savingsId ? savingsId : undefined,
       })
     } finally {
       setSaving(false)
@@ -187,6 +194,14 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
         </select>
         {type === 'EXPENSE' && category === SAVING_CATEGORY && <p className="mt-1.5 text-xs font-semibold text-saving"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축은 지출 합계에 넣지 않고 저금통 안에 따로 모여요</p>}
       </Field>
+
+      {/* 저축이면 어느 적금 돈인지 (사용자 요청 2026-11-24) */}
+      {type === 'EXPENSE' && category === SAVING_CATEGORY && plans && plans.length > 0 && (
+        <div>
+          <span className="mb-1 block text-sm font-medium text-slate-600">어느 적금에 넣었나요?</span>
+          <PlanChips plans={plans} today={todayKey()} value={savingsId} onChange={setSavingsId} />
+        </div>
+      )}
 
       {/* 어떤 카드 · 계좌로 (사용자 요청 2026-11-17) */}
       <PayMethodPicker value={account} onChange={setAccount} label={type === 'INCOME' ? '들어온 계좌 (선택)' : '카드 · 계좌 (선택)'} />

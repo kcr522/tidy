@@ -142,6 +142,27 @@ describe('적금 저장 + 습관 + 자동 기록', () => {
     expect(await db.transactions.where('savingsId').equals(id).count()).toBe(0)
   })
 
+  it('자유 저축으로 적힌 돈을 적금에 넣고, 다시 자유 저축으로 되돌린다', async () => {
+    db = new TidyDB('savings-link')
+    const repo = createSavingsRepo(db)
+    const id = await repo.add({ ...input, autoDeposit: 0 })
+    const { habitId } = (await repo.get(id))!
+    const now = '2026-11-24T00:00:00.000Z'
+    const tx = await db.transactions.add({ type: 'EXPENSE', amount: 200_000, category: '저축', date: '2026-11-24', memo: '김채림', account: '신한카드', createdAt: now, updatedAt: now })
+    expect(await repo.depositedTotal(id)).toEqual({ count: 0, amount: 0 })
+
+    await repo.link(tx, id)
+    expect(await repo.depositedTotal(id)).toEqual({ count: 1, amount: 200_000 })
+    expect(await db.habitChecks.get([habitId!, '2026-11-24'])).toBeTruthy()
+    expect(await db.transactions.get(tx)).toMatchObject({ memo: '김채림', account: '신한카드', savingsId: id })
+
+    await repo.link(tx, null)
+    expect(await repo.depositedTotal(id)).toEqual({ count: 0, amount: 0 })
+    const back = await db.transactions.get(tx)
+    expect(back?.savingsId).toBeUndefined()
+    expect(back?.category).toBe('저축')
+  })
+
   it('적금을 지우면 습관도 지워지고 납입 내역은 남는다', async () => {
     db = new TidyDB('savings-3')
     const repo = createSavingsRepo(db)
