@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { LayoutGrid, List, Settings2, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Loader2, LayoutGrid, List, Plus, Settings2, Wand2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
 import BookmarkRow from '../components/bookmarks/BookmarkRow'
@@ -9,7 +9,7 @@ import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
 import CategoryManager from '../components/bookmarks/CategoryManager'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
-import ScrapClassifyDialog from '../components/bookmarks/ScrapClassifyDialog'
+import ScrapSortDialog from '../components/bookmarks/ScrapSortDialog'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -18,13 +18,14 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
-import { isUnsortedInstagram } from '../lib/scrap/classify'
 import { detectSource } from '../lib/scrap/link'
-import { enrichScrap, tidyOldScrapTitles } from '../lib/scrap/enrich'
+import { applyTidy, planTidy, undoTidy, type TidyResult } from '../lib/scrap/autoTidy'
+import { enrichMany, enrichScrap, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
+import { makeSuggester } from '../lib/scrap/suggest'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter } from '../repositories/bookmarkRepo'
-import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
+import { CategoryNameError, MAX_CATEGORY_NAME, scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
 import { scrapMediaRepo } from '../repositories/scrapMediaRepo'
 import { todoRepo } from '../repositories/todoRepo'
 
@@ -33,7 +34,19 @@ type Editor = { mode: 'add'; prefill?: { url: string; title?: string } } | { mod
 type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
-const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v1'
+const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v2'
+/** 예전 스크랩 한 번에 정리 (끝나면 표시) · 결과(되돌리기용) */
+const AUTO_TIDY_KEY = 'tidy.scrap.autoTidy.v1'
+const AUTO_TIDY_RESULT = 'tidy.scrap.autoTidy.result'
+type TidyBanner = { kind: 'running'; done: number; total: number } | ({ kind: 'done'; filled: number } & TidyResult)
+function readTidyResult(): TidyBanner | null {
+  try {
+    const v = localStorage.getItem(AUTO_TIDY_RESULT)
+    return v ? (JSON.parse(v) as TidyBanner) : null
+  } catch {
+    return null
+  }
+}
 /** 카드 보기 / 목록 보기 (기기마다 기억) */
 const VIEW_KEY = 'tidy.scrap.view'
 type View = 'card' | 'list'
@@ -61,7 +74,10 @@ export default function BookmarksPage() {
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
-  const [classifying, setClassifying] = useState(false)
+  const [sorting, setSorting] = useState(false)
+  /** 카테고리 줄에서 바로 새 카테고리 만들기 */
+  const [newCat, setNewCat] = useState<string | null>(null)
+  const [newCatError, setNewCatError] = useState<string>()
   const [view, setViewState] = useState<View>(readView)
   function setView(v: View) {
     setViewState(v)
@@ -95,8 +111,22 @@ export default function BookmarksPage() {
     const inCat = (all ?? []).filter((b) => cat === 'all' || (cat === 'none' ? b.categoryId == null : b.categoryId === cat))
     return { all: inCat.length, unread: inCat.filter((b) => b.isRead === 0).length, byCat }
   }, [all, cat])
-  // 미분류로 남은 인스타 스크랩 → 캡션 보고 나누기
-  const unsortedIg = useMemo(() => (all ?? []).filter(isUnsortedInstagram), [all])
+  // 미분류로 남은 스크랩 → AI 없이 정리하기
+  const unsortedCount = counts.byCat.get(null) ?? 0
+  // 저장할 때 카테고리 추천 (AI 없이: 낱말 + 전에 나눈 스크랩)
+  const suggester = useMemo(() => makeSuggester(categories, all ?? []), [categories, all])
+
+  async function addCategory() {
+    try {
+      const id = await scrapCategoryRepo.add(newCat ?? '')
+      setNewCat(null)
+      setNewCatError(undefined)
+      setCat(id)
+      toast('카테고리를 만들었어요')
+    } catch (e) {
+      setNewCatError(e instanceof CategoryNameError ? e.message : '만들지 못했어요')
+    }
+  }
   const catName = (id: number | undefined) => categories.find((c) => c.id === id)?.name
 
   // 예전에 저장한 "Instagram의 OO님 : …" 제목을 한 번 짧게 정리한다
@@ -110,6 +140,47 @@ export default function BookmarksPage() {
     }
     tidyOldScrapTitles(all).catch(() => undefined)
   }, [all])
+
+  // 예전 스크랩 한 번에 정리: 빈 제목 · 내용 채우기 → 미분류를 내 카테고리(없으면 새 카테고리)로. AI 안 씀
+  const [tidy, setTidy] = useState<TidyBanner | null>(readTidyResult)
+  const tidyStarted = useRef(false)
+  useEffect(() => {
+    if (!all?.length || !loadedCategories || tidyStarted.current) return
+    try {
+      if (localStorage.getItem(AUTO_TIDY_KEY)) return
+    } catch {
+      return
+    }
+    tidyStarted.current = true
+    void (async () => {
+      const fill = all.filter(needsFill).map((b) => b.id!)
+      if (fill.length) {
+        setTidy({ kind: 'running', done: 0, total: fill.length })
+        await enrichMany(fill, (done, total) => setTidy({ kind: 'running', done, total }))
+      }
+      const fresh = await bookmarkRepo.list('all')
+      const cats = await scrapCategoryRepo.list()
+      const r = await applyTidy(planTidy(fresh, cats))
+      const filled = fill.length ? (await Promise.all(fill.map((id) => bookmarkRepo.get(id)))).filter((b) => b && !needsFill(b)).length : 0
+      const result: TidyBanner = { kind: 'done', filled, ...r }
+      try {
+        localStorage.setItem(AUTO_TIDY_KEY, '1')
+        if (r.moved || filled) localStorage.setItem(AUTO_TIDY_RESULT, JSON.stringify(result))
+      } catch {
+        // 다음에 다시 해도 이미 나눈 건 건드리지 않는다
+      }
+      setTidy(r.moved || filled ? result : null)
+    })().catch(() => setTidy(null))
+  }, [all, loadedCategories])
+
+  function closeTidy() {
+    setTidy(null)
+    try {
+      localStorage.removeItem(AUTO_TIDY_RESULT)
+    } catch {
+      // 괜찮다
+    }
+  }
 
   // 다른 앱에서 공유하기로 들어왔으면 바로 저장 창을 연다
   useEffect(() => {
@@ -189,35 +260,107 @@ export default function BookmarksPage() {
     <>
       <PageHeader title="스크랩" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>} />
 
-      {/* 카테고리 */}
-      <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="tablist" aria-label="카테고리">
-        <button type="button" role="tab" aria-selected={cat === 'all'} onClick={() => setCat('all')} className={catChip(cat === 'all')}>
-          전체 {all?.length ?? 0}
+      {/* 카테고리: 칩은 옆으로 넘기고, "+ 카테고리" · 관리는 오른쪽에 늘 보이게 */}
+      <div className="-mx-4 mb-3 flex items-center gap-1.5 pr-4 md:mx-0 md:pr-0">
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 pl-4 md:flex-wrap md:pl-0" role="tablist" aria-label="카테고리">
+          <button type="button" role="tab" aria-selected={cat === 'all'} onClick={() => setCat('all')} className={catChip(cat === 'all')}>
+            전체 {all?.length ?? 0}
+          </button>
+          {categories.map((c) => (
+            <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id!)} className={catChip(cat === c.id)}>
+              {c.name} {counts.byCat.get(c.id!) ?? 0}
+            </button>
+          ))}
+          {(counts.byCat.get(null) ?? 0) > 0 && (
+            <button type="button" role="tab" aria-selected={cat === 'none'} onClick={() => setCat('none')} className={catChip(cat === 'none')}>
+              미분류 {counts.byCat.get(null)}
+            </button>
+          )}
+        </div>
+        <button type="button" onClick={() => setNewCat((v) => (v === null ? '' : null))} className="tap mb-1 flex min-h-9 shrink-0 items-center gap-0.5 rounded-full border border-dashed border-brand-400 bg-white/80 px-2.5 text-sm font-bold text-brand-700" aria-label="새 카테고리 만들기">
+          <Plus className="size-4" strokeWidth={2.6} aria-hidden />
+          카테고리
         </button>
-        {categories.map((c) => (
-          <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id!)} className={catChip(cat === c.id)}>
-            {c.name} {counts.byCat.get(c.id!) ?? 0}
-          </button>
-        ))}
-        {(counts.byCat.get(null) ?? 0) > 0 && (
-          <button type="button" role="tab" aria-selected={cat === 'none'} onClick={() => setCat('none')} className={catChip(cat === 'none')}>
-            미분류 {counts.byCat.get(null)}
-          </button>
-        )}
-        <button type="button" onClick={() => setManaging(true)} className="tap flex min-h-9 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-bold text-slate-500" aria-label="카테고리 관리">
-          <Settings2 className="size-4" aria-hidden />
-          관리
+        <button type="button" onClick={() => setManaging(true)} className="tap mb-1 flex size-9 shrink-0 items-center justify-center rounded-full text-slate-500" aria-label="카테고리 관리" title="카테고리 관리">
+          <Settings2 className="size-5" aria-hidden />
         </button>
       </div>
+      {newCat !== null && (
+        <form
+          className="mb-3 flex gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void addCategory()
+          }}
+        >
+          <input
+            autoFocus
+            value={newCat}
+            maxLength={MAX_CATEGORY_NAME}
+            placeholder="새 카테고리 이름 (예: 여행, 운동)"
+            aria-label="새 카테고리 이름"
+            onChange={(e) => setNewCat(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setNewCat(null)}
+            className="min-h-11 min-w-0 flex-1 rounded-2xl bg-white px-4 text-sm shadow-card outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <button type="submit" className="tap min-h-11 rounded-2xl bg-grad on-grad px-4 text-sm font-bold">
+            만들기
+          </button>
+          <button type="button" onClick={() => (setNewCat(null), setNewCatError(undefined))} className="tap min-h-11 rounded-2xl bg-white px-3 text-sm font-bold text-slate-500 shadow-card">
+            취소
+          </button>
+        </form>
+      )}
+      {newCatError && <p className="-mt-2 mb-2 text-sm text-expense">{newCatError}</p>}
 
-      {unsortedIg.length > 0 && (cat === 'all' || cat === 'none') && (
-        <button type="button" onClick={() => setClassifying(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
-          <Sparkles className="size-5 shrink-0 text-brand-600" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-slate-800">미분류 인스타 스크랩 {unsortedIg.length}개</span>
-            <span className="block text-xs text-slate-500">캡션 보고 꿀팁 · 자취 · 만들 거 · 살 것으로 나눠 볼까요?</span>
+      {tidy?.kind === 'running' && (
+        <div className="mb-3 flex items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 shadow-card" role="status">
+          <Loader2 className="size-5 shrink-0 animate-spin text-brand-600" aria-hidden />
+          <span className="min-w-0 flex-1 text-sm">
+            <b className="block text-slate-800">예전 스크랩 정리하는 중</b>
+            <span className="text-xs text-slate-500">
+              제목 · 내용 읽어 오는 중 {tidy.done} / {tidy.total} · 끝나면 카테고리로 나눠요 (AI 안 씀)
+            </span>
           </span>
-          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">분류하기</span>
+        </div>
+      )}
+      {tidy?.kind === 'done' && (
+        <div className="mb-3 rounded-2xl bg-grad-soft px-4 py-3 shadow-card" role="status">
+          <p className="text-sm font-bold text-slate-800">예전 스크랩을 정리했어요</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+            {tidy.moved > 0 && `${tidy.moved}개를 카테고리로 나눴어요. `}
+            {tidy.created.length > 0 && `새 카테고리 ${tidy.created.length}개: ${tidy.created.join(', ')}. `}
+            {tidy.filled > 0 && `제목 · 내용 ${tidy.filled}개를 채웠어요. `}
+            직접 넣어 둔 카테고리는 그대로예요.
+          </p>
+          <div className="mt-2 flex gap-2">
+            {tidy.moved > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  void undoTidy(tidy.undo).then(() => toast('나눈 것을 되돌렸어요'))
+                  closeTidy()
+                }}
+                className="tap rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm"
+              >
+                나눈 것 되돌리기
+              </button>
+            )}
+            <button type="button" onClick={closeTidy} className="tap rounded-full bg-grad on-grad px-3 py-1.5 text-xs font-bold shadow-sm">
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tidy?.kind !== 'running' && unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
+        <button type="button" onClick={() => setSorting(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
+          <Wand2 className="size-5 shrink-0 text-brand-600" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-800">미분류 스크랩 {unsortedCount}개</span>
+            <span className="block text-xs text-slate-500">{categories.length ? '내 카테고리로 나눠 볼까요? AI 없이 금방 끝나요' : '카테고리를 만들고 나눠 볼까요?'}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">정리하기</span>
         </button>
       )}
 
@@ -314,6 +457,7 @@ export default function BookmarksPage() {
             prefill={editor.mode === 'add' ? editor.prefill : undefined}
             categories={categories}
             defaultCategoryId={defaultCategory(editor.mode === 'add' ? editor.prefill?.url : undefined)}
+            suggest={suggester}
             isDuplicate={async (url) => !!(await bookmarkRepo.findSame(url, editingId))}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
@@ -336,9 +480,9 @@ export default function BookmarksPage() {
 
       <CaptureAskDialog bookmarkId={askCapture?.id ?? null} url={askCapture?.url} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
 
-      <ScrapClassifyDialog open={classifying} items={unsortedIg} onClose={() => setClassifying(false)} />
+      <ScrapSortDialog open={sorting} all={all ?? []} categories={categories} onClose={() => setSorting(false)} />
 
-      <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} />
+      <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} onSort={() => (setManaging(false), setSorting(true))} />
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />
 

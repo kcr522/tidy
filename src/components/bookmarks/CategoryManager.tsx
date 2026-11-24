@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, Trash2, Wand2 } from 'lucide-react'
 import { useState } from 'react'
 import type { ScrapCategory } from '../../db/types'
 import { CategoryNameError, MAX_CATEGORY_NAME, scrapCategoryRepo } from '../../repositories/scrapCategoryRepo'
@@ -12,10 +12,12 @@ interface Props {
   categories: ScrapCategory[]
   counts: Map<number | null, number>
   onClose: () => void
+  /** 스크랩 다시 정리하기 (AI 없이) */
+  onSort?: () => void
 }
 
 /** 카테고리 이름 바꾸기, 순서 바꾸기, 지우기 */
-export default function CategoryManager({ open, categories, counts, onClose }: Props) {
+export default function CategoryManager({ open, categories, counts, onClose, onSort }: Props) {
   const [editing, setEditing] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [deleting, setDeleting] = useState<ScrapCategory | null>(null)
@@ -85,6 +87,11 @@ export default function CategoryManager({ open, categories, counts, onClose }: P
         </ul>
         {error && <p className="-mt-2 mb-3 text-sm text-expense">{error}</p>}
         <CategoryPicker categories={categories} value={null} showChoices={false} onChange={() => toast('카테고리를 만들었어요')} />
+        {onSort && categories.length > 0 && (
+          <button type="button" onClick={onSort} className="tap mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-grad-soft px-3 py-2.5 text-sm font-bold text-brand-700">
+            <Wand2 className="size-4" aria-hidden /> 스크랩 다시 정리하기 (AI 없이)
+          </button>
+        )}
       </Modal>
       <ConfirmDialog
         open={deleting !== null}
