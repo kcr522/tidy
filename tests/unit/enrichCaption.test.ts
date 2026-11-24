@@ -36,6 +36,14 @@ describe('저장할 때 자동으로 채우는 글 (enrichScrap)', () => {
     page.text = '블로그 본문 '.repeat(30)
     const id = await bookmarkRepo.add({ url: 'https://blog.naver.com/a/1', title: '블로그', memo: '', source: 'naver', description: '짧음' })
     await enrichScrap((await bookmarkRepo.get(id))!)
-    expect((await bookmarkRepo.get(id))?.description).toBe(page.text)
+    expect((await bookmarkRepo.get(id))?.description).toBe(page.text.trim())
+  })
+
+  it('일반 사이트 본문에서 메뉴 · 로그인 · 저작권 줄은 뺀다', async () => {
+    page.caption = ''
+    page.text = '홈\n메뉴\n로그인\n자취방 곰팡이 없애는 방법을 정리했어요. 락스와 물을 1:10으로 섞어요.\n환기를 자주 해 주세요. 제습기도 도움이 돼요.\nCopyright © 2026 blog'
+    const id = await bookmarkRepo.add({ url: 'https://example.com/post/1', title: '곰팡이 청소', memo: '', source: 'web', description: '' })
+    await enrichScrap((await bookmarkRepo.get(id))!)
+    expect((await bookmarkRepo.get(id))?.description).toBe('자취방 곰팡이 없애는 방법을 정리했어요. 락스와 물을 1:10으로 섞어요.\n환기를 자주 해 주세요. 제습기도 도움이 돼요.')
   })
 })

@@ -5,6 +5,7 @@ import { useBlobUrl } from '../../hooks/useBlobUrl'
 import { fetchLinkPreview, type LinkPreview } from '../../lib/scrap/fetchPreview'
 import { detectSource } from '../../lib/scrap/link'
 import { MAX_MEMO_LENGTH, MAX_TITLE_LENGTH, domainOf, normalizeUrl, validateMemo } from '../../lib/validate'
+import type { Suggestion } from '../../lib/scrap/suggest'
 import type { BookmarkInput } from '../../repositories/bookmarkRepo'
 import Button from '../common/Button'
 import Field from '../common/FormField'
@@ -31,13 +32,15 @@ interface BookmarkFormProps {
   isDuplicate: (url: string) => Promise<boolean>
   onSubmit: (value: BookmarkFormValue) => Promise<void>
   onDelete?: () => void
+  /** 카테고리 추천 (AI 없이). 새로 저장할 때 미리보기가 오면 카테고리를 안 골랐으면 골라 둔다 */
+  suggest?: (b: { title: string; description?: string; memo: string; url: string }) => Suggestion | null
 }
 
 type Errors = Partial<Record<'url' | 'title' | 'memo', string>>
 type PreviewState = { status: 'idle' } | { status: 'loading' } | { status: 'done'; data: LinkPreview } | { status: 'error'; message: string }
 
 /** 스크랩 입력 폼 (FR-030~033) + 카테고리, 링크 미리보기 */
-export default function BookmarkForm({ initial, prefill, categories, defaultCategoryId, isDuplicate, onSubmit, onDelete }: BookmarkFormProps) {
+export default function BookmarkForm({ initial, prefill, categories, defaultCategoryId, isDuplicate, onSubmit, onDelete, suggest }: BookmarkFormProps) {
   const [url, setUrl] = useState(initial?.url ?? prefill?.url ?? '')
   const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? '')
   /** 사용자가 제목을 직접 고쳤으면 미리보기 제목으로 덮어쓰지 않는다 */
@@ -45,6 +48,13 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
   const titleTouched = useRef(!!initial)
   const [memo, setMemo] = useState(initial?.memo ?? '')
   const [categoryId, setCategoryId] = useState<number | null>(initial ? (initial.categoryId ?? null) : defaultCategoryId)
+  /** 사용자가 카테고리를 직접 골랐으면 추천으로 바꾸지 않는다 */
+  const categoryTouched = useRef(!!initial || defaultCategoryId != null)
+  const [suggested, setSuggested] = useState<{ id: number; why: string } | null>(null)
+  const suggestRef = useRef(suggest)
+  useEffect(() => {
+    suggestRef.current = suggest
+  })
   const [errors, setErrors] = useState<Errors>({})
   /** 중복 안내를 본 뒤 한 번 더 누르면 저장 */
   const [dupConfirmedFor, setDupConfirmedFor] = useState<string | null>(null)
@@ -87,6 +97,13 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
         .then((data) => {
           setPreview({ status: 'done', data })
           if (!titleTouched.current && data.title) setTitle(data.title.slice(0, MAX_TITLE_LENGTH))
+          if (!categoryTouched.current && suggestRef.current) {
+            const s = suggestRef.current({ title: data.title ?? '', description: data.description, memo: '', url: target })
+            if (s) {
+              setCategoryId(s.categoryId)
+              setSuggested({ id: s.categoryId, why: s.why })
+            }
+          }
         })
         .catch((err: unknown) => {
           if (!ctrl.signal.aborted) setPreview({ status: 'error', message: err instanceof Error ? err.message : '미리보기를 가져오지 못했어요' })
@@ -162,7 +179,20 @@ export default function BookmarkForm({ initial, prefill, categories, defaultCate
 
       <div>
         <span className="mb-1.5 block text-sm font-medium text-slate-600">카테고리</span>
-        <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
+        <CategoryPicker
+          categories={categories}
+          value={categoryId}
+          onChange={(v) => {
+            categoryTouched.current = true
+            setSuggested(null)
+            setCategoryId(v)
+          }}
+        />
+        {suggested && suggested.id === categoryId && (
+          <p className="mt-1.5 text-xs text-brand-700">
+            내용을 보고 '{categories.find((c) => c.id === suggested.id)?.name}'로 골라 뒀어요 ({suggested.why} · AI 안 씀). 다르면 눌러서 바꿔 주세요.
+          </p>
+        )}
       </div>
 
       <Field label={`제목 (선택, 비우면 미리보기 제목으로 · ${title.length}/${MAX_TITLE_LENGTH})`} error={errors.title}>

@@ -214,6 +214,20 @@ export function createBookmarkRepo(database: TidyDB = defaultDb) {
       })
     },
 
+    /** 여러 스크랩의 카테고리를 한꺼번에 바꾸기 (스크랩 정리: 이미 나눈 것도 사용자가 고른 대로). 바꾼 수 */
+    async setCategories(list: { id: number; categoryId: number | null }[]): Promise<number> {
+      return database.transaction('rw', database.bookmarks, async () => {
+        let changed = 0
+        for (const { id, categoryId } of list) {
+          const b = await database.bookmarks.get(id)
+          if (!b || (b.categoryId ?? null) === categoryId) continue
+          await database.bookmarks.update(id, { categoryId: categoryId ?? undefined, updatedAt: nowIso() })
+          changed++
+        }
+        return changed
+      })
+    },
+
     /** 최근 저장 순 (FR-034), 필터 (FR-037) */
     async list(filter: BookmarkFilter = 'all'): Promise<Bookmark[]> {
       const list = filter === 'unread' ? await database.bookmarks.where('isRead').equals(0).toArray() : await database.bookmarks.toArray()

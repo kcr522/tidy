@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { LayoutGrid, List, Settings2, Sparkles } from 'lucide-react'
+import { LayoutGrid, List, Plus, Settings2, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
@@ -9,7 +9,7 @@ import AutoShotDialog from '../components/bookmarks/AutoShotDialog'
 import CaptureAskDialog from '../components/bookmarks/CaptureAskDialog'
 import CategoryManager from '../components/bookmarks/CategoryManager'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
-import ScrapClassifyDialog from '../components/bookmarks/ScrapClassifyDialog'
+import ScrapSortDialog from '../components/bookmarks/ScrapSortDialog'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -18,13 +18,13 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
-import { isUnsortedInstagram } from '../lib/scrap/classify'
 import { detectSource } from '../lib/scrap/link'
 import { enrichScrap, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
+import { makeSuggester } from '../lib/scrap/suggest'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter } from '../repositories/bookmarkRepo'
-import { scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
+import { CategoryNameError, MAX_CATEGORY_NAME, scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
 import { scrapMediaRepo } from '../repositories/scrapMediaRepo'
 import { todoRepo } from '../repositories/todoRepo'
 
@@ -33,7 +33,7 @@ type Editor = { mode: 'add'; prefill?: { url: string; title?: string } } | { mod
 type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
-const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v1'
+const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v2'
 /** 카드 보기 / 목록 보기 (기기마다 기억) */
 const VIEW_KEY = 'tidy.scrap.view'
 type View = 'card' | 'list'
@@ -61,7 +61,10 @@ export default function BookmarksPage() {
   const [askCapture, setAskCapture] = useState<{ id: number; url: string; isVideo: boolean } | null>(null)
   const [autoShot, setAutoShot] = useState<{ id: number; url: string } | null>(null)
   const [managing, setManaging] = useState(false)
-  const [classifying, setClassifying] = useState(false)
+  const [sorting, setSorting] = useState(false)
+  /** 카테고리 줄에서 바로 새 카테고리 만들기 */
+  const [newCat, setNewCat] = useState<string | null>(null)
+  const [newCatError, setNewCatError] = useState<string>()
   const [view, setViewState] = useState<View>(readView)
   function setView(v: View) {
     setViewState(v)
@@ -95,8 +98,22 @@ export default function BookmarksPage() {
     const inCat = (all ?? []).filter((b) => cat === 'all' || (cat === 'none' ? b.categoryId == null : b.categoryId === cat))
     return { all: inCat.length, unread: inCat.filter((b) => b.isRead === 0).length, byCat }
   }, [all, cat])
-  // 미분류로 남은 인스타 스크랩 → 캡션 보고 나누기
-  const unsortedIg = useMemo(() => (all ?? []).filter(isUnsortedInstagram), [all])
+  // 미분류로 남은 스크랩 → AI 없이 정리하기
+  const unsortedCount = counts.byCat.get(null) ?? 0
+  // 저장할 때 카테고리 추천 (AI 없이: 낱말 + 전에 나눈 스크랩)
+  const suggester = useMemo(() => makeSuggester(categories, all ?? []), [categories, all])
+
+  async function addCategory() {
+    try {
+      const id = await scrapCategoryRepo.add(newCat ?? '')
+      setNewCat(null)
+      setNewCatError(undefined)
+      setCat(id)
+      toast('카테고리를 만들었어요')
+    } catch (e) {
+      setNewCatError(e instanceof CategoryNameError ? e.message : '만들지 못했어요')
+    }
+  }
   const catName = (id: number | undefined) => categories.find((c) => c.id === id)?.name
 
   // 예전에 저장한 "Instagram의 OO님 : …" 제목을 한 번 짧게 정리한다
@@ -189,35 +206,67 @@ export default function BookmarksPage() {
     <>
       <PageHeader title="스크랩" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>} />
 
-      {/* 카테고리 */}
-      <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="tablist" aria-label="카테고리">
-        <button type="button" role="tab" aria-selected={cat === 'all'} onClick={() => setCat('all')} className={catChip(cat === 'all')}>
-          전체 {all?.length ?? 0}
+      {/* 카테고리: 칩은 옆으로 넘기고, "+ 카테고리" · 관리는 오른쪽에 늘 보이게 */}
+      <div className="-mx-4 mb-3 flex items-center gap-1.5 pr-4 md:mx-0 md:pr-0">
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 pl-4 md:flex-wrap md:pl-0" role="tablist" aria-label="카테고리">
+          <button type="button" role="tab" aria-selected={cat === 'all'} onClick={() => setCat('all')} className={catChip(cat === 'all')}>
+            전체 {all?.length ?? 0}
+          </button>
+          {categories.map((c) => (
+            <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id!)} className={catChip(cat === c.id)}>
+              {c.name} {counts.byCat.get(c.id!) ?? 0}
+            </button>
+          ))}
+          {(counts.byCat.get(null) ?? 0) > 0 && (
+            <button type="button" role="tab" aria-selected={cat === 'none'} onClick={() => setCat('none')} className={catChip(cat === 'none')}>
+              미분류 {counts.byCat.get(null)}
+            </button>
+          )}
+        </div>
+        <button type="button" onClick={() => setNewCat((v) => (v === null ? '' : null))} className="tap mb-1 flex min-h-9 shrink-0 items-center gap-0.5 rounded-full border border-dashed border-brand-400 bg-white/80 px-2.5 text-sm font-bold text-brand-700" aria-label="새 카테고리 만들기">
+          <Plus className="size-4" strokeWidth={2.6} aria-hidden />
+          카테고리
         </button>
-        {categories.map((c) => (
-          <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id!)} className={catChip(cat === c.id)}>
-            {c.name} {counts.byCat.get(c.id!) ?? 0}
-          </button>
-        ))}
-        {(counts.byCat.get(null) ?? 0) > 0 && (
-          <button type="button" role="tab" aria-selected={cat === 'none'} onClick={() => setCat('none')} className={catChip(cat === 'none')}>
-            미분류 {counts.byCat.get(null)}
-          </button>
-        )}
-        <button type="button" onClick={() => setManaging(true)} className="tap flex min-h-9 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-bold text-slate-500" aria-label="카테고리 관리">
-          <Settings2 className="size-4" aria-hidden />
-          관리
+        <button type="button" onClick={() => setManaging(true)} className="tap mb-1 flex size-9 shrink-0 items-center justify-center rounded-full text-slate-500" aria-label="카테고리 관리" title="카테고리 관리">
+          <Settings2 className="size-5" aria-hidden />
         </button>
       </div>
+      {newCat !== null && (
+        <form
+          className="mb-3 flex gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void addCategory()
+          }}
+        >
+          <input
+            autoFocus
+            value={newCat}
+            maxLength={MAX_CATEGORY_NAME}
+            placeholder="새 카테고리 이름 (예: 여행, 운동)"
+            aria-label="새 카테고리 이름"
+            onChange={(e) => setNewCat(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setNewCat(null)}
+            className="min-h-11 min-w-0 flex-1 rounded-2xl bg-white px-4 text-sm shadow-card outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <button type="submit" className="tap min-h-11 rounded-2xl bg-grad on-grad px-4 text-sm font-bold">
+            만들기
+          </button>
+          <button type="button" onClick={() => (setNewCat(null), setNewCatError(undefined))} className="tap min-h-11 rounded-2xl bg-white px-3 text-sm font-bold text-slate-500 shadow-card">
+            취소
+          </button>
+        </form>
+      )}
+      {newCatError && <p className="-mt-2 mb-2 text-sm text-expense">{newCatError}</p>}
 
-      {unsortedIg.length > 0 && (cat === 'all' || cat === 'none') && (
-        <button type="button" onClick={() => setClassifying(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
-          <Sparkles className="size-5 shrink-0 text-brand-600" aria-hidden />
+      {unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
+        <button type="button" onClick={() => setSorting(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
+          <Wand2 className="size-5 shrink-0 text-brand-600" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-slate-800">미분류 인스타 스크랩 {unsortedIg.length}개</span>
-            <span className="block text-xs text-slate-500">캡션 보고 꿀팁 · 자취 · 만들 거 · 살 것으로 나눠 볼까요?</span>
+            <span className="block text-sm font-bold text-slate-800">미분류 스크랩 {unsortedCount}개</span>
+            <span className="block text-xs text-slate-500">{categories.length ? '내 카테고리로 나눠 볼까요? AI 없이 금방 끝나요' : '카테고리를 만들고 나눠 볼까요?'}</span>
           </span>
-          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">분류하기</span>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm">정리하기</span>
         </button>
       )}
 
@@ -314,6 +363,7 @@ export default function BookmarksPage() {
             prefill={editor.mode === 'add' ? editor.prefill : undefined}
             categories={categories}
             defaultCategoryId={defaultCategory(editor.mode === 'add' ? editor.prefill?.url : undefined)}
+            suggest={suggester}
             isDuplicate={async (url) => !!(await bookmarkRepo.findSame(url, editingId))}
             onSubmit={save}
             onDelete={editor.mode === 'edit' ? () => setDeleting(editor.item) : undefined}
@@ -336,9 +386,9 @@ export default function BookmarksPage() {
 
       <CaptureAskDialog bookmarkId={askCapture?.id ?? null} url={askCapture?.url} isVideo={askCapture?.isVideo} onClose={() => setAskCapture(null)} />
 
-      <ScrapClassifyDialog open={classifying} items={unsortedIg} onClose={() => setClassifying(false)} />
+      <ScrapSortDialog open={sorting} all={all ?? []} categories={categories} onClose={() => setSorting(false)} />
 
-      <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} />
+      <CategoryManager open={managing} categories={categories} counts={counts.byCat} onClose={() => setManaging(false)} onSort={() => (setManaging(false), setSorting(true))} />
 
       <ConvertToTodoDialog bookmark={converting} onClose={() => setConverting(null)} />
 

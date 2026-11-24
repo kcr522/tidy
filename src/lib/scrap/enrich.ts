@@ -2,6 +2,8 @@
 import type { Bookmark } from '../../db/types'
 import { bookmarkRepo } from '../../repositories/bookmarkRepo'
 import { cleanCaption, detectSource, isNameOnlySocialTitle, simpleTitle, socialCaptionFromTitle, tidyTitle, type LinkSource } from './link'
+import { domainOf } from '../validate'
+import { fetchLinkPreview } from './fetchPreview'
 import { fetchPageText } from './pageApi'
 
 /** 저장할 설명 길이 */
@@ -13,6 +15,33 @@ export function isAutoSocialTitle(title: string, source: LinkSource): boolean {
   return socialCaptionFromTitle(title) !== null || isNameOnlySocialTitle(title) || title === 'Instagram 게시물' || title === 'X 게시물' || /^@[\w.]+의 게시물$/.test(title)
 }
 
+/** 사이트 이름만 있는 제목 ("네이버 블로그", 주소, 사이트 이름) → 미리보기 제목으로 다시 채운다 */
+export function isGenericTitle(b: Pick<Bookmark, 'title' | 'url' | 'siteName'>): boolean {
+  const t = b.title.trim()
+  if (!t) return true
+  if (t === domainOf(b.url) || (b.siteName && t === b.siteName.trim())) return true
+  return /^(네이버\s?블로그|naver\s?blog|naver|블로그|youtube|유튜브|instagram|x|twitter|tistory|티스토리|velog|brunch|브런치)$/i.test(t)
+}
+
+/** 사이트 본문에서 메뉴 · 로그인 · 저작권 같은 짧은 줄을 빼고 본문만 */
+export function cleanBodyText(text: string): string {
+  const junk = /^(로그인|회원가입|메뉴|검색|홈|공유하기|구독|이웃추가|본문\s?바로가기|카테고리|이전|다음|목록|댓글|공감|신고|top|menu|login|sign\s?(in|up)|share|subscribe|search|home)$/i
+  const footer = /copyright|©|all rights reserved|이용약관|개인정보\s?처리방침|사업자\s?등록/i
+  const lines = text
+    .split('\n')
+    .map((l) => l.replace(/[\s\u00a0]+/g, ' ').trim())
+    .filter((l) => l && !junk.test(l) && !footer.test(l))
+  // 아주 짧은 줄(메뉴 이름)이 줄줄이 이어지는 곳은 뺀다
+  const out = lines.filter((l, i) => l.length >= 12 || (lines[i - 1]?.length ?? 99) >= 12 || (lines[i + 1]?.length ?? 99) >= 12)
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** 제목 · 내용을 다시 채워야 하는 스크랩 (내용이 없거나, 이름만 있는 자동 제목) */
+export function needsFill(b: Bookmark): boolean {
+  const source = (b.source as LinkSource | undefined) ?? detectSource(b.url)
+  return !b.description?.trim() || isAutoSocialTitle(b.title, source) || isGenericTitle(b)
+}
+
 /**
  * 새 스크랩: 서버가 게시글 본문을 읽어 설명을 채우고, 제목이 "OO님의 Instagram" 같은 자동 제목이면 본문으로 짧게 바꾼다.
  * 실패해도 스크랩은 그대로 둔다
@@ -20,15 +49,26 @@ export function isAutoSocialTitle(title: string, source: LinkSource): boolean {
 export async function enrichScrap(b: Bookmark): Promise<void> {
   if (b.id == null) return
   const source = (b.source as LinkSource | undefined) ?? detectSource(b.url)
-  const page = await fetchPageText(b.url, AbortSignal.timeout(20000))
+  const page = await fetchPageText(b.url, AbortSignal.timeout(20000)).catch(() => ({ text: '', caption: '' }))
   const fields: { title?: string; description?: string } = {}
+  // 저장할 때 미리보기를 못 받아 제목이 주소 · 사이트 이름뿐이면 한 번 더 받아 본다 (AI 없이 페이지 정보로)
+  if (source !== 'instagram' && source !== 'x' && (isGenericTitle(b) || !b.description?.trim())) {
+    try {
+      const meta = await fetchLinkPreview(b.url, AbortSignal.timeout(15000))
+      if (isGenericTitle(b) && meta.title && !isGenericTitle({ ...b, title: meta.title })) fields.title = meta.title.slice(0, 100)
+      if (!b.description?.trim() && meta.description) fields.description = meta.description
+    } catch {
+      // 못 받으면 본문으로
+    }
+  }
   if (source === 'instagram' || source === 'x') {
     // 인스타 · X는 게시물 캡션(글)만 그대로 적는다. 좋아요 수 · 아이디 · 날짜 같은 덧붙은 글은 넣지 않는다
     const caption = cleanCaption(page.caption)
     if (caption && caption !== b.description) fields.description = caption.slice(0, MAX_DESC)
   } else {
-    const body = page.caption || page.text
-    if (body && body.length > (b.description?.length ?? 0)) fields.description = body.slice(0, MAX_DESC)
+    const body = page.caption || cleanBodyText(page.text)
+    const now = fields.description ?? b.description ?? ''
+    if (body && body.length > now.length) fields.description = body.slice(0, MAX_DESC)
   }
   if (isAutoSocialTitle(b.title, source)) {
     const t = simpleTitle(cleanCaption(page.caption)) || simpleTitle(b.description)
