@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { LayoutGrid, List, Plus, Settings2, Wand2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Loader2, LayoutGrid, List, Plus, Settings2, Wand2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
 import BookmarkRow from '../components/bookmarks/BookmarkRow'
@@ -19,7 +19,8 @@ import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
 import { detectSource } from '../lib/scrap/link'
-import { enrichScrap, tidyOldScrapTitles } from '../lib/scrap/enrich'
+import { applyTidy, planTidy, undoTidy, type TidyResult } from '../lib/scrap/autoTidy'
+import { enrichMany, enrichScrap, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
 import { makeSuggester } from '../lib/scrap/suggest'
 import { openUrl } from '../platform/openUrl'
@@ -34,6 +35,18 @@ type CatFilter = 'all' | 'none' | number
 
 const NO_CATEGORIES: ScrapCategory[] = []
 const TITLE_FIX_KEY = 'tidy.scrap.titleFix.v2'
+/** 예전 스크랩 한 번에 정리 (끝나면 표시) · 결과(되돌리기용) */
+const AUTO_TIDY_KEY = 'tidy.scrap.autoTidy.v1'
+const AUTO_TIDY_RESULT = 'tidy.scrap.autoTidy.result'
+type TidyBanner = { kind: 'running'; done: number; total: number } | ({ kind: 'done'; filled: number } & TidyResult)
+function readTidyResult(): TidyBanner | null {
+  try {
+    const v = localStorage.getItem(AUTO_TIDY_RESULT)
+    return v ? (JSON.parse(v) as TidyBanner) : null
+  } catch {
+    return null
+  }
+}
 /** 카드 보기 / 목록 보기 (기기마다 기억) */
 const VIEW_KEY = 'tidy.scrap.view'
 type View = 'card' | 'list'
@@ -127,6 +140,47 @@ export default function BookmarksPage() {
     }
     tidyOldScrapTitles(all).catch(() => undefined)
   }, [all])
+
+  // 예전 스크랩 한 번에 정리: 빈 제목 · 내용 채우기 → 미분류를 내 카테고리(없으면 새 카테고리)로. AI 안 씀
+  const [tidy, setTidy] = useState<TidyBanner | null>(readTidyResult)
+  const tidyStarted = useRef(false)
+  useEffect(() => {
+    if (!all?.length || !loadedCategories || tidyStarted.current) return
+    try {
+      if (localStorage.getItem(AUTO_TIDY_KEY)) return
+    } catch {
+      return
+    }
+    tidyStarted.current = true
+    void (async () => {
+      const fill = all.filter(needsFill).map((b) => b.id!)
+      if (fill.length) {
+        setTidy({ kind: 'running', done: 0, total: fill.length })
+        await enrichMany(fill, (done, total) => setTidy({ kind: 'running', done, total }))
+      }
+      const fresh = await bookmarkRepo.list('all')
+      const cats = await scrapCategoryRepo.list()
+      const r = await applyTidy(planTidy(fresh, cats))
+      const filled = fill.length ? (await Promise.all(fill.map((id) => bookmarkRepo.get(id)))).filter((b) => b && !needsFill(b)).length : 0
+      const result: TidyBanner = { kind: 'done', filled, ...r }
+      try {
+        localStorage.setItem(AUTO_TIDY_KEY, '1')
+        if (r.moved || filled) localStorage.setItem(AUTO_TIDY_RESULT, JSON.stringify(result))
+      } catch {
+        // 다음에 다시 해도 이미 나눈 건 건드리지 않는다
+      }
+      setTidy(r.moved || filled ? result : null)
+    })().catch(() => setTidy(null))
+  }, [all, loadedCategories])
+
+  function closeTidy() {
+    setTidy(null)
+    try {
+      localStorage.removeItem(AUTO_TIDY_RESULT)
+    } catch {
+      // 괜찮다
+    }
+  }
 
   // 다른 앱에서 공유하기로 들어왔으면 바로 저장 창을 연다
   useEffect(() => {
@@ -259,7 +313,47 @@ export default function BookmarksPage() {
       )}
       {newCatError && <p className="-mt-2 mb-2 text-sm text-expense">{newCatError}</p>}
 
-      {unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
+      {tidy?.kind === 'running' && (
+        <div className="mb-3 flex items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 shadow-card" role="status">
+          <Loader2 className="size-5 shrink-0 animate-spin text-brand-600" aria-hidden />
+          <span className="min-w-0 flex-1 text-sm">
+            <b className="block text-slate-800">예전 스크랩 정리하는 중</b>
+            <span className="text-xs text-slate-500">
+              제목 · 내용 읽어 오는 중 {tidy.done} / {tidy.total} · 끝나면 카테고리로 나눠요 (AI 안 씀)
+            </span>
+          </span>
+        </div>
+      )}
+      {tidy?.kind === 'done' && (
+        <div className="mb-3 rounded-2xl bg-grad-soft px-4 py-3 shadow-card" role="status">
+          <p className="text-sm font-bold text-slate-800">예전 스크랩을 정리했어요</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+            {tidy.moved > 0 && `${tidy.moved}개를 카테고리로 나눴어요. `}
+            {tidy.created.length > 0 && `새 카테고리 ${tidy.created.length}개: ${tidy.created.join(', ')}. `}
+            {tidy.filled > 0 && `제목 · 내용 ${tidy.filled}개를 채웠어요. `}
+            직접 넣어 둔 카테고리는 그대로예요.
+          </p>
+          <div className="mt-2 flex gap-2">
+            {tidy.moved > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  void undoTidy(tidy.undo).then(() => toast('나눈 것을 되돌렸어요'))
+                  closeTidy()
+                }}
+                className="tap rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm"
+              >
+                나눈 것 되돌리기
+              </button>
+            )}
+            <button type="button" onClick={closeTidy} className="tap rounded-full bg-grad on-grad px-3 py-1.5 text-xs font-bold shadow-sm">
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tidy?.kind !== 'running' && unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
         <button type="button" onClick={() => setSorting(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
           <Wand2 className="size-5 shrink-0 text-brand-600" aria-hidden />
           <span className="min-w-0 flex-1">
