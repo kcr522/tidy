@@ -488,9 +488,9 @@
 
 Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에 저장돼요. 표 18개를 6개 묶음으로 나눴고, 이름은 코드에 쓰는 **물리명**(영어)과 화면에서 부르는 **논리명**(한국어)을 같이 적었어요.
 
-<a href="docs/erd.svg"><img src="docs/erd.svg" alt="Tidy ERD (키 · 연결 칸)" width="100%"></a>
+<a href="docs/erd-full.svg"><img src="docs/erd-full.svg" alt="Tidy ERD (모든 칸)" width="100%"></a>
 
-> 그림은 키 · 연결 칸만 보여 줘요. **모든 칸이 다 들어간 ERD**는 [docs/erd-full.svg](docs/erd-full.svg) (누르면 크게 보여요)
+> 표 18개의 모든 칸이 들어간 ERD예요 (누르면 크게 보여요). 키 · 연결 칸만 추린 요약 그림은 [docs/erd.svg](docs/erd.svg)
 
 #### 표 한눈에 보기
 
