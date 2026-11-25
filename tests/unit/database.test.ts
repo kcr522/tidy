@@ -10,7 +10,7 @@ afterEach(async () => {
 })
 
 const NOT_DONE = 0 as const
-const UNREAD = 0
+const UNREAD = 0 as const
 const BOOKMARK_ID = 1
 
 describe('TidyDB', () => {

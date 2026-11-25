@@ -82,7 +82,7 @@ describe('앱 잠금', () => {
     ['바로 잠금이면 돌아오자마자', 10_000, 10_000, LOCK_AT_ONCE, true],
     ['1분 잠금에서 59초 뒤', 0, 59_000, ONE_MINUTE, false],
     ['1분 잠금에서 딱 60초 뒤', 0, 60_000, ONE_MINUTE, true],
-  ])('돌아왔을 때 %s 다시 잠그는가: $4', (_case, leftAt, now, after, isLocked) => {
+  ] as const)('돌아왔을 때 %s 다시 잠그는가: $4', (_case, leftAt, now, after, isLocked) => {
     expect(shouldRelock(leftAt, now, after)).toBe(isLocked)
   })
 

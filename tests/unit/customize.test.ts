@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { defaultCustomization, MAX_PHOTOS, parseCustomization, photoRefs, sessionPhoto, withFixedColors, withSplashColors } from '../../src/lib/customize'
 import { loadPhotos, photoSrc, prunePhotos, storePhoto } from '../../src/lib/customPhotos'
-import { pickTheme } from '../../src/lib/palette'
+import { pickTheme, type Trio } from '../../src/lib/palette'
 
-const RGB = ['#ff0000', '#00ff00', '#0000ff']
+const RGB: Trio = ['#ff0000', '#00ff00', '#0000ff']
 const fixedRgb = { color: 'fixed' as const, colors: RGB }
 const SAME_PICK = () => 0.3
 const OTHER_SECTIONS = ['money', 'todo', 'scrap'] as const

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { Transaction } from '../../src/db/types'
 import { engineFor, localEngine } from '../../src/lib/ai/engines'
 import { localFeedback } from '../../src/lib/ai/localEngine'

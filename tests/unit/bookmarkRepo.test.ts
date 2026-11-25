@@ -8,8 +8,8 @@ afterEach(async () => {
   await db?.delete()
 })
 
-const UNREAD = 0
-const READ = 1
+const UNREAD = 0 as const
+const READ = 1 as const
 const reactPage = { url: 'https://react.dev/', title: 'React', memo: '' }
 
 describe('bookmarkRepo', () => {

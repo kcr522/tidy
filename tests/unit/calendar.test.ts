@@ -6,7 +6,7 @@ const okTodo = (over: Partial<Todo>): Todo => ({
   title: '장보기', isCompleted: 0, completedAt: null, dueDate: null, priority: 'MEDIUM',
   createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
 })
-const DONE = 1
+const DONE = 1 as const
 const WEEK = 7
 
 describe('calendar', () => {

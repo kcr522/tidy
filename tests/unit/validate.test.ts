@@ -2,77 +2,97 @@ import { describe, expect, it } from 'vitest'
 import { domainOf, isWebUrl, normalizeUrl, parseAmount, validateMemo, validateTitle } from '../../src/lib/validate'
 import { isValidCategory } from '../../src/lib/categories'
 
-describe('parseAmount (FR-011)', () => {
-  it('쉼표와 "원"을 지우고 정수로 바꾼다', () => {
-    expect(parseAmount('15,000')).toEqual({ ok: true, value: 15000 })
-    expect(parseAmount('3,500,000원')).toEqual({ ok: true, value: 3500000 })
+// 화면에 정해 둔 한도 (FR-011 · 제목 · 메모 칸)
+const MAX_AMOUNT = 999_999_999
+const MAX_TITLE = 100
+const MAX_MEMO = 200
+
+describe('금액 읽기 (parseAmount, FR-011)', () => {
+  it.each([
+    ['15,000', 15_000],
+    ['3,500,000원', 3_500_000],
+  ])('"%s" 는 쉼표와 "원"을 지우고 정수 %i 로 읽는다', (text, value) => {
+    expect(parseAmount(text)).toEqual({ ok: true, value })
   })
 
-  it('빈 값, 0, 소수, 음수, 문자를 거부한다', () => {
-    expect(parseAmount('').ok).toBe(false)
-    expect(parseAmount('0').ok).toBe(false)
-    expect(parseAmount('1.5').ok).toBe(false)
-    expect(parseAmount('-100').ok).toBe(false)
-    expect(parseAmount('abc').ok).toBe(false)
+  it.each([
+    ['빈 값', ''],
+    ['0', '0'],
+    ['소수', '1.5'],
+    ['음수', '-100'],
+    ['문자', 'abc'],
+  ])('%s "%s" 는 금액으로 받지 않는다', (_case, text) => {
+    expect(parseAmount(text).ok).toBe(false)
   })
 
-  it('999,999,999원까지만 허용한다', () => {
-    expect(parseAmount('999999999').ok).toBe(true)
-    expect(parseAmount('1000000000').ok).toBe(false)
+  it.each([
+    ['한도와 같은 999,999,999원', String(MAX_AMOUNT), true],
+    ['한도보다 1원 많은 1,000,000,000원', String(MAX_AMOUNT + 1), false],
+  ])('%s 을 받는가: $2', (_case, text, isOk) => {
+    expect(parseAmount(text).ok).toBe(isOk)
   })
 })
 
-describe('validateTitle / validateMemo', () => {
-  it('앞뒤 공백을 지우고 빈 제목은 거부한다', () => {
+describe('제목 · 메모 검사 (validateTitle · validateMemo)', () => {
+  it('제목의 앞뒤 공백을 지운다', () => {
     expect(validateTitle('  장보기 ')).toEqual({ ok: true, value: '장보기' })
-    expect(validateTitle('   ', '할 일을 입력해 주세요')).toEqual({ ok: false, error: '할 일을 입력해 주세요' })
   })
 
-  it('제목 100자, 메모 200자를 넘으면 거부한다', () => {
-    expect(validateTitle('a'.repeat(100)).ok).toBe(true)
-    expect(validateTitle('a'.repeat(101)).ok).toBe(false)
-    expect(validateMemo('a'.repeat(200)).ok).toBe(true)
-    expect(validateMemo('a'.repeat(201)).ok).toBe(false)
+  it('공백만 있는 제목은 받지 않고 넘겨준 안내 문구를 돌려준다', () => {
+    const message = '할 일을 입력해 주세요'
+
+    expect(validateTitle('   ', message)).toEqual({ ok: false, error: message })
+  })
+
+  it.each([
+    ['제목', validateTitle, MAX_TITLE, true],
+    ['제목', validateTitle, MAX_TITLE + 1, false],
+    ['메모', validateMemo, MAX_MEMO, true],
+    ['메모', validateMemo, MAX_MEMO + 1, false],
+  ])('%s 이 %i자면 받는가: $3', (_field, validate, length, isOk) => {
+    expect(validate('a'.repeat(length)).ok).toBe(isOk)
   })
 })
 
-describe('normalizeUrl (FR-031)', () => {
-  it('스킴이 없으면 https://를 붙인다', () => {
+describe('주소 다듬기 (normalizeUrl, FR-031)', () => {
+  it('스킴이 없으면 https:// 를 붙인다', () => {
     expect(normalizeUrl('react.dev/learn')).toEqual({ ok: true, value: 'https://react.dev/learn' })
   })
 
-  it('http/https 주소는 그대로 둔다', () => {
+  it('http 주소는 http 그대로 두고 끝에 / 를 붙인다', () => {
     expect(normalizeUrl('http://example.com')).toEqual({ ok: true, value: 'http://example.com/' })
   })
 
-  it('주소 형식이 아니거나 위험한 스킴은 거부한다', () => {
-    expect(normalizeUrl('abc').ok).toBe(false)
-    expect(normalizeUrl('').ok).toBe(false)
-    expect(normalizeUrl('javascript:alert(1)').ok).toBe(false)
-    expect(normalizeUrl('file:///etc/passwd').ok).toBe(false)
+  it.each([
+    ['주소 모양이 아닌 글', 'abc'],
+    ['빈 값', ''],
+    ['javascript: 주소', 'javascript:alert(1)'],
+    ['file: 주소', 'file:///etc/passwd'],
+  ])('%s "%s" 는 받지 않는다 (보안)', (_case, url) => {
+    expect(normalizeUrl(url).ok).toBe(false)
   })
 
-  it('도메인만 뽑는다 (FR-032)', () => {
+  it('www 를 뺀 도메인만 뽑는다 (FR-032)', () => {
     expect(domainOf('https://www.react.dev/learn')).toBe('react.dev')
   })
 })
 
-describe('categories (FR-013)', () => {
-  it('구분에 맞는 카테고리만 허용한다', () => {
-    expect(isValidCategory('EXPENSE', '식비')).toBe(true)
-    expect(isValidCategory('INCOME', '식비')).toBe(false)
-    expect(isValidCategory('INCOME', '월급')).toBe(true)
+describe('카테고리 (FR-013)', () => {
+  it.each([
+    ['EXPENSE', '식비', true],
+    ['INCOME', '식비', false],
+    ['INCOME', '월급', true],
+  ] as const)('%s 에 "%s" 카테고리를 쓸 수 있는가: $2', (type, category, isOk) => {
+    expect(isValidCategory(type, category)).toBe(isOk)
   })
 })
 
 describe('isWebUrl (보안: 위험한 주소 막기)', () => {
-  it('http/https 만 통과', () => {
-    expect(isWebUrl('https://naver.com')).toBe(true)
-    expect(isWebUrl('http://a.kr/x')).toBe(true)
-    expect(isWebUrl('javascript:alert(1)')).toBe(false)
-    expect(isWebUrl('data:text/html,<script>')).toBe(false)
-    expect(isWebUrl('file:///etc/passwd')).toBe(false)
-    expect(isWebUrl('nope')).toBe(false)
-    expect(isWebUrl(3)).toBe(false)
+  it.each(['https://naver.com', 'http://a.kr/x'])('http · https 주소 %s 는 통과한다', (url) => {
+    expect(isWebUrl(url)).toBe(true)
+  })
+
+  it.each([['javascript:alert(1)'], ['data:text/html,<script>'], ['file:///etc/passwd'], ['nope'], [3]])('위험하거나 주소가 아닌 %s 는 막는다', (value) => {
+    expect(isWebUrl(value)).toBe(false)
   })
 })

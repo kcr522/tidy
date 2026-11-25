@@ -122,7 +122,7 @@ describe('파일 → 첨부', () => {
 })
 
 describe('일정·일기 저장', () => {
-  const trip = { title: '여행', startDate: '2026-11-20', endDate: '2026-11-22', color: 'blue', memo: '표' }
+  const trip = { title: '여행', startDate: '2026-11-20', endDate: '2026-11-22', color: 'blue' as const, memo: '표' }
 
   it('일정 메모에 붙인 파일이 순서대로 저장된다', async () => {
     const repo = createEventRepo(freshDb())
@@ -178,7 +178,7 @@ describe('일정·일기 저장', () => {
 
 describe('검색', () => {
   it('일정 · 일기의 첨부 파일 이름으로도 찾는다', () => {
-    const event = { id: 1, title: '여행', startDate: '2026-11-20', endDate: '2026-11-20', color: 'blue', memo: '', attachments: [pdf], createdAt: '', updatedAt: '' }
+    const event = { id: 1, title: '여행', startDate: '2026-11-20', endDate: '2026-11-20', color: 'blue' as const, memo: '', attachments: [pdf], createdAt: '', updatedAt: '' }
     const diary = { date: '2026-11-12', text: '', color: '#fff', attachments: [{ ...pdf, name: '영수증-일기.pdf' }], createdAt: '', updatedAt: '' }
 
     const hits = searchAll({ events: [event], diaries: [diary] }, '영수증')

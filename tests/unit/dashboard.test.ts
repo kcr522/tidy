@@ -8,8 +8,8 @@ import { AlreadyConvertedError, createTodoRepo, titleFromBookmark } from '../../
 
 const TODAY = '2026-11-10'
 const NO_DUE = null
-const NOT_DONE = 0
-const READ = 1
+const NOT_DONE = 0 as const
+const READ = 1 as const
 const MAX_TITLE = 100
 
 function row(type: Transaction['type'], amount: number, date: string): Transaction {

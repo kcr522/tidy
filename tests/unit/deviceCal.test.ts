@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CalendarEvent } from '../../src/db/types'
+import type { CalendarEvent, EventColor } from '../../src/db/types'
 import { buildDevicePush, defaultPicks, isTidyCalendar, memoOf, planDevicePush, planImport, type DeviceCalendar, type DeviceEvent } from '../../src/lib/deviceCal'
 
 /** Tidy 일정 하나 */
@@ -10,8 +10,8 @@ const phoneCalendar = (id: string, accountType: string, extra: Partial<DeviceCal
 
 const DEVICE = 'abc' // 이 폰의 기기 id
 const NOW = 'now'
-const PICKED = { '3': '#ff0000' } // 고른 캘린더 id → 색
-const fromThisPhone = (uid: string) => ({ source: 'device' as const, calId: `d:${DEVICE}:3`, uid, color: '#ff0000' })
+const PICKED: Record<string, EventColor> = { '3': '#ff0000' } // 고른 캘린더 id → 색
+const fromThisPhone = (uid: string) => ({ source: 'device' as const, calId: `d:${DEVICE}:3`, uid, color: '#ff0000' as EventColor })
 
 describe('삼성 캘린더 가져오기', () => {
   it('처음에는 Tidy · 구글 · 숨긴 캘린더는 빼고 고른다', () => {
