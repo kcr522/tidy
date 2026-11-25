@@ -124,7 +124,8 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
   for (const t of data.transactions ?? []) {
     const m = matchFields(
       [
-        ['메모', t.memo],
+        ['가게 · 소비처', t.memo],
+        ['메모', t.note],
         ['카테고리', t.category],
         ['결제 수단', t.account],
         ['원래 이름', t.originalMemo],

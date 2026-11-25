@@ -32,7 +32,7 @@ interface TransactionFormProps {
   defaultDate?: string
 }
 
-type Errors = Partial<Record<'amount' | 'date' | 'category' | 'memo', string>>
+type Errors = Partial<Record<'amount' | 'date' | 'category' | 'memo' | 'note', string>>
 
 /** 수입/지출 입력 폼 (FR-010~013) */
 export default function TransactionForm({ initial, draft, onSubmit, onDelete, defaultDate }: TransactionFormProps) {
@@ -42,6 +42,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   const [date, setDate] = useState(base?.date ?? defaultDate ?? todayKey())
   const [category, setCategory] = useState(base?.category ?? '')
   const [memo, setMemo] = useState(base?.memo ?? '')
+  const [note, setNote] = useState(base?.note ?? '')
   // 새 내역은 지금 시각으로 채운다
   const [time, setTime] = useState(() => (base ? (base.time ?? '') : format(new Date(), 'HH:mm')))
   const [account, setAccount] = useState(base?.account ?? '')
@@ -86,8 +87,10 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
     if (!category) next.category = '카테고리를 골라 주세요'
     const memoResult = validateMemo(memo)
     if (!memoResult.ok) next.memo = memoResult.error
+    const noteResult = validateMemo(note)
+    if (!noteResult.ok) next.note = noteResult.error
     setErrors(next)
-    if (!amount.ok || !memoResult.ok || Object.keys(next).length > 0) return
+    if (!amount.ok || !memoResult.ok || !noteResult.ok || Object.keys(next).length > 0) return
 
     setSaving(true)
     try {
@@ -98,6 +101,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
         date,
         category,
         memo: memoResult.value,
+        note: noteResult.value || undefined,
         // 비우면 undefined → 수정할 때 예전 값이 지워진다
         time: time || undefined,
         account: acc || undefined,
@@ -206,17 +210,17 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
       {/* 어떤 카드 · 계좌로 (사용자 요청 2026-11-17) */}
       <PayMethodPicker value={account} onChange={setAccount} label={type === 'INCOME' ? '들어온 계좌 (선택)' : '카드 · 계좌 (선택)'} />
 
-      {/* 메모 */}
-      <Field label={`가게 · 메모 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
+      {/* 가게 이름 · 소비처 (메모는 아래 따로, 사용자 요청 2026-11-25) */}
+      <Field label={`가게 · 소비처 (선택, ${memo.length}/${MAX_MEMO_LENGTH})`} error={errors.memo}>
         <div className="flex gap-2">
           <input
             value={memo}
             maxLength={MAX_MEMO_LENGTH}
-            placeholder="예: 다이소 운남점, 점심"
+            placeholder="예: 다이소 운남점, 쿠팡, 엄마"
             onChange={(e) => changeMemo(e.target.value)}
             className={inputClass(!!errors.memo)}
           />
-          <HandwriteButton compact label="가게 · 메모" className="self-center" onText={(t) => changeMemo(appendHandwritten(memo, t, false, MAX_MEMO_LENGTH))} />
+          <HandwriteButton compact label="가게 · 소비처" className="self-center" onText={(t) => changeMemo(appendHandwritten(memo, t, false, MAX_MEMO_LENGTH))} />
         </div>
         {savedAlias ? (
           <span className="mt-2 block text-xs text-slate-500">
@@ -235,6 +239,20 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
             </span>
           </span>
         )}
+      </Field>
+
+      {/* 메모: 가게 이름과 따로 적는다 */}
+      <Field label={`메모 (선택, ${note.length}/${MAX_MEMO_LENGTH})`} error={errors.note}>
+        <div className="flex gap-2">
+          <input
+            value={note}
+            maxLength={MAX_MEMO_LENGTH}
+            placeholder="예: 점심, 친구랑 반반"
+            onChange={(e) => setNote(e.target.value)}
+            className={inputClass(!!errors.note)}
+          />
+          <HandwriteButton compact label="메모" className="self-center" onText={(t) => setNote(appendHandwritten(note, t, false, MAX_MEMO_LENGTH))} />
+        </div>
       </Field>
 
       <div className="flex gap-2 pt-2">

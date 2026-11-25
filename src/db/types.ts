@@ -15,7 +15,10 @@ export interface Transaction {
   category: string
   /** YYYY-MM-DD */
   date: string
+  /** 가게 이름 · 소비처 (예: 다이소 운남점, 쿠팡, 엄마) */
   memo: string
+  /** 따로 적는 메모 (예: 점심, 친구랑 반띵). 없을 수 있음 (사용자 요청 2026-11-25) */
+  note?: string
   /** 쓴 시각 HH:mm (2차, 없을 수 있음) */
   time?: string
   /** 결제 수단: 계좌, 카드, 앱 이름 (2차, 없을 수 있음) */

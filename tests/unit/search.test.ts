@@ -31,6 +31,13 @@ describe('전체 검색', () => {
     events: [event(1, '제주 여행', '스타벅스 제주점')],
   }
 
+  it('가계부 따로 적은 메모로도 찾는다', () => {
+    const hits = searchAll({ transactions: [tx(4, '다이소', { note: '친구 생일 선물' })] }, '생일')
+    expect(hits).toHaveLength(1)
+    expect(hits[0].title).toBe('다이소')
+    expect(hits[0].field).toBe('메모')
+  })
+
   it('빈 검색어는 아무것도 안 찾는다', () => {
     expect(searchAll(data, '   ')).toEqual([])
   })

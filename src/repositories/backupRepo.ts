@@ -73,7 +73,7 @@ const isId = (v: unknown) => v === undefined || (isNum(v) && (v as number) > 0)
 function isTransaction(v: unknown): v is Transaction {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
-    isStr(v.date) && isStr(v.memo) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isOptStr(v.originalMemo) && isId(v.savingsId) && isStr(v.createdAt) && isStr(v.updatedAt)
+    isStr(v.date) && isStr(v.memo) && isOptStr(v.note) && isOptStr(v.time) && isOptStr(v.account) && isId(v.recurringId) && isOptStr(v.originalMemo) && isId(v.savingsId) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 

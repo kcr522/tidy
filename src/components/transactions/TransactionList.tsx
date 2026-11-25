@@ -44,6 +44,8 @@ export default function TransactionList({ items, onSelect }: TransactionListProp
                   <MerchantAvatar brand={m?.brand ?? null} category={t.category} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-semibold text-slate-800">{m ? m.display : t.memo || t.category}</span>
+                    {/* 메모는 가게 이름 아래 작은 글씨로 따로 (사용자 요청 2026-11-25) */}
+                    {t.note && <span className="block truncate text-[13px] text-slate-500">{t.note}</span>}
                     <span className="block truncate text-xs text-slate-400">
                       <CategoryIcon category={t.category} /> {t.category}
                       {t.time && <> · {formatTimeLabel(t.time)}</>}
