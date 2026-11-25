@@ -35,7 +35,7 @@ adb shell monkey -p com.kcr522.tidy -c android.intent.category.LAUNCHER 1
 sleep 20
 tap_text '허용' ; sleep 2
 shot app-first
-tap_text '로그인 없이' ; sleep 4
+tap_text '로그인 없이' || { adb shell input swipe 540 1800 540 600 300; sleep 2; tap_text '로그인 없이'; } ; sleep 4
 tap_text '나중에' ; sleep 2
 tap_text '건너뛰기' ; sleep 3
 shot app-ready
