@@ -1,56 +1,88 @@
 /**
  * 앱 글꼴 고르기 (사용자 요청 2026-11-25)
- * 무료(OFL) 한글 글꼴 12개를 종류별로 나눠 두고, 설정에서 고르면 앱 전체(웹 · 폰 앱) 글씨가 바뀐다.
+ * 많이 쓰는 무료 한글 글꼴 5개 중에서 고르면 앱 전체(웹 · 폰 앱) 글씨가 바뀐다.
  * - 기본은 지금처럼 앱에 들어 있는 Pretendard. 다른 글꼴은 앱에 넣지 않고(앱 크기 그대로) 고를 때 인터넷에서 받는다
- * - 구글 폰트 / jsDelivr 의 글꼴 CSS 를 받아서 이름을 'Tidy Font' 로 바꾸고 크기 맞춤(size-adjust)을 넣는다
- *   구글 폰트는 글자 묶음마다 조각 파일로 나뉘어 있어서, 화면에 나온 글자의 조각만 받는다
+ * - 구글 폰트는 CSS 를 받아 이름만 'Tidy Font' 로 바꾼다 (글자 묶음별 조각이라 화면에 나온 글자의 조각만 받는다)
+ * - 나머지는 jsDelivr 의 굵기별 파일로 @font-face 를 직접 만든다 (쓰는 굵기만 받는다)
  * - 받은 CSS 는 이 기기에 저장해 두고, 글꼴 파일은 웹은 서비스 워커(tidy-fonts), 폰 앱은 WebView 캐시에 남는다
  * - 인터넷이 안 될 때 처음 고르면 받을 때까지 Pretendard 로 보인다
  * 이 기기에만 저장한다 (localStorage 'tidy-font').
  */
 
-export type FontKind = 'basic' | 'round' | 'mood' | 'cute' | 'hand'
+export interface FontFile {
+  /** 굵기 하나(400) 또는 범위('600 800') */
+  weight: string
+  url: string
+}
 
 export interface AppFont {
   id: string
   name: string
-  kind: FontKind
-  /** 글꼴 CSS 주소 */
-  css: string
-  /** 구글 폰트면 미리보기 글자만 담은 작은 조각을 받을 수 있다 (&text=) */
-  google?: boolean
-  /** 같은 크기에서 작아 보이는 손글씨를 키운다 (%) */
-  size?: number
-  /** 굵기가 하나뿐인 글꼴: 굵은 글씨를 억지로 두껍게 만들지 않는다 (번져 보여서) */
-  oneWeight?: boolean
+  /** 어떤 글꼴인지 한 줄 */
+  desc: string
+  /** 구글 폰트 CSS 주소 (글자 묶음별 조각이라 쓰는 글자만 받는다) */
+  css?: string
+  /** 구글 폰트에 없는 글꼴: 굵기별 파일 (jsDelivr) */
+  faces?: FontFile[]
 }
 
-export const FONT_KINDS: { kind: FontKind; label: string; desc: string }[] = [
-  { kind: 'basic', label: '깔끔한 기본형', desc: '반듯하고 숫자가 잘 읽혀요' },
-  { kind: 'round', label: '둥글고 부드러운', desc: '모서리가 동글동글, 순한 느낌' },
-  { kind: 'mood', label: '분위기 있는', desc: '책 같거나 독특한 모양' },
-  { kind: 'cute', label: '귀엽고 굵은', desc: '통통하고 눈에 잘 띄어요' },
-  { kind: 'hand', label: '손글씨', desc: '직접 쓴 다이어리 느낌' },
-]
-
-const g = (family: string) => `https://fonts.googleapis.com/css2?family=${family}&display=swap`
+const JSD = 'https://cdn.jsdelivr.net'
+const NSN = `${JSD}/npm/nanumsquareneo@0.0.5/woff2/NanumSquareNeoTTF-`
+const GM = `${JSD}/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSans`
+const SC = `${JSD}/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-`
+const SP = `${JSD}/npm/spoqa-han-sans@3.3.0/Subset/SpoqaHanSansNeo/SpoqaHanSansNeo-`
 
 export const DEFAULT_FONT = 'pretendard'
 
+/** 많이 쓰는 무료 한글 글꼴 (사용자 요청 2026-11-25: 여러 개 말고 인기 글꼴로) */
 export const APP_FONTS: AppFont[] = [
-  { id: DEFAULT_FONT, name: 'Pretendard (기본)', kind: 'basic', css: '' },
-  { id: 'suit', name: 'SUIT', kind: 'basic', css: 'https://cdn.jsdelivr.net/npm/@sun-typeface/suit@2.0.5/fonts/static/woff2/SUIT.css' },
-  { id: 'ibm-plex', name: 'IBM Plex Sans KR', kind: 'basic', css: g('IBM+Plex+Sans+KR:wght@300;400;500;600;700'), google: true },
-  { id: 'nanum-square-round', name: '나눔스퀘어라운드', kind: 'round', css: 'https://cdn.jsdelivr.net/npm/@kfonts/nanum-square-round@0.2.0/index.css' },
-  { id: 'gowun-dodum', name: '고운돋움', kind: 'round', css: g('Gowun+Dodum'), google: true, oneWeight: true },
-  { id: 'orbit', name: '오르빗', kind: 'mood', css: g('Orbit'), google: true, oneWeight: true },
-  { id: 'gowun-batang', name: '고운바탕', kind: 'mood', css: g('Gowun+Batang:wght@400;700'), google: true },
-  { id: 'jua', name: '주아', kind: 'cute', css: g('Jua'), google: true, oneWeight: true },
-  { id: 'do-hyeon', name: '도현', kind: 'cute', css: g('Do+Hyeon'), google: true, oneWeight: true },
-  { id: 'gaegu', name: '개구', kind: 'hand', css: g('Gaegu:wght@300;400;700'), google: true, size: 112 },
-  { id: 'nanum-pen', name: '나눔펜', kind: 'hand', css: g('Nanum+Pen+Script'), google: true, size: 128, oneWeight: true },
-  { id: 'hi-melody', name: '하이멜로디', kind: 'hand', css: g('Hi+Melody'), google: true, size: 118, oneWeight: true },
-  { id: 'gamja-flower', name: '감자꽃', kind: 'hand', css: g('Gamja+Flower'), google: true, size: 112, oneWeight: true },
+  { id: DEFAULT_FONT, name: 'Pretendard', desc: '기본 · 요즘 앱에서 가장 많이 써요' },
+  { id: 'noto-sans-kr', name: 'Noto Sans KR', desc: '구글 기본 한글 · 어디서나 무난해요', css: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap' },
+  {
+    id: 'nanum-square-neo',
+    name: '나눔스퀘어 네오',
+    desc: '네이버 · 반듯하고 또렷해요',
+    faces: [
+      { weight: '300', url: `${NSN}aLt.woff2` },
+      { weight: '400 500', url: `${NSN}bRg.woff2` },
+      { weight: '600 700', url: `${NSN}cBd.woff2` },
+      { weight: '800', url: `${NSN}dEb.woff2` },
+      { weight: '900', url: `${NSN}eHv.woff2` },
+    ],
+  },
+  {
+    id: 'gmarket-sans',
+    name: 'G마켓 산스',
+    desc: '광고 · 배너에서 자주 보는 글꼴',
+    faces: [
+      { weight: '300', url: `${GM}Light.woff` },
+      { weight: '400 500', url: `${GM}Medium.woff` },
+      { weight: '600 900', url: `${GM}Bold.woff` },
+    ],
+  },
+  {
+    id: 's-core-dream',
+    name: '에스코어 드림',
+    desc: '가늘고 세련된 느낌',
+    faces: [
+      { weight: '300', url: `${SC}3Light.woff` },
+      { weight: '400', url: `${SC}4Regular.woff` },
+      { weight: '500', url: `${SC}5Medium.woff` },
+      { weight: '600 700', url: `${SC}6Bold.woff` },
+      { weight: '800 900', url: `${SC}7ExtraBold.woff` },
+    ],
+  },
+  {
+    id: 'spoqa-han-sans-neo',
+    name: '스포카 한 산스 네오',
+    desc: '숫자가 깔끔해서 앱 화면에 많이 써요',
+    faces: [
+      { weight: '300', url: `${SP}Light.woff2` },
+      { weight: '400', url: `${SP}Regular.woff2` },
+      { weight: '500', url: `${SP}Medium.woff2` },
+      { weight: '600 900', url: `${SP}Bold.woff2` },
+    ],
+  },
 ]
 
 export const fontById = (id: string | null | undefined) => APP_FONTS.find((f) => f.id === id)
@@ -72,20 +104,25 @@ export function getFontId(): string {
 }
 
 /**
- * 받은 글꼴 CSS 를 앱에서 쓸 모양으로 바꾼다
- * - 글꼴 이름을 family 로 (원래 이름이 무엇이든)
- * - ./파일 같은 상대 주소를 CSS 주소 기준 절대 주소로
+ * 받은 구글 폰트 CSS 를 앱에서 쓸 모양으로 바꾼다
+ * - 글꼴 이름을 family 로, 상대 주소는 CSS 주소 기준 절대 주소로
  * - local() 은 뺀다 (기기에 깔린 다른 판이 섞이지 않게)
- * - 크기 맞춤과 font-display: swap 을 넣는다
  */
-export function rewriteFontCss(css: string, base: string, family: string, size = 100): string {
+export function rewriteFontCss(css: string, base: string, family: string): string {
   return css
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/font-family\s*:\s*[^;}]+/g, `font-family: '${family}'`)
     .replace(/local\((['"]?)[^)]*\1\)\s*,\s*/g, '')
     .replace(/url\((['"]?)([^'")]+)\1\)/g, (_m, _q, u: string) => `url('${new URL(u, base).href}')`)
     .replace(/font-display\s*:\s*[^;}]+;?/g, '')
-    .replace(/@font-face\s*{/g, `@font-face { font-display: swap;${size !== 100 ? ` size-adjust: ${size}%;` : ''}`)
+    .replace(/@font-face\s*{/g, '@font-face { font-display: swap;')
+}
+
+/** 굵기별 파일로 @font-face 를 만든다 */
+export function facesCss(faces: FontFile[], family: string): string {
+  return faces
+    .map((f) => `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${f.weight}; font-display: swap; src: url('${f.url}') format('${f.url.endsWith('.woff2') ? 'woff2' : 'woff'}'); }`)
+    .join('\n')
 }
 
 function putStyle(id: string, css: string) {
@@ -115,17 +152,23 @@ async function fetchCss(url: string): Promise<string> {
   return res.text()
 }
 
+/** 글꼴 하나의 @font-face CSS (구글 폰트면 받아 온다) */
+async function fontCss(font: AppFont, family: string, text?: string): Promise<string> {
+  if (font.faces) return facesCss(font.faces, family)
+  if (!font.css) return ''
+  // 견본 글씨는 그 글자만 담은 아주 작은 조각만 받는다
+  const url = text ? `${font.css}&text=${encodeURIComponent([...new Set(text)].join(''))}` : font.css
+  return rewriteFontCss(await fetchCss(url), url, family)
+}
+
 function setRoot(font: AppFont | undefined) {
   const root = document.documentElement
   if (!font || font.id === DEFAULT_FONT) {
     root.style.removeProperty('--font-sans')
-    root.style.removeProperty('font-synthesis-weight')
     delete root.dataset.font
     return
   }
   root.style.setProperty('--font-sans', `'${FAMILY}', ${FALLBACK}`)
-  if (font.oneWeight) root.style.setProperty('font-synthesis-weight', 'none')
-  else root.style.removeProperty('font-synthesis-weight')
   root.dataset.font = font.id
 }
 
@@ -146,9 +189,12 @@ export async function applyFont(id: string): Promise<void> {
     setRoot(font)
   }
   try {
-    const css = rewriteFontCss(await fetchCss(font.css), font.css, FAMILY, font.size)
+    const css = await fontCss(font, FAMILY)
     if (turn !== loading) return
     putStyle(STYLE_ID, css)
+    // 본문 굵기 파일을 받을 때까지 기다렸다가 바꾼다 (글씨가 번쩍 바뀌지 않게)
+    await document.fonts?.load(`400 16px '${FAMILY}'`, '가1').catch(() => [])
+    if (turn !== loading) return
     setRoot(font)
     try {
       localStorage.setItem(CSS_KEY, JSON.stringify({ id: font.id, css }))
@@ -183,17 +229,12 @@ export const previewFamily = (id: string) => `Tidy Preview ${id}`
 
 const previewed = new Set<string>()
 
-/**
- * 고르기 화면의 견본 글씨용 글꼴을 받는다.
- * 구글 폰트는 견본 글자만 담은 아주 작은 파일(&text=)만 받는다
- */
+/** 고르기 화면의 견본 글씨용 글꼴을 넣는다 */
 export async function loadPreviewFont(font: AppFont, text: string): Promise<void> {
-  if (!font.css || previewed.has(font.id)) return
+  if (font.id === DEFAULT_FONT || previewed.has(font.id)) return
   previewed.add(font.id)
-  const url = font.google ? `${font.css}&text=${encodeURIComponent([...new Set(text)].join(''))}` : font.css
   try {
-    const css = rewriteFontCss(await fetchCss(url), url, previewFamily(font.id), font.size)
-    putStyle(`tidy-font-preview-${font.id}`, css)
+    putStyle(`tidy-font-preview-${font.id}`, await fontCss(font, previewFamily(font.id), text))
   } catch {
     previewed.delete(font.id)
   }
