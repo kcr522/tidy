@@ -24,8 +24,10 @@
             <intent-filter android:label="@string/share_label">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
             </intent-filter>
+            <!-- 공유 창 맨 위 "바로 공유" 줄에도 Tidy 가 뜨게 (res/xml/shortcuts.xml, MainActivity.pushShareShortcut) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- 메모 메뉴를 숨겨서(2026-11-18) 공유 받기 · 메모 위젯도 꺼 둔다 (enabled="false"). 되살리려면 지운다 -->

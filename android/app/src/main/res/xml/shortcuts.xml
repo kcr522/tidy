@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  안드로이드 공유 창 맨 위 "바로 공유(Direct Share)" 줄에 "Tidy에 스크랩"을 띄운다 (2026-11-25, X 공유하기).
+  MainActivity 가 이 category 를 단 바로가기를 하나 올려 두면, 링크(글)를 공유할 때 그 줄에 같이 나온다.
+  고르면 평소 공유처럼 MainActivity 로 ACTION_SEND 가 들어온다 (ShareIntentPlugin).
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <share-target android:targetClass="com.kcr522.tidy.MainActivity">
+        <data android:mimeType="text/plain" />
+        <category android:name="com.kcr522.tidy.category.SCRAP_SHARE" />
+    </share-target>
+</shortcuts>

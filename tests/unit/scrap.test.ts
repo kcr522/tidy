@@ -4,6 +4,7 @@ import { DEFAULT_SCRAP_CATEGORIES, TidyDB } from '../../src/db/database'
 import { localSummary, sanitizeSummaryInput, summaryPrompt } from '../../src/lib/ai/scrapSummary'
 import {
   detectSource,
+  cleanSharedUrl,
   extractSharedUrl,
   instagramEmbedUrl,
   isPublicHttpUrl,
@@ -46,6 +47,11 @@ describe('링크 출처와 공유받기', () => {
     expect(extractSharedUrl({ text: '[네이버 블로그] 성수 맛집 (https://naver.me/5abc).' })).toBe('https://naver.me/5abc')
     expect(extractSharedUrl({ text: '주소 없음' })).toBeNull()
     expect(sharedTextWithoutUrl('성수 맛집 https://naver.me/5abc')).toBe('성수 맛집')
+    // X 앱 공유: 추적용 ?s= · ?t= 는 떼고, 다른 사이트 주소는 그대로
+    expect(cleanSharedUrl('https://x.com/someone/status/1790000000000000000?s=46&t=AbC')).toBe('https://x.com/someone/status/1790000000000000000')
+    expect(cleanSharedUrl('https://twitter.com/someone/status/123/')).toBe('https://twitter.com/someone/status/123')
+    expect(cleanSharedUrl('https://x.com/someone?s=20')).toBe('https://x.com/someone?s=20')
+    expect(cleanSharedUrl('https://naver.me/5abc?s=1')).toBe('https://naver.me/5abc?s=1')
   })
 
   it('인스타 게시물·릴스는 앱 안에서 재생할 공식 퍼가기 주소로', () => {
