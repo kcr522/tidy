@@ -8,6 +8,8 @@ export interface AssistantContext {
   merchants: { name: string; category: string; account?: string }[]
   /** 자주 쓴 결제 수단 이름 (이 글자 그대로 쓰게 한다) */
   accounts: string[]
+  /** 이 사용자의 지금 카테고리 (직접 만들고 지울 수 있어서 기본과 다를 수 있다) */
+  categories?: { expense: string[]; income: string[] }
 }
 
 /** 앱 → AI 로 보내는 것 */
@@ -201,6 +203,7 @@ export function assistantPrompt(req: AssistantRequest): string {
     for (const a of c.aliases) lines.push(`- "${a.original}"로 찍히는 곳은 실제로 "${a.name}"`)
     for (const m of c.merchants) lines.push(`- ${m.name}: ${m.category}${m.account ? `, ${m.account}` : ''}`)
   }
+  if (c?.categories) lines.push('', `이 사용자의 카테고리 (category는 이 중에서): 지출 ${c.categories.expense.join(', ')} / 수입 ${c.categories.income.join(', ')}`)
   lines.push('', req.image ? '이 사진을 보고 report로 알려 줘.' : '이 말을 보고 report로 알려 줘.')
   return lines.join('\n')
 }
@@ -238,8 +241,14 @@ function sanitizeContext(raw: unknown): AssistantContext | undefined {
     accounts: arr(r.accounts, 10)
       .map((a) => str(a, 30))
       .filter(Boolean),
+    ...(r.categories && typeof r.categories === 'object' ? { categories: { expense: names(obj(r.categories).expense), income: names(obj(r.categories).income) } } : {}),
   }
 }
+
+/** 카테고리 이름 목록 (많아야 40개, 한 이름 20자) */
+const names = (v: unknown) => (Array.isArray(v) ? v.slice(0, 40) : []).map((n) => str(n, 20)).filter(Boolean)
+
+type Cats = AssistantContext['categories']
 
 /** 들어온 요청을 믿을 수 있는 모양으로 (서버에서 쓴다) */
 export function sanitizeAssistantRequest(raw: unknown): AssistantRequest | null {
@@ -275,7 +284,7 @@ function sanitizeEvent(raw: unknown): EventGuess | null {
   }
 }
 
-function sanitizePayment(raw: unknown): PaymentGuess | null {
+function sanitizePayment(raw: unknown, mine?: Cats): PaymentGuess | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   const type = r.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
@@ -283,7 +292,7 @@ function sanitizePayment(raw: unknown): PaymentGuess | null {
   const date = validDate(r.date)
   const merchant = str(r.merchant, 40)
   if (!date || amount < 1 || amount > MAX_AMOUNT) return null
-  const cats = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const cats = [...(type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES), ...((type === 'INCOME' ? mine?.income : mine?.expense) ?? [])]
   const category = str(r.category, 20)
   return {
     type,
@@ -297,13 +306,13 @@ function sanitizePayment(raw: unknown): PaymentGuess | null {
 }
 
 /** AI가 준 결과를 믿을 수 있는 모양으로 */
-export function sanitizeAssistantReply(raw: unknown): AssistantReply | null {
+export function sanitizeAssistantReply(raw: unknown, mine?: Cats): AssistantReply | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   const reply = str(r.reply, 300)
   const events = (Array.isArray(r.events) ? r.events : []).map(sanitizeEvent).filter((e): e is EventGuess => e !== null).slice(0, MAX_EVENTS)
   const payments = (Array.isArray(r.payments) ? r.payments : [])
-    .map(sanitizePayment)
+    .map((p) => sanitizePayment(p, mine))
     .filter((p): p is PaymentGuess => p !== null)
     .slice(0, MAX_PAYMENTS)
   const none = { events: [], payments: [], diary: null }
@@ -324,16 +333,16 @@ export const JSON_SHAPE = `report 도구 대신, 아래 모양의 JSON 하나로
 해당 없는 칸은 빈 배열이나 null.`
 
 /** 글로 받은 JSON 답을 믿을 수 있는 모양으로 (Gemini·Groq) */
-export function parseAssistantJson(text: string): AssistantReply | null {
-  return replyFromText(text)
+export function parseAssistantJson(text: string, mine?: Cats): AssistantReply | null {
+  return replyFromText(text, mine)
 }
 
 /** 모델이 도구 대신 글로 JSON을 썼을 때 대비 */
-function replyFromText(text: string): AssistantReply | null {
+function replyFromText(text: string, mine?: Cats): AssistantReply | null {
   const m = text.match(/\{[\s\S]*\}/)
   if (!m) return null
   try {
-    return sanitizeAssistantReply(JSON.parse(m[0]))
+    return sanitizeAssistantReply(JSON.parse(m[0]), mine)
   } catch {
     return null
   }

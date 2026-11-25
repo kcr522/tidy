@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { TransactionType } from '../../db/types'
 import type { PaymentDraft } from '../../lib/assistant/learn'
 import { categoriesFor } from '../../lib/categories'
+import { useCategories } from '../common/MoneyIcon'
 import { formatDateLabel, formatNumber, formatTimeLabel, formatWon } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
 import { inputClass } from '../common/formStyles'
@@ -21,6 +22,7 @@ export type DraftPatch<R extends DraftRow = DraftRow> = Partial<R> | ((r: R) => 
 /** 체크해서 고르고, 금액·카테고리·수입/지출·모르는 가게 이름을 고칠 수 있는 카드. note: 카드 아래 작은 글 (원래 알림 글 등) */
 export default function PaymentDraftCard({ row, onChange, note }: { row: DraftRow; onChange: (p: DraftPatch) => void; note?: ReactNode }) {
   const { input } = row
+  const cats = useCategories(input.type)
   const brand = matchMerchant(row.realName || input.memo) ?? matchMerchant(row.display)
   const unclear = !row.realName && isUnclearMerchant(input.memo) && row.display === input.memo
   const setInput = (patch: Partial<typeof input>) => onChange((r) => ({ input: { ...r.input, ...patch } }))
@@ -76,7 +78,7 @@ export default function PaymentDraftCard({ row, onChange, note }: { row: DraftRo
             className={`${inputClass(false)} min-h-10 text-right text-sm`}
           />
           <select value={input.category} onChange={(e) => setInput({ category: e.target.value })} aria-label="카테고리" className={`${inputClass(false)} min-h-10 w-auto text-sm`}>
-            {categoriesFor(input.type).map((c) => (
+            {cats.map(({ name: c }) => (
               <option key={c} value={c}>
                 {c}
               </option>

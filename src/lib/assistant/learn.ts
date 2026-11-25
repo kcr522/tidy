@@ -2,7 +2,7 @@
 import type { CalendarEvent, MerchantAlias, PayMethod, Transaction } from '../../db/types'
 import type { TransactionInput } from '../../repositories/transactionRepo'
 import { eventMemo, type AssistantContext, type EventGuess, type PaymentGuess } from '../ai/assistant'
-import { categoriesFor } from '../categories'
+import { categoriesFor, resolveCategory } from '../categories'
 import { matchMerchant, normalizeName } from '../merchants'
 import { methodLabel, pickPayMethod } from '../payMethods'
 
@@ -52,6 +52,7 @@ export function buildContext(transactions: Transaction[], aliases: MerchantAlias
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([a]) => a),
+    categories: { expense: [...categoriesFor('EXPENSE')], income: [...categoriesFor('INCOME')] },
   }
 }
 
@@ -97,9 +98,11 @@ export function refinePayments(payments: PaymentGuess[], transactions: Transacti
     if (histCat && cats.includes(histCat)) {
       if (histCat !== category) learned.push(`카테고리: 전에 고른 ${histCat}`)
       category = histCat
-    } else if (p.type === 'EXPENSE' && brand && cats.includes(brand.brand.category) && category === '기타') {
-      category = brand.brand.category
+    } else if (p.type === 'EXPENSE' && brand && category === '기타') {
+      category = resolveCategory('EXPENSE', brand.brand.category)
     }
+    // 이름을 바꿨거나 지운 기본 카테고리면 지금 이름으로 (지웠으면 기타)
+    if (!cats.includes(category)) category = resolveCategory(p.type, category)
 
     // 내 카드 · 계좌에 등록한 것 (끝 4자리 · 같은 카드사) → 늘 쓰던 이름 → 알림에 적힌 이름
     const mine = pickPayMethod(methods, p.account, p.last4)

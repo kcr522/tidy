@@ -1,6 +1,6 @@
 import { addDays, addMonths, addWeeks, addYears, startOfWeek } from 'date-fns'
 import type { Transaction, TransactionType } from '../db/types'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, isSaving } from './categories'
+import { categoryItems, EXPENSE_CATEGORIES, findCategory, INCOME_CATEGORIES, isSaving } from './categories'
 import { parseDateKey, toDateKey } from './date'
 
 /** 차트·통계에서 묶는 단위 */
@@ -126,13 +126,20 @@ export function topIncomeSources(list: Transaction[], n = 5): { name: string; am
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
 const OTHER = '#b0b8c1'
 
+// 이름을 바꾼 기본 카테고리는 처음 이름의 색 그대로, 내가 만든 카테고리는 만든 순서대로 돌아가며 색을 받는다
 export function categoryColor(category: string): string {
   if (category === '기타') return OTHER
-  const exp = (EXPENSE_CATEGORIES as readonly string[]).indexOf(category)
-  if (exp >= 0) return SERIES[exp]
-  const inc = (INCOME_CATEGORIES as readonly string[]).indexOf(category)
-  if (inc >= 0) return [SERIES[0], SERIES[2], SERIES[6]][inc]
-  return OTHER
+  const found = findCategory(category)
+  const first = found?.builtIn ? found.key.slice(found.key.indexOf(':') + 1) : found ? null : category
+  if (first != null) {
+    const exp = (EXPENSE_CATEGORIES as readonly string[]).indexOf(first)
+    if (exp >= 0 && found?.type !== 'INCOME') return SERIES[exp]
+    const inc = (INCOME_CATEGORIES as readonly string[]).indexOf(first)
+    if (inc >= 0) return [SERIES[0], SERIES[2], SERIES[6]][inc]
+    return OTHER
+  }
+  const mine = categoryItems(found!.type).filter((c) => !c.builtIn)
+  return SERIES[(mine.findIndex((c) => c.key === found!.key) + 3) % SERIES.length]
 }
 
 /** 남은 돈(쓰지 않은 수입) 조각 색 */
