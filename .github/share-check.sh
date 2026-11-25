@@ -13,7 +13,9 @@ s=open('ui.xml',encoding='utf-8').read()
 for m in re.finditer(r'<node [^>]*>',s):
   t=m.group(0)
   tx=re.search(r' text="([^"]*)"',t).group(1); cd=re.search(r'content-desc="([^"]*)"',t).group(1)
-  if sys.argv[1] in tx or sys.argv[1] in cd:
+  a=sys.argv[1]
+  ok=(tx==a[1:] or cd==a[1:]) if a.startswith('=') else (a in tx or a in cd)
+  if ok:
     b=list(map(int,re.findall(r'\d+',re.search(r'bounds="([^"]*)"',t).group(1))))
     print((b[0]+b[2])//2,(b[1]+b[3])//2); break
 PY
@@ -28,20 +30,30 @@ adb shell "setprop persist.sys.locale ko-KR; setprop ctl.restart zygote"
 sleep 8; adb wait-for-device
 for i in $(seq 60); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 2; done
 sleep 15
-adb install -r $APK; adb install -r -t $TAPK
+adb install -r -g $APK; adb install -r -t $TAPK
 adb shell monkey -p com.kcr522.tidy -c android.intent.category.LAUNCHER 1
 sleep 20
+tap_text '허용' ; sleep 2
 shot app-first
 tap_text '로그인 없이' ; sleep 4
 tap_text '나중에' ; sleep 2
 tap_text '건너뛰기' ; sleep 3
 shot app-ready
+adb shell dumpsys shortcut > $OUT/shortcut-dump.txt 2>&1
 adb shell input keyevent HOME; sleep 2
-adb shell am instrument -w -e class com.kcr522.tidy.ShareSheetLauncher com.kcr522.tidy.test/androidx.test.runner.AndroidJUnitRunner
-sleep 6
+share() { adb shell am instrument -w -e class com.kcr522.tidy.ShareSheetLauncher com.kcr522.tidy.test/androidx.test.runner.AndroidJUnitRunner; sleep 6; }
+share
 shot share-sheet
-tap_text 'Tidy에 스크랩' ; sleep 20
-tap_text '나중에' ; sleep 2
-shot after-share
-adb logcat -d | grep -i -E 'tidy|chromium|Capacitor' | tail -200 > $OUT/logcat.txt
+tap_text 'Tidy에 스크랩' ; sleep 15
+tap_text '허용' ; sleep 2
+shot save-form
+tap_text '=저장' ; sleep 12
+shot after-save
+tap_text '나중에' ; tap_text '안 올리기' ; sleep 3
+shot scrap-list
+adb shell input keyevent HOME; sleep 2
+share
+shot share-sheet-again
+adb shell input keyevent BACK
+adb logcat -d | grep -i -E 'tidy|chromium|Capacitor|Shortcut' | tail -300 > $OUT/logcat.txt
 exit 0
