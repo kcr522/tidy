@@ -8,31 +8,52 @@ afterEach(async () => {
   await db?.delete()
 })
 
-const A = 'data:image/jpeg;base64,AAA'
-const B = 'data:image/jpeg;base64,BBB'
-const C = 'data:image/jpeg;base64,CCC'
+const PHOTO_A = 'data:image/jpeg;base64,AAA'
+const PHOTO_B = 'data:image/jpeg;base64,BBB'
+const PHOTO_C = 'data:image/jpeg;base64,CCC'
+const DAY = '2026-11-02'
 
 describe('일기 대표 사진', () => {
-  it('처음에는 첫 장, 고르면 바뀌고 일기를 고쳐도 그대로 남는다', async () => {
+  const twoPhotos = [{ src: PHOTO_A, time: '10:00' }, { src: PHOTO_B, time: '12:00' }]
+
+  it('처음 저장하면 첫 장이 대표 사진이 된다', async () => {
     db = new TidyDB('diary-cover-1')
     const repo = createDiaryRepo(db)
-    await repo.save('2026-11-02', { text: '카페', photos: [{ src: A, time: '10:00' }, { src: B, time: '12:00' }] })
-    expect((await repo.get('2026-11-02'))?.photo).toBe(A)
-    await repo.setCover('2026-11-02', B)
-    expect((await repo.get('2026-11-02'))?.photo).toBe(B)
-    // 글이나 사진을 고쳐도 대표 사진은 지킨다
-    await repo.save('2026-11-02', { text: '카페 투어', photos: [{ src: A, time: '10:00' }, { src: B, time: '12:00' }, { src: C, time: '15:00' }] })
-    expect((await repo.get('2026-11-02'))?.photo).toBe(B)
+
+    await repo.save(DAY, { text: '카페', photos: twoPhotos })
+
+    expect((await repo.get(DAY))?.photo).toBe(PHOTO_A)
   })
 
-  it('대표 사진을 빼면 첫 장으로, 일기에 없는 사진은 고를 수 없다', async () => {
+  it('대표 사진을 고르면 바뀌고, 글이나 사진을 고쳐도 고른 사진을 지킨다', async () => {
+    db = new TidyDB('diary-cover-1b')
+    const repo = createDiaryRepo(db)
+    await repo.save(DAY, { text: '카페', photos: twoPhotos })
+
+    await repo.setCover(DAY, PHOTO_B)
+    expect((await repo.get(DAY))?.photo).toBe(PHOTO_B)
+
+    await repo.save(DAY, { text: '카페 투어', photos: [...twoPhotos, { src: PHOTO_C, time: '15:00' }] })
+    expect((await repo.get(DAY))?.photo).toBe(PHOTO_B)
+  })
+
+  it('일기에 없는 사진은 대표 사진으로 고를 수 없다', async () => {
     db = new TidyDB('diary-cover-2')
     const repo = createDiaryRepo(db)
-    await repo.save('2026-11-03', { text: '', photos: [{ src: A }, { src: B }], cover: B })
-    expect((await repo.get('2026-11-03'))?.photo).toBe(B)
-    await repo.setCover('2026-11-03', C)
-    expect((await repo.get('2026-11-03'))?.photo).toBe(B)
-    await repo.save('2026-11-03', { text: '', photos: [{ src: A }] })
-    expect((await repo.get('2026-11-03'))?.photo).toBe(A)
+    await repo.save(DAY, { text: '', photos: [{ src: PHOTO_A }, { src: PHOTO_B }], cover: PHOTO_B })
+
+    await repo.setCover(DAY, PHOTO_C)
+
+    expect((await repo.get(DAY))?.photo).toBe(PHOTO_B)
+  })
+
+  it('대표 사진을 일기에서 빼면 첫 장이 대표가 된다', async () => {
+    db = new TidyDB('diary-cover-3')
+    const repo = createDiaryRepo(db)
+    await repo.save(DAY, { text: '', photos: [{ src: PHOTO_A }, { src: PHOTO_B }], cover: PHOTO_B })
+
+    await repo.save(DAY, { text: '', photos: [{ src: PHOTO_A }] })
+
+    expect((await repo.get(DAY))?.photo).toBe(PHOTO_A)
   })
 })
