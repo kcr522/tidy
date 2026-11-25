@@ -1,6 +1,6 @@
 // 전체 검색: 가계부 · 할 일 · 일기 · 스크랩 · 메모 · 일정에서 내가 쓴 글을 찾는다.
 // 데이터는 기기 안(IndexedDB)에 있어서 서버 없이 바로 찾는다.
-import type { Bookmark, CalendarEvent, Diary, Memo, MemoFolder, Todo, Transaction } from '../db/types'
+import type { Bookmark, CalendarEvent, Diary, Memo, MemoFolder, ScrapCategory, Todo, Transaction } from '../db/types'
 import { inkText, memoTitle } from './memo'
 
 export type SearchKind = 'money' | 'todo' | 'diary' | 'scrap' | 'memo' | 'event'
@@ -46,6 +46,8 @@ export interface SearchData {
   events?: CalendarEvent[]
   memos?: Memo[]
   memoFolders?: MemoFolder[]
+  /** 스크랩 카테고리 이름으로도 찾는다 */
+  scrapCategories?: ScrapCategory[]
 }
 
 /** 대소문자와 띄어쓰기 차이는 무시한다 ("스타 벅스" = "스타벅스") */
@@ -104,6 +106,31 @@ export function makeSnippet(text: string, term: string, radius = 40): string {
   const start = Math.max(0, at - radius)
   const end = Math.min(flat.length, at + term.length + radius)
   return `${start > 0 ? '…' : ''}${flat.slice(start, end)}${end < flat.length ? '…' : ''}`
+}
+
+/**
+ * 스크랩 하나가 검색어에 맞는지 본다 (스크랩 화면 검색 · 전체 검색 같이 씀).
+ * 제목뿐 아니라 내용(캡션 · 본문), 메모, 요약, 해시태그, 사이트, 카테고리까지 찾는다.
+ * 맞으면 어디서 찾았는지와 찾은 글자 앞뒤 내용을 돌려준다.
+ */
+export function matchBookmark(b: Bookmark, terms: string[], categoryName?: string): { title: string; field: string; snippet: string } | null {
+  if (terms.length === 0) return null
+  const m = matchFields(
+    [
+      ['제목', b.title],
+      ['내용', b.description],
+      ['메모', b.memo],
+      ['요약', b.summary],
+      ['카테고리', categoryName],
+      ['사이트', b.siteName],
+      ['링크', b.url],
+    ],
+    terms,
+  )
+  if (!m) return null
+  const title = b.title || b.url
+  const snippet = m.text && m.text !== title ? makeSnippet(m.text, m.term) : makeSnippet(b.memo || b.description || b.summary || '', m.term)
+  return { title, field: m.label, snippet }
 }
 
 const fileNames = (list?: { name: string }[]) => (list ?? []).map((a) => a.name).join(' · ')
@@ -165,21 +192,11 @@ export function searchAll(data: SearchData, query: string): SearchHit[] {
     hits.push({ kind: 'diary', key: `diary-${d.date}`, item: d, title: d.date, field: m.label, snippet: makeSnippet(m.text, m.term), sortKey: d.date })
   }
 
+  const catNames = new Map((data.scrapCategories ?? []).map((c) => [c.id, c.name]))
   for (const b of data.bookmarks ?? []) {
-    const m = matchFields(
-      [
-        ['제목', b.title],
-        ['메모', b.memo],
-        ['AI 요약', b.summary],
-        ['설명', b.description],
-        ['사이트', b.siteName],
-        ['링크', b.url],
-      ],
-      terms,
-    )
+    const m = matchBookmark(b, terms, b.categoryId != null ? catNames.get(b.categoryId) : undefined)
     if (!m) continue
-    const title = b.title || b.url
-    hits.push({ kind: 'scrap', key: `scrap-${b.id}`, item: b, title, field: m.label, snippet: pick(m, title, b.memo || b.summary || ''), sortKey: b.createdAt })
+    hits.push({ kind: 'scrap', key: `scrap-${b.id}`, item: b, title: m.title, field: m.field, snippet: m.snippet, sortKey: b.createdAt })
   }
 
   const folders = new Map((data.memoFolders ?? []).map((f) => [f.id, f]))
