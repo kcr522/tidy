@@ -49,4 +49,4 @@ jobs:
           git config user.email github-actions@github.com
           git add -f docs/screenshots/x-share-ci
           git commit -m "공유 창 확인 사진 (에뮬레이터)" || exit 0
-          git pull --rebase origin ${{ github.ref_name }} && git push origin HEAD:${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
