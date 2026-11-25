@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Loader2, LayoutGrid, List, Plus, Settings2, Wand2 } from 'lucide-react'
+import { Loader2, LayoutGrid, List, Plus, Search, Settings2, Wand2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkCard from '../components/bookmarks/BookmarkCard'
@@ -18,6 +18,7 @@ import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
 import { useToast } from '../components/common/Toast'
 import type { Bookmark, ScrapCategory } from '../db/types'
+import { matchBookmark, splitQuery } from '../lib/search'
 import { detectSource } from '../lib/scrap/link'
 import { applyTidy, planTidy, undoTidy, type TidyResult } from '../lib/scrap/autoTidy'
 import { enrichMany, enrichScrap, fillThumbs, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
@@ -79,6 +80,13 @@ export default function BookmarksPage() {
   const [newCat, setNewCat] = useState<string | null>(null)
   const [newCatError, setNewCatError] = useState<string>()
   const [view, setViewState] = useState<View>(readView)
+  /** 스크랩 안에서 찾기: 제목 · 내용 · 메모 · 요약 · 해시태그 · 카테고리 */
+  const [query, setQuery] = useState('')
+  const [debounced, setDebounced] = useState('')
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query), 150)
+    return () => clearTimeout(id)
+  }, [query])
   function setView(v: View) {
     setViewState(v)
     try {
@@ -105,6 +113,17 @@ export default function BookmarksPage() {
       ),
     [all, filter, cat],
   )
+  const terms = useMemo(() => splitQuery(debounced), [debounced])
+  const searching = terms.length > 0
+  // 검색 중이면 지금 고른 카테고리 · 안 읽음 안에서 찾는다
+  const found = useMemo(() => {
+    if (!searching) return []
+    const names = new Map(categories.map((c) => [c.id, c.name]))
+    return items.flatMap((b) => {
+      const m = matchBookmark(b, terms, b.categoryId != null ? names.get(b.categoryId) : undefined)
+      return m ? [{ b, m }] : []
+    })
+  }, [items, terms, searching, categories])
   const counts = useMemo(() => {
     const byCat = new Map<number | null, number>()
     for (const b of all ?? []) byCat.set(b.categoryId ?? null, (byCat.get(b.categoryId ?? null) ?? 0) + 1)
@@ -283,6 +302,25 @@ export default function BookmarksPage() {
     <>
       <PageHeader title="스크랩" action={<Button onClick={() => setEditor({ mode: 'add' })}>+ 링크 저장</Button>} />
 
+      <div className="relative mb-3">
+        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-slate-400" aria-hidden />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+          placeholder="스크랩 찾기 (제목 · 내용 · 메모 · #태그)"
+          aria-label="스크랩 찾기"
+          enterKeyHint="search"
+          className="min-h-12 w-full rounded-2xl bg-white pr-11 pl-11 text-[15px] shadow-card outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery('')} className="tap absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100" aria-label="검색어 지우기">
+            <X className="size-5" aria-hidden />
+          </button>
+        )}
+      </div>
+
       {/* 카테고리: 칩은 옆으로 넘기고, "+ 카테고리" · 관리는 오른쪽에 늘 보이게 */}
       <div className="-mx-4 mb-3 flex items-center gap-1.5 pr-4 md:mx-0 md:pr-0">
         <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 pl-4 md:flex-wrap md:pl-0" role="tablist" aria-label="카테고리">
@@ -376,7 +414,7 @@ export default function BookmarksPage() {
         </div>
       )}
 
-      {tidy?.kind !== 'running' && unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
+      {!searching && tidy?.kind !== 'running' && unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
         <button type="button" onClick={() => setSorting(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
           <Wand2 className="size-5 shrink-0 text-brand-600" aria-hidden />
           <span className="min-w-0 flex-1">
@@ -430,7 +468,38 @@ export default function BookmarksPage() {
         </div>
       </div>
 
-      {all === undefined ? null : items.length === 0 ? (
+      {all === undefined ? null : searching ? (
+        <>
+          <p className="mb-2 flex flex-wrap items-center gap-x-2 px-1 text-sm text-slate-500" role="status">
+            <span>
+              {cat !== 'all' || filter === 'unread' ? `${[cat === 'all' ? '' : cat === 'none' ? '미분류' : catName(cat), filter === 'unread' ? '안 읽음' : ''].filter(Boolean).join(' · ')} 안에서 ` : ''}
+              <b className="text-slate-800">{found.length}개</b> 찾았어요
+            </span>
+            {(cat !== 'all' || filter === 'unread') && (
+              <button type="button" onClick={() => (setCat('all'), setFilter('all'))} className="tap font-bold text-brand-700 underline underline-offset-2">
+                전체에서 찾기
+              </button>
+            )}
+          </p>
+          {found.length === 0 ? (
+            <EmptyState icon="🔍" title={`'${debounced.trim()}' 들어간 스크랩이 없어요`} description="다른 낱말로 찾아보세요. 여러 낱말은 모두 들어간 것만 나와요" />
+          ) : (
+            <ul className="card divide-y divide-slate-100 overflow-hidden py-1">
+              {found.map(({ b, m }) => (
+                <BookmarkRow
+                  key={b.id}
+                  bookmark={b}
+                  cover={b.id != null ? covers?.get(b.id)?.cover : undefined}
+                  categoryName={catName(b.categoryId)}
+                  onOpen={() => open(b)}
+                  onDetail={() => setDetailId(b.id ?? null)}
+                  search={{ terms, field: m.field, snippet: m.snippet }}
+                />
+              ))}
+            </ul>
+          )}
+        </>
+      ) : items.length === 0 ? (
         <EmptyState
           icon="🔖"
           title={filter === 'unread' ? '안 읽은 스크랩이 없어요' : cat !== 'all' ? '이 카테고리에 저장한 링크가 없어요' : '나중에 볼 링크를 저장해 보세요'}

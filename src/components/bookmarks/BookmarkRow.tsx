@@ -4,6 +4,7 @@ import { useBlobUrl } from '../../hooks/useBlobUrl'
 import { toDateKey } from '../../lib/date'
 import { detectSource, SOURCE_LABEL, type LinkSource } from '../../lib/scrap/link'
 import { domainOf } from '../../lib/validate'
+import Marked from '../common/Marked'
 
 interface Props {
   bookmark: Bookmark
@@ -11,6 +12,8 @@ interface Props {
   categoryName?: string
   onOpen: () => void
   onDetail: () => void
+  /** 검색 중이면: 찾은 글자에 형광펜 + 어디서 찾았는지 한 줄 */
+  search?: { terms: string[]; field: string; snippet: string }
 }
 
 const DOT: Record<LinkSource, string> = {
@@ -28,7 +31,7 @@ function shortDate(iso: string): string {
 }
 
 /** 스크랩 목록 보기의 한 줄: 작은 썸네일 + 제목 + 출처 · 카테고리 + 날짜 (파일 목록처럼 한눈에) */
-export default function BookmarkRow({ bookmark, cover, categoryName, onOpen, onDetail }: Props) {
+export default function BookmarkRow({ bookmark, cover, categoryName, onOpen, onDetail, search }: Props) {
   const url = useBlobUrl(cover)
   const source = (bookmark.source ?? detectSource(bookmark.url)) as LinkSource
   const read = bookmark.isRead === 1
@@ -52,7 +55,7 @@ export default function BookmarkRow({ bookmark, cover, categoryName, onOpen, onD
         <span className="min-w-0 flex-1">
           <span className={`flex items-center gap-1.5 text-[15px] leading-snug ${read ? 'font-medium text-slate-500' : 'font-bold text-slate-900'}`}>
             {!read && <span className="size-1.5 shrink-0 rounded-full bg-grad" aria-label="안 읽음" />}
-            <span className="truncate">{bookmark.title}</span>
+            <span className="truncate">{search ? <Marked text={bookmark.title} terms={search.terms} /> : bookmark.title}</span>
           </span>
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className={`size-2 shrink-0 rounded-full ${DOT[source] ?? DOT.web}`} aria-hidden />
@@ -61,6 +64,12 @@ export default function BookmarkRow({ bookmark, cover, categoryName, onOpen, onD
               {categoryName ? ` · ${categoryName}` : ''}
             </span>
           </span>
+          {search && search.field !== '제목' && search.snippet && (
+            <span className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-600">
+              <span className="mr-1 rounded bg-slate-100 px-1 py-px text-[11px] font-bold text-slate-500">{search.field}</span>
+              <Marked text={search.snippet} terms={search.terms} />
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-xs text-slate-400 tabular-nums">{shortDate(bookmark.createdAt)}</span>
       </button>

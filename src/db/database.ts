@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, PayMethod, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from './types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, MoneyCategory, PayMethod, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from './types'
 
 /**
  * Tidy 로컬 DB (IndexedDB)
@@ -25,6 +25,7 @@ export class TidyDB extends Dexie {
   memoFolders!: Table<MemoFolder, number>
   memos!: Table<Memo, number>
   payMethods!: Table<PayMethod, number>
+  moneyCategories!: Table<MoneyCategory, string>
 
   constructor(name = 'tidy') {
     super(name)
@@ -88,6 +89,10 @@ export class TidyDB extends Dexie {
     // 내 카드 · 계좌 (어떤 카드 · 계좌로 썼는지 구분, 사용자 요청 2026-11-17)
     this.version(12).stores({
       payMethods: '++id, order',
+    })
+    // 가계부 카테고리 직접 만들고 지우기 (사용자 요청 2026-11-25)
+    this.version(13).stores({
+      moneyCategories: '&key, type',
     })
   }
 }

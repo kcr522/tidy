@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Bookmark, CalendarEvent, Diary, Todo, Transaction } from '../../src/db/types'
-import { highlightParts, makeSnippet, normalize, searchAll } from '../../src/lib/search'
+import { highlightParts, makeSnippet, matchBookmark, normalize, searchAll, splitQuery } from '../../src/lib/search'
 
 const now = '2026-11-10T00:00:00.000Z'
 const tx = (id: number, memo: string, extra: Partial<Transaction> = {}): Transaction => ({
@@ -38,7 +38,7 @@ describe('전체 검색', () => {
   it('가계부 메모, 할 일, 일기 사진 메모, 스크랩 AI 요약, 일정 메모에서 모두 찾는다', () => {
     const hits = searchAll(data, '스타벅스')
     expect(hits.map((h) => h.key)).toEqual(['money-1', 'todo-1', 'diary-2026-11-08', 'scrap-2', 'event-1'])
-    expect(hits.find((h) => h.kind === 'scrap')?.field).toBe('AI 요약')
+    expect(hits.find((h) => h.kind === 'scrap')?.field).toBe('요약')
     expect(hits.find((h) => h.kind === 'diary')?.field).toBe('사진 메모')
   })
 
@@ -81,5 +81,28 @@ describe('할 일 메모 · 첨부 검색', () => {
     expect(byMemo.map((h) => [h.key, h.field])).toEqual([['todo-7', '메모']])
     expect(byMemo[0].snippet).toContain('먼저')
     expect(searchAll({ todos: [t] }, '참고자료').map((h) => h.field)).toEqual(['첨부 파일'])
+  })
+})
+
+describe('스크랩 내용 검색', () => {
+  const long = `${'자취 꿀팁 모음입니다 '.repeat(8)}냉동실에 밥을 소분해서 얼려 두면 편해요 #자취 #살림`
+  const b = scrap(9, { title: '인스타 게시물', description: long, categoryId: 3 })
+
+  it('제목에 없어도 내용(캡션) 속 글자로 찾고, 찾은 곳 앞뒤를 보여 준다', () => {
+    const m = matchBookmark(b, splitQuery('냉동실 소분'))
+    expect(m?.field).toBe('내용')
+    expect(m?.snippet).toContain('냉동실에 밥을')
+    expect(m?.snippet.startsWith('…')).toBe(true)
+  })
+
+  it('해시태그 · 카테고리 이름으로도 찾는다', () => {
+    expect(matchBookmark(b, splitQuery('#살림'))?.field).toBe('내용')
+    expect(matchBookmark(b, splitQuery('꿀팁저장'), '꿀팁저장')?.field).toBe('카테고리')
+    expect(matchBookmark(b, splitQuery('여행'), '꿀팁저장')).toBeNull()
+  })
+
+  it('전체 검색도 스크랩 카테고리 이름을 찾는다', () => {
+    const hits = searchAll({ bookmarks: [b], scrapCategories: [{ id: 3, name: '자취를 위해 모으기', order: 0, createdAt: now }] }, '자취를위해')
+    expect(hits.map((h) => [h.key, h.field])).toEqual([['scrap-9', '카테고리']])
   })
 })

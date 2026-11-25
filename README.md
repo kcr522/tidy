@@ -462,7 +462,7 @@
 
 | 단계 | 어디에 | 설명 |
 |---|---|---|
-| 1. 기기 안 (기본) | **IndexedDB** (Dexie.js 4, 지금 DB 버전 12) | 모든 기록은 먼저 기기 안에 저장 → 인터넷이 없어도 쓰고, 로그인 없이도 씀 (오프라인 우선). 표 구조는 [데이터 구조 (ERD)](#데이터-구조-erd) |
+| 1. 기기 안 (기본) | **IndexedDB** (Dexie.js 4, 지금 DB 버전 13) | 모든 기록은 먼저 기기 안에 저장 → 인터넷이 없어도 쓰고, 로그인 없이도 씀 (오프라인 우선). 표 구조는 [데이터 구조 (ERD)](#데이터-구조-erd) |
 | 2. 동기화 (선택) | **Cloud Firestore** (서울 리전) | 구글 로그인하면 `users/내 uid/…` 자리에만 올라가서 폰 · 컴퓨터가 같은 기록을 봄. 사진 · 파일은 data URL로 함께 동기화 (Firestore 문서 한도 1MB 때문에 약 650KB 넘는 파일은 기기에만) |
 | 3. 백업 | JSON 파일 | 설정에서 내보내기 · 가져오기, 자동 백업(매일 · 매주 · 열 때마다). 폰은 0.5MB씩 나눠 저장 |
 | 작은 설정 | localStorage | 대시보드 배치, 최근 이모지, 잠금 설정(암호화된 값) 같은 기기별 설정 |
@@ -486,7 +486,7 @@
 
 <!-- ERD:START — 이 사이는 `node scripts/erd.mjs`가 만든다. 직접 고치지 말고 scripts/erd.mjs를 고친다 -->
 
-Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에 저장돼요. 표 18개를 6개 묶음으로 나눴고, 이름은 코드에 쓰는 **물리명**(영어)과 화면에서 부르는 **논리명**(한국어)을 같이 적었어요.
+Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 13)에 저장돼요. 표 19개를 6개 묶음으로 나눴고, 이름은 코드에 쓰는 **물리명**(영어)과 화면에서 부르는 **논리명**(한국어)을 같이 적었어요.
 
 <a href="docs/erd-full.svg"><img src="docs/erd-full.svg" alt="Tidy ERD (모든 칸)" width="100%"></a>
 
@@ -501,6 +501,7 @@ Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에
 | 가계부 | `merchantAliases` | 가게 이름 기억 | `raw` (정리한 원래 이름) | v3 | 카드사에 찍힌 이름(KCP · NICE 등)을 실제 가게 이름으로 바꿔 보여 준다 |
 | 가계부 | `recurring` | 정기 내역 규칙 | `id` 자동 번호 | v2 | 월급 · 구독료처럼 매달 같은 날 자동으로 내역을 만든다 |
 | 가계부 | `budgets` | 한 달 예산 | `category` | v9 | 매달 똑같이 적용되는 예산 (전체 + 카테고리별) |
+| 가계부 | `moneyCategories` | 가계부 카테고리 | `key` | v13 | 직접 만들거나 바꾼(이름 · 아이콘 · 순서 · 지움) 카테고리만 저장. 기본 카테고리는 코드에 있다 |
 | 가계부 | `savings` | 적금 | `id` 자동 번호 | v7 | 만기 금액 계산 · 자동 납입 · 납입일 알림. 만들 때 습관 하나를 같이 만든다 |
 | 할 일 | `todoCategories` | 할 일 카테고리 | `id` 자동 번호 | v8 | 할 일 캘린더 아래 묶음 |
 | 할 일 | `todos` | 할 일 | `id` 자동 번호 | v1 | 마감일 · 중요도 · 알림 · 반복이 있는 할 일. 스크랩에서 바꾼 할 일은 그 스크랩과 1:1 |
@@ -523,7 +524,8 @@ Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에
 | `transactions.savingsId` | `savings.id` | N : 1 | 적금 납입 내역 |
 | `transactions.account` | `payMethods.name` | 이름으로 | 어떤 카드 · 계좌로 썼는지 (이름으로) |
 | `transactions.originalMemo` | `merchantAliases.raw` | 이름으로 | 카드사 이름 → 실제 가게 이름 (정리한 이름으로) |
-| `transactions.category` | `budgets.category` | 이름으로 | 카테고리별 예산 (이름으로) |
+| `transactions.category` | `moneyCategories.name` | 이름으로 | 내역의 카테고리 (이름으로) |
+| `budgets.category` | `moneyCategories.name` | 이름으로 | 카테고리별 예산 (이름으로) |
 | `recurring.account` | `payMethods.name` | 이름으로 | 정기 내역의 결제 수단 (이름으로) |
 | `savings.fromAccount` | `payMethods.name` | 이름으로 | 적금이 나가는 계좌 (이름으로) |
 | `savings.habitId` | `habits.id` | 1 : 1 | 적금 하나에 습관 하나 |
@@ -545,7 +547,7 @@ Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에
 키: **PK** 기본 키 · **FK** 다른 표의 번호 · **UK** 중복 불가 인덱스 · **LK** 이름(값)으로 이어지는 칸 · IX 인덱스. 타입 끝의 `?`는 없을 수 있는 칸이에요.
 
 <details>
-<summary><b>가계부</b> · transactions (가계부 내역) · payMethods (내 카드 · 계좌) · merchantAliases (가게 이름 기억) · recurring (정기 내역 규칙) · budgets (한 달 예산) · savings (적금)</summary>
+<summary><b>가계부</b> · transactions (가계부 내역) · payMethods (내 카드 · 계좌) · merchantAliases (가게 이름 기억) · recurring (정기 내역 규칙) · budgets (한 달 예산) · moneyCategories (가계부 카테고리) · savings (적금)</summary>
 
 **`transactions` · 가계부 내역** — 기본 키 `id` 자동 번호 · 인덱스 `date`, `[type+date]`, `category`, `savingsId` · v1부터
 
@@ -554,7 +556,7 @@ Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에
 | `id` | 내역 번호 | `number` | **PK** | 자동 증가 |
 | `type` | 수입/지출 | `'INCOME' \| 'EXPENSE'` | IX | [type+date] 묶음 인덱스 |
 | `amount` | 금액 | `number` |  | 원, 정수 1 ~ 999,999,999 |
-| `category` | 카테고리 | `string` | **LK** | 식비 · 교통 · 저축 등. 인덱스도 있다. 예산과 이름으로 이어진다 → `budgets.category` |
+| `category` | 카테고리 | `string` | **LK** | 식비 · 교통 · 저축 등. 인덱스도 있다 → `moneyCategories.name` |
 | `date` | 날짜 | `string` | IX | YYYY-MM-DD |
 | `time` | 시각 | `string?` |  | HH:mm |
 | `memo` | 메모 (가게 이름) | `string` |  | 0 ~ 200자 |
@@ -608,8 +610,21 @@ Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 12)에
 
 | 물리명 | 논리명 | 타입 | 키 | 설명 |
 |---|---|---|:---:|---|
-| `category` | 카테고리 | `string` | **PK** | 지출 카테고리 이름. '' 이면 한 달 전체 예산 |
+| `category` | 카테고리 | `string` | **PK** | 지출 카테고리 이름. '' 이면 한 달 전체 예산 → `moneyCategories.name` |
 | `amount` | 예산 | `number` |  | 원, 1 이상 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`moneyCategories` · 가계부 카테고리** — 기본 키 `key` · 인덱스 `type` · v13부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `key` | 카테고리 키 | `string` | **PK** | 기본 카테고리는 '구분:처음 이름' (예: EXPENSE:식비) → 여러 기기에서 하나로 합쳐진다 |
+| `type` | 수입/지출 | `'INCOME' \| 'EXPENSE'` | IX |  |
+| `name` | 이름 | `string` | **LK** | 내역 · 정기 내역 · 예산의 카테고리 칸 값 |
+| `icon` | 아이콘 | `string` |  | MoneyIcon 목록의 이름 |
+| `order` | 순서 | `number` |  | 작을수록 앞 |
+| `hidden` | 지움 | `0 \| 1 ?` |  | 1이면 지운 기본 카테고리 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
 | `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
 
 **`savings` · 적금** — 기본 키 `id` 자동 번호 · 인덱스 없음 · v7부터

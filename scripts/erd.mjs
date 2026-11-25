@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-export const DB_VERSION = 12
+export const DB_VERSION = 13
 
 const TIME = ['createdAt', '만든 시각', 'string', '', 'ISO 8601 시각']
 const UPD = ['updatedAt', '고친 시각', 'string', '', 'ISO 8601 시각 (동기화할 때 더 새것이 이긴다)']
@@ -38,7 +38,7 @@ export const TABLES = [
       ['id', '내역 번호', 'number', 'PK', '자동 증가'],
       ['type', '수입/지출', "'INCOME' | 'EXPENSE'", 'IX', '[type+date] 묶음 인덱스'],
       ['amount', '금액', 'number', '', '원, 정수 1 ~ 999,999,999'],
-      ['category', '카테고리', 'string', 'LK', '식비 · 교통 · 저축 등. 인덱스도 있다. 예산과 이름으로 이어진다', 'budgets.category'],
+      ['category', '카테고리', 'string', 'LK', '식비 · 교통 · 저축 등. 인덱스도 있다', 'moneyCategories.name'],
       ['date', '날짜', 'string', 'IX', 'YYYY-MM-DD'],
       ['time', '시각', 'string?', '', 'HH:mm'],
       ['memo', '메모 (가게 이름)', 'string', '', '0 ~ 200자'],
@@ -97,9 +97,23 @@ export const TABLES = [
     index: [],
     desc: '매달 똑같이 적용되는 예산 (전체 + 카테고리별)',
     cols: [
-      ['category', '카테고리', 'string', 'PK', "지출 카테고리 이름. '' 이면 한 달 전체 예산"],
+      ['category', '카테고리', 'string', 'PK', "지출 카테고리 이름. '' 이면 한 달 전체 예산", 'moneyCategories.name'],
       ['amount', '예산', 'number', '', '원, 1 이상'],
       UPD,
+    ],
+  },
+  {
+    name: 'moneyCategories', label: '가계부 카테고리', group: 'money', since: 13, pk: '`key`',
+    index: ['type'],
+    desc: '직접 만들거나 바꾼(이름 · 아이콘 · 순서 · 지움) 카테고리만 저장. 기본 카테고리는 코드에 있다',
+    cols: [
+      ['key', '카테고리 키', 'string', 'PK', "기본 카테고리는 '구분:처음 이름' (예: EXPENSE:식비) → 여러 기기에서 하나로 합쳐진다"],
+      ['type', '수입/지출', "'INCOME' | 'EXPENSE'", 'IX', ''],
+      ['name', '이름', 'string', 'LK', '내역 · 정기 내역 · 예산의 카테고리 칸 값'],
+      ['icon', '아이콘', 'string', '', 'MoneyIcon 목록의 이름'],
+      ['order', '순서', 'number', '', '작을수록 앞'],
+      ['hidden', '지움', '0 | 1 ?', '', '1이면 지운 기본 카테고리'],
+      TIME, UPD,
     ],
   },
   {
@@ -310,7 +324,8 @@ export const RELATIONS = [
   ['transactions.savingsId', 'savings.id', 'n1', '적금 납입 내역'],
   ['transactions.account', 'payMethods.name', 'lk', '어떤 카드 · 계좌로 썼는지 (이름으로)'],
   ['transactions.originalMemo', 'merchantAliases.raw', 'lk', '카드사 이름 → 실제 가게 이름 (정리한 이름으로)'],
-  ['transactions.category', 'budgets.category', 'lk', '카테고리별 예산 (이름으로)'],
+  ['transactions.category', 'moneyCategories.name', 'lk', '내역의 카테고리 (이름으로)'],
+  ['budgets.category', 'moneyCategories.name', 'lk', '카테고리별 예산 (이름으로)'],
   ['recurring.account', 'payMethods.name', 'lk', '정기 내역의 결제 수단 (이름으로)'],
   ['savings.fromAccount', 'payMethods.name', 'lk', '적금이 나가는 계좌 (이름으로)'],
   ['savings.habitId', 'habits.id', '11', '적금 하나에 습관 하나'],
@@ -341,7 +356,7 @@ const byName = Object.fromEntries(TABLES.map((t) => [t.name, t]))
 /** 열(왼쪽 → 오른쪽)마다 위에서 아래로 놓을 표 */
 const LAYOUT = [
   ['payMethods', 'transactions', 'merchantAliases'],
-  ['recurring', 'budgets', 'savings'],
+  ['recurring', 'budgets', 'moneyCategories', 'savings'],
   ['todoCategories', 'todos', 'habits', 'habitChecks'],
   ['scrapCategories', 'bookmarks', 'scrapMedia', 'memoFolders', 'memos'],
   ['events', 'diaries', 'stickers'],

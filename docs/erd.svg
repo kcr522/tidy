@@ -20,10 +20,10 @@
   </defs>
   <rect width="1960" height="1034" fill="#fff"/>
   <text x="50" y="56" class="h1">TIDY: ERD</text>
-  <text x="50" y="82" class="h2">기기 안 DB (IndexedDB · Dexie) · DB 버전 12 · 표 18개 · 키 · 연결 칸만 (모든 칸은 erd-full.svg)</text>
+  <text x="50" y="82" class="h2">기기 안 DB (IndexedDB · Dexie) · DB 버전 13 · 표 19개 · 키 · 연결 칸만 (모든 칸은 erd-full.svg)</text>
   <rect x="40" y="92" width="320" height="562" rx="18" fill="#4F9DFF" fill-opacity=".07" stroke="#4F9DFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
   <text x="54" y="110" class="grp" fill="#4F9DFF">● 가계부</text>
-  <rect x="430" y="92" width="320" height="499" rx="18" fill="#4F9DFF" fill-opacity=".07" stroke="#4F9DFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <rect x="430" y="92" width="320" height="664" rx="18" fill="#4F9DFF" fill-opacity=".07" stroke="#4F9DFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
   <text x="444" y="110" class="grp" fill="#4F9DFF">● 가계부</text>
   <rect x="820" y="92" width="320" height="355" rx="18" fill="#8B7CFF" fill-opacity=".07" stroke="#8B7CFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
   <text x="834" y="110" class="grp" fill="#8B7CFF">● 할 일</text>
@@ -38,22 +38,24 @@
   <path d="M350 416.5 H385 V188.5 H440" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
   <path d="M433 182.5V194.5M429 182.5V194.5" stroke="#7C3AED" stroke-width="1.8"/>
   <path d="M350 409.5L362 416.5L350 423.5M365 410.5V422.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
-  <path d="M350 437.5 H395 V497.5 H440" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
-  <path d="M433 491.5V503.5M429 491.5V503.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M350 437.5 H395 V662.5 H440" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M433 656.5V668.5M429 656.5V668.5" stroke="#7C3AED" stroke-width="1.8"/>
   <path d="M350 430.5L362 437.5L350 444.5M365 431.5V443.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
   <path d="M50 395.5 H27 V209.5 H50" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
   <circle cx="45" cy="209.5" r="3.5" fill="#DB2777"/>
   <path d="M50 458.5 H18 V602.5 H50" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
   <circle cx="45" cy="602.5" r="3.5" fill="#DB2777"/>
-  <path d="M350 374.5 H405 V353.5 H440" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
-  <circle cx="435" cy="353.5" r="3.5" fill="#DB2777"/>
-  <path d="M440 209.5 H415 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <path d="M350 374.5 H405 V518.5 H440" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="435" cy="518.5" r="3.5" fill="#DB2777"/>
+  <path d="M440 353.5 H390 V518.5 H440" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="435" cy="518.5" r="3.5" fill="#DB2777"/>
+  <path d="M440 209.5 H425 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
   <circle cx="355" cy="209.5" r="3.5" fill="#DB2777"/>
-  <path d="M440 518.5 H425 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <path d="M440 683.5 H435 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
   <circle cx="355" cy="209.5" r="3.5" fill="#DB2777"/>
-  <path d="M740 539.5 H775 V539.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M740 704.5 H775 V539.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
   <path d="M823 533.5V545.5M819 533.5V545.5" stroke="#7C3AED" stroke-width="1.8"/>
-  <path d="M749 533.5V545.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M749 698.5V710.5" stroke="#7C3AED" stroke-width="1.8"/>
   <path d="M830 704.5 H798 V539.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
   <path d="M823 533.5V545.5M819 533.5V545.5" stroke="#7C3AED" stroke-width="1.8"/>
   <path d="M830 697.5L818 704.5L830 711.5M815 698.5V710.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
@@ -169,6 +171,23 @@
   <text x="40" y="94" class="more">+ 그 밖의 칸 2개</text>
   </g>
   <g transform="translate(440,429)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">moneyCategories</text>
+  <text x="14" y="40" class="tl">가계부 카테고리</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v13</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">key</text>
+  <text x="150" y="73" class="l">카테고리 키</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">name</text>
+  <text x="150" y="94" class="l">이름</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 6개</text>
+  </g>
+  <g transform="translate(440,594)">
   <rect width="300" height="152" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
   <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
   <text x="14" y="22" class="tn">savings</text>

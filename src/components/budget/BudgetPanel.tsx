@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { budgetStatus } from '../../lib/budget'
-import { EXPENSE_CATEGORIES, SAVING_CATEGORY } from '../../lib/categories'
+import { SAVING_CATEGORY } from '../../lib/categories'
+import { useCategories } from '../common/MoneyIcon'
 import { formatNumber, formatWon } from '../../lib/format'
 import { budgetRepo, TOTAL } from '../../repositories/budgetRepo'
 import { transactionRepo } from '../../repositories/transactionRepo'
@@ -13,6 +14,7 @@ export default function BudgetPanel({ today }: { today: string }) {
   const toast = useToast()
   const [year, month] = today.split('-').map(Number)
   const budgets = useLiveQuery(() => budgetRepo.list(), [])
+  const categories = useCategories('EXPENSE')
   const items = useLiveQuery(() => transactionRepo.listByMonth(year, month), [year, month])
   if (!budgets || !items) return null
   const status = budgetStatus(budgets, items, today.slice(0, 7), today)
@@ -47,7 +49,7 @@ export default function BudgetPanel({ today }: { today: string }) {
         </p>
         <ul className="space-y-3">
           {/* 저축은 쓴 돈이 아니라서 예산에서 뺀다 */}
-          {EXPENSE_CATEGORIES.filter((c) => c !== SAVING_CATEGORY).map((c) => {
+          {categories.filter((c) => c.name !== SAVING_CATEGORY).map(({ name: c }) => {
             const l = status.categories.find((x) => x.category === c)
             return (
               <li key={c} className="rounded-2xl border border-slate-100 p-3">
