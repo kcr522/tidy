@@ -1,21 +1,56 @@
 // 가계부 그림을 이모티콘 대신 테두리만 있는 아이콘으로 (사용자 요청 2026-11-23)
-import { Banknote, BookOpen, CircleHelp, Clapperboard, CreditCard, Gift, House, Landmark, Package, Pill, PiggyBank, ShoppingBag, Smartphone, Sparkles, TrainFront, Utensils, Wallet, type LucideIcon } from 'lucide-react'
-import type { PayMethod, PayMethodKind } from '../../db/types'
+import { Baby, Banknote, Beer, BookOpen, Briefcase, Bus, Car, CircleHelp, Clapperboard, Coffee, CreditCard, Dumbbell, Fuel, Gamepad2, Gift, GraduationCap, Heart, House, Landmark, Music, Package, PawPrint, Pill, PiggyBank, Plane, Receipt, Scissors, Shirt, ShoppingBag, ShoppingCart, Smartphone, Sparkles, Star, Stethoscope, TrainFront, TrendingUp, Users, Utensils, Wallet, Wifi, Zap, type LucideIcon } from 'lucide-react'
+import { useSyncExternalStore } from 'react'
+import type { PayMethod, PayMethodKind, TransactionType } from '../../db/types'
+import { categorySnapshot, DEFAULT_CATEGORY_ICON, findCategory, subscribeCategories, type CategoryItem } from '../../lib/categories'
 import { methodEmoji, PAY_KIND_EMOJI } from '../../lib/payMethods'
 
-const CATEGORY_ICON: Record<string, LucideIcon> = {
-  식비: Utensils,
-  교통: TrainFront,
-  쇼핑: ShoppingBag,
-  '문화/여가': Clapperboard,
-  '주거/통신': House,
-  '의료/건강': Pill,
-  교육: BookOpen,
-  저축: PiggyBank,
-  월급: Banknote,
-  용돈: Gift,
-  부수입: Sparkles,
-  기타: Package,
+/** 카테고리에 고를 수 있는 아이콘 (저장할 때는 이름만 적는다) */
+export const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  utensils: Utensils,
+  coffee: Coffee,
+  beer: Beer,
+  cart: ShoppingCart,
+  bag: ShoppingBag,
+  shirt: Shirt,
+  scissors: Scissors,
+  train: TrainFront,
+  bus: Bus,
+  car: Car,
+  fuel: Fuel,
+  plane: Plane,
+  house: House,
+  phone: Smartphone,
+  wifi: Wifi,
+  zap: Zap,
+  pill: Pill,
+  doctor: Stethoscope,
+  gym: Dumbbell,
+  book: BookOpen,
+  school: GraduationCap,
+  clapper: Clapperboard,
+  game: Gamepad2,
+  music: Music,
+  pet: PawPrint,
+  baby: Baby,
+  users: Users,
+  heart: Heart,
+  gift: Gift,
+  sparkles: Sparkles,
+  star: Star,
+  banknote: Banknote,
+  wallet: Wallet,
+  bank: Landmark,
+  piggy: PiggyBank,
+  work: Briefcase,
+  invest: TrendingUp,
+  receipt: Receipt,
+  package: Package,
+}
+
+/** 카테고리 목록이 바뀌면 다시 그린다 (만들기 · 이름 바꾸기 · 지우기 · 다른 기기에서 받기) */
+export function useCategories(type: TransactionType): CategoryItem[] {
+  return useSyncExternalStore(subscribeCategories, categorySnapshot)[type]
 }
 
 /** 결제 수단 그림 (lib의 이모티콘 → 아이콘) */
@@ -24,11 +59,13 @@ const PAY_ICON: Record<string, LucideIcon> = { '💵': Banknote, '📱': Smartph
 const INLINE = 'inline size-[1.1em] -mt-0.5 shrink-0 align-middle'
 
 export function categoryIcon(category: string): LucideIcon {
-  return CATEGORY_ICON[category] ?? Package
+  const key = findCategory(category)?.icon ?? DEFAULT_CATEGORY_ICON[category]
+  return (key && CATEGORY_ICONS[key]) || Package
 }
 
 /** 글자 옆에 붙는 카테고리 아이콘 (글자 크기를 따라감) */
 export function CategoryIcon({ category, className = INLINE }: { category: string; className?: string }) {
+  useSyncExternalStore(subscribeCategories, categorySnapshot)
   const Icon = categoryIcon(category)
   return <Icon className={className} strokeWidth={2} aria-hidden />
 }

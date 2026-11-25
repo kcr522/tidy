@@ -1,5 +1,5 @@
 import type { Priority, Todo, Transaction } from '../db/types'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, isSaving, isSpending } from './categories'
+import { categoriesFor, isSaving, isSpending } from './categories'
 
 export interface MonthSummary {
   income: number
@@ -40,10 +40,9 @@ export function todayExpense(list: Transaction[], today: string): number {
 
 // ───────────── 카테고리 필터 (FR-018) ─────────────
 
-const CATEGORY_ORDER: string[] = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES.filter((c) => c !== '기타')]
-
-/** 이 목록에 쓰인 카테고리 (기본 카테고리 순서) */
+/** 이 목록에 쓰인 카테고리 (카테고리 화면에서 정한 순서: 지출 먼저) */
 export function categoriesUsed(list: Transaction[]): string[] {
+  const CATEGORY_ORDER = [...categoriesFor('EXPENSE'), ...categoriesFor('INCOME').filter((c) => c !== '기타')]
   const used = new Set(list.map((t) => t.category))
   const rank = (c: string) => (CATEGORY_ORDER.includes(c) ? CATEGORY_ORDER.indexOf(c) : CATEGORY_ORDER.length)
   return [...used].sort((a, b) => rank(a) - rank(b))

@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, Pause, Play, Repeat, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Recurring, TransactionType } from '../../db/types'
-import { categoriesFor } from '../../lib/categories'
+import { categoriesFor, resolveCategory } from '../../lib/categories'
+import { useCategories } from '../common/MoneyIcon'
 import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { matchMerchant } from '../../lib/merchants'
 import { dayLabel, ddayFor, ddayLabel } from '../../lib/recurring'
@@ -137,7 +138,7 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
   const [day, setDay] = useState(initial?.day ?? Number(today.slice(8)))
   const [startDate, setStartDate] = useState(initial?.startDate ?? today)
   const [errors, setErrors] = useState<Partial<Record<'memo' | 'amount' | 'category', string>>>({})
-  const categories = categoriesFor(type)
+  const categories = useCategories(type).map((c) => c.name)
 
   function changeType(next: TransactionType) {
     setType(next)
@@ -147,7 +148,7 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
   function changeMemo(text: string) {
     setMemo(text)
     const m = matchMerchant(text)
-    if (m && type === 'EXPENSE' && !category && categories.includes(m.brand.category)) setCategory(m.brand.category)
+    if (m && type === 'EXPENSE' && !category) setCategory(resolveCategory('EXPENSE', m.brand.category))
   }
 
   async function submit(e: FormEvent) {
