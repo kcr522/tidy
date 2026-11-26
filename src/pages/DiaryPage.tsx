@@ -50,7 +50,7 @@ export default function DiaryPage() {
   const loaded = useLiveQuery(() => diaryRepo.get(date).then((d) => ({ date, entry: d ?? null })), [date])
   const entry = loaded && loaded.date === date ? loaded.entry : undefined
   const recent = useLiveQuery(() => diaryRepo.recent(30), [])
-  // 그날 이동 기록이 있으면 지도로 가는 버튼 (이 기기에만 있는 기록)
+  // 그날 이동 기록이 있으면 지도로 가는 버튼 (로그인했으면 폰 · 사이트 기록이 합쳐져 있다)
   const routeCount = useLiveQuery(() => routeStore.listByDate(date).then((l) => l.length).catch(() => 0), [date])
   const shift = (n: number) => setDate(toDateKey(addDays(parseDateKey(date), n)))
   // 자동 저장한 뒤에 쓰기 칸을 새로 그리면 쓰던 자리(커서)가 날아간다.
