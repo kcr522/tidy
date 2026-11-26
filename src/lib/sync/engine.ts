@@ -13,6 +13,7 @@
 import type { Table, Transaction } from 'dexie'
 import type { Firestore, QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore'
 import type { TidyDB } from '../../db/database'
+import { startRouteSync, stopRouteSync } from './routeSync'
 import { decodeRecord, encodeRecord, fileHashes, parseRowDocId, rowDocId } from './codec'
 import { MAX_DEVICE, clearDirty, dirtyKey, isDirty, loadSync, markDirty, maxSeqIn, nextId, parseDirtyKey, saveSync, type SyncState } from './state'
 
@@ -159,6 +160,8 @@ export async function startSync(db: Firestore, uid: string, email: string | unde
     // 인터넷이 없어도 받기는 다시 시도해 둔다
     if (!unsub) await listen().catch(() => undefined)
   }
+  // 이동 기록은 본 DB 밖에 있어서 따로 맞춘다 (폰 · 사이트가 같은 길을 보게)
+  if (fs?.uid === uid) await startRouteSync(db, uid).catch(() => undefined)
 }
 
 /** 로그아웃: 클라우드와 끊는다. 이 기기 데이터는 그대로 두거나(keep) 지운다 */
@@ -167,6 +170,10 @@ export async function stopSyncAndForget(keepLocal: boolean) {
   await pushNow().catch(() => undefined)
   stopSync()
   saveSync(null)
+  if (!keepLocal) {
+    const { routeStore } = await import('../routeStore')
+    await routeStore.wipeLocal().catch(() => undefined)
+  }
   if (!keepLocal && database) {
     const { seedCategories } = await import('../../db/database')
     await database.transaction('rw', database.tables, async () => {
@@ -178,6 +185,7 @@ export async function stopSyncAndForget(keepLocal: boolean) {
 }
 
 export function stopSync() {
+  stopRouteSync()
   unsub?.()
   unsub = null
   clearTimeout(pushTimer)

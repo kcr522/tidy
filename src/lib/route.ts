@@ -232,3 +232,33 @@ export function drawPoints(points: RoutePoint[]): RoutePoint[] {
   }
   return out
 }
+
+/** 어느 기기가 남긴 점인지: a = 폰 앱, w = 웹 · 컴퓨터 (모르면 폰으로 본다) */
+export type RouteSrc = 'a' | 'w'
+
+/** 폰이 기록한 시간대에서는 웹 · 컴퓨터 점을 이 시간(ms) 안이면 뺀다 */
+export const PHONE_COVER_MS = 10 * 60 * 1000
+
+/**
+ * 폰 · 컴퓨터 기록을 한 날에 합칠 때 (사용자 요청 2026-11-26 "폰과 사이트가 똑같이 보이게")
+ * 폰을 들고 나가 있는 동안 집 컴퓨터에 Tidy 창이 열려 있으면 컴퓨터 위치가 섞여 선이 집까지 튄다.
+ * 그래서 폰 점이 가까이(10분 안) 있는 시간대의 컴퓨터 점은 빼고, 폰이 쉬던 시간대의 컴퓨터 점만 남긴다.
+ */
+export function preferPhone<T extends RoutePoint & { src?: RouteSrc }>(points: T[]): T[] {
+  const phone = points.filter((p) => p.src !== 'w').map((p) => p.t).sort((a, b) => a - b)
+  if (phone.length === 0 || phone.length === points.length) return points
+  const near = (t: number) => {
+    // 이진 검색으로 가장 가까운 폰 점
+    let lo = 0
+    let hi = phone.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (phone[mid] < t) lo = mid + 1
+      else hi = mid
+    }
+    const d1 = Math.abs(phone[lo] - t)
+    const d2 = lo > 0 ? Math.abs(phone[lo - 1] - t) : Infinity
+    return Math.min(d1, d2) <= PHONE_COVER_MS
+  }
+  return points.filter((p) => p.src !== 'w' || !near(p.t))
+}

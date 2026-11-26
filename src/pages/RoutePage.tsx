@@ -6,6 +6,7 @@ import Button from '../components/common/Button'
 import PageHeader from '../components/common/PageHeader'
 import Switch from '../components/common/Switch'
 import { useToast } from '../components/common/Toast'
+import { useAccount } from '../hooks/useAccount'
 import { useDayRoute } from '../hooks/useDayRoute'
 import { stepsLabel, useDaySteps } from '../hooks/useDaySteps'
 import { pullRoutePoints, useTrackSwitch } from '../hooks/useRouteTracking'
@@ -50,6 +51,7 @@ export default function RoutePage() {
   const steps = useDaySteps(date)
   const latest = useLiveQuery(() => routeStore.latest().then((p) => (p ? { lat: p.lat, lng: p.lng } : null)), [])
   const track = useTrackSwitch()
+  const signedIn = !!useAccount().user
   const toast = useToast()
   const s = day?.summary
   const has = (day?.points.length ?? 0) > 0
@@ -216,7 +218,7 @@ export default function RoutePage() {
                   </Button>
                 ))}
             </div>
-            <p className="mt-3 text-[11px] break-keep text-slate-400">위치는 이 기기에만 저장되고 구글 동기화 · 백업 파일에 들어가지 않아요. {KEEP_DAYS}일 지난 기록은 저절로 지워져요.</p>
+            <p className="mt-3 text-[11px] break-keep text-slate-400">{signedIn ? '구글로 로그인돼 있어서 폰 앱과 사이트가 같은 기록을 봐요. 둘이 같이 기록한 시간에는 폰 위치를 써요.' : '위치는 이 기기에만 저장돼요. 구글로 로그인하면 폰 앱과 사이트가 같은 기록을 봐요.'} 백업 파일에는 들어가지 않고, {KEEP_DAYS}일 지난 기록은 저절로 지워져요.</p>
           </section>
         </div>
       </div>
