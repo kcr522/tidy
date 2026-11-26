@@ -520,7 +520,7 @@
 
 | 단계 | 어디에 | 설명 |
 |---|---|---|
-| 1. 기기 안 (기본) | **IndexedDB** (Dexie.js 4, 지금 DB 버전 13) | 모든 기록은 먼저 기기 안에 저장 → 인터넷이 없어도 쓰고, 로그인 없이도 씀 (오프라인 우선) |
+| 1. 기기 안 (기본) | **IndexedDB** (Dexie.js 4, 지금 DB 버전 13) | 모든 기록은 먼저 기기 안에 저장 → 인터넷이 없어도 쓰고, 로그인 없이도 씀 (오프라인 우선). 표 구조는 [데이터 구조 (ERD)](#데이터-구조-erd) |
 | 2. 동기화 (선택) | **Cloud Firestore** (서울 리전) | 구글 로그인하면 `users/내 uid/…` 자리에만 올라가서 폰 · 컴퓨터가 같은 기록을 봄. 사진 · 파일은 data URL로 함께 동기화 (Firestore 문서 한도 1MB 때문에 약 650KB 넘는 파일은 기기에만) |
 | 3. 백업 | JSON 파일 | 설정에서 내보내기 · 가져오기, 자동 백업(매일 · 매주 · 열 때마다). 폰은 0.5MB씩 나눠 저장 |
 | 작은 설정 | localStorage | 대시보드 배치, 최근 이모지, 고른 글꼴, 잠금 설정(암호화된 값) 같은 기기별 설정 |
@@ -539,6 +539,388 @@
 | 관리자 페이지 | `/admin`은 로그인 토큰 확인 + `ADMIN_EMAILS`에 있는 메일만 열림. 전체 조회용 서비스 계정 키도 서버에만 둠 |
 | 웹 보안 헤더 | HTTPS 강제(HSTS), 다른 사이트 안에 못 띄우게(`X-Frame-Options: DENY`), `nosniff`, 카메라 · 위치는 Tidy 자신만 쓰게(`Permissions-Policy`) — [vercel.json](vercel.json) |
 | 앱 서명 | 안드로이드 APK는 항상 같은 키로 서명 → 다른 사람이 만든 가짜 APK로는 덮어 설치가 안 됨 |
+
+## 데이터 구조 (ERD)
+
+<!-- ERD:START — 이 사이는 `node scripts/erd.mjs`가 만든다. 직접 고치지 말고 scripts/erd.mjs를 고친다 -->
+
+Tidy의 모든 기록은 먼저 **기기 안 IndexedDB**(Dexie, DB 버전 13)에 저장돼요. 표 19개를 6개 묶음으로 나눴고, 이름은 코드에 쓰는 **물리명**(영어)과 화면에서 부르는 **논리명**(한국어)을 같이 적었어요.
+
+<a href="docs/erd-full.svg"><img src="docs/erd-full.svg" alt="Tidy ERD (모든 칸)" width="100%"></a>
+
+> 표 18개의 모든 칸이 들어간 ERD예요 (누르면 크게 보여요). 키 · 연결 칸만 추린 요약 그림은 [docs/erd.svg](docs/erd.svg)
+
+#### 표 한눈에 보기
+
+| 묶음 | 물리명 (표) | 논리명 | 기본 키 | 처음 생긴 버전 | 무엇을 담나 |
+|---|---|---|---|:---:|---|
+| 가계부 | `transactions` | 가계부 내역 | `id` 자동 번호 | v1 | 수입 · 지출 한 건. 정기 내역 · 적금이 자동으로 만든 내역도 여기에 들어간다 |
+| 가계부 | `payMethods` | 내 카드 · 계좌 | `id` 자동 번호 | v12 | 어떤 카드 · 계좌로 썼는지 구분한다. 내역에는 id가 아니라 이름으로 들어간다 |
+| 가계부 | `merchantAliases` | 가게 이름 기억 | `raw` (정리한 원래 이름) | v3 | 카드사에 찍힌 이름(KCP · NICE 등)을 실제 가게 이름으로 바꿔 보여 준다 |
+| 가계부 | `recurring` | 정기 내역 규칙 | `id` 자동 번호 | v2 | 월급 · 구독료처럼 매달 같은 날 자동으로 내역을 만든다 |
+| 가계부 | `budgets` | 한 달 예산 | `category` | v9 | 매달 똑같이 적용되는 예산 (전체 + 카테고리별) |
+| 가계부 | `moneyCategories` | 가계부 카테고리 | `key` | v13 | 직접 만들거나 바꾼(이름 · 아이콘 · 순서 · 지움) 카테고리만 저장. 기본 카테고리는 코드에 있다 |
+| 가계부 | `savings` | 적금 | `id` 자동 번호 | v7 | 만기 금액 계산 · 자동 납입 · 납입일 알림. 만들 때 습관 하나를 같이 만든다 |
+| 할 일 | `todoCategories` | 할 일 카테고리 | `id` 자동 번호 | v8 | 할 일 캘린더 아래 묶음 |
+| 할 일 | `todos` | 할 일 | `id` 자동 번호 | v1 | 마감일 · 중요도 · 알림 · 반복이 있는 할 일. 스크랩에서 바꾼 할 일은 그 스크랩과 1:1 |
+| 습관 | `habits` | 습관 | `id` 자동 번호 | v6 | 매일(또는 정한 날) 체크하는 반복 목표 |
+| 습관 | `habitChecks` | 습관 체크 | `[habitId+date]` 묶음 키 | v6 | 그날 그 습관을 했다는 기록. 기록이 없으면 안 한 날 |
+| 스크랩 | `scrapCategories` | 스크랩 카테고리 | `id` 자동 번호 | v5 | 처음엔 맛집·카페 · 여행 · 쇼핑 · 공부 · 꿀팁 5개가 들어 있다 |
+| 스크랩 | `bookmarks` | 스크랩 | `id` 자동 번호 | v1 | 나중에 볼 링크 + 미리보기 · 요약 |
+| 스크랩 | `scrapMedia` | 스크랩 사진 · 영상 | `id` 자동 번호 | v5 | 미리보기 썸네일과 캡처 · 화면 녹화. 파일(Blob) 그대로 저장한다 |
+| 메모 | `memoFolders` | 메모 파일집 | `id` 자동 번호 | v11 | 비슷한 메모끼리 모아 두는 폴더 (12가지 색) |
+| 메모 | `memos` | 메모 | `id` 자동 번호 | v11 | 글 + 사진 · 영상 · 파일 · 손글씨. 쓴 시각 순서로 보인다 |
+| 캘린더 · 일기 | `events` | 캘린더 일정 | `id` 자동 번호 | v4 | 하루짜리 또는 여러 날 기간. 구글 · 폰 캘린더에서 가져온 일정도 같이 들어간다 |
+| 캘린더 · 일기 | `diaries` | 일기 | `date` (하루 하나) | v4 | 하루에 하나. 날짜가 곧 키라서 달력 · 스티커 · 일정과 날짜로 만난다 |
+| 캘린더 · 일기 | `stickers` | 날짜 스티커 | `date` (하루 하나) | v10 | 달력 날짜 칸에 붙이는 이모티콘 |
+
+#### 관계
+
+| 자식 칸 | 부모 칸 | 종류 | 내용 |
+|---|---|:---:|---|
+| `transactions.recurringId` | `recurring.id` | N : 1 | 정기 내역이 만든 내역 |
+| `transactions.savingsId` | `savings.id` | N : 1 | 적금 납입 내역 |
+| `transactions.account` | `payMethods.name` | 이름으로 | 어떤 카드 · 계좌로 썼는지 (이름으로) |
+| `transactions.originalMemo` | `merchantAliases.raw` | 이름으로 | 카드사 이름 → 실제 가게 이름 (정리한 이름으로) |
+| `transactions.category` | `moneyCategories.name` | 이름으로 | 내역의 카테고리 (이름으로) |
+| `budgets.category` | `moneyCategories.name` | 이름으로 | 카테고리별 예산 (이름으로) |
+| `recurring.account` | `payMethods.name` | 이름으로 | 정기 내역의 결제 수단 (이름으로) |
+| `savings.fromAccount` | `payMethods.name` | 이름으로 | 적금이 나가는 계좌 (이름으로) |
+| `savings.habitId` | `habits.id` | 1 : 1 | 적금 하나에 습관 하나 |
+| `habits.savingsId` | `savings.id` | 1 : 1 | 습관 쪽에서 적금을 가리킴 |
+| `habitChecks.habitId` | `habits.id` | N : 1 | 습관 하나에 날짜별 체크 여러 개 |
+| `todos.categoryId` | `todoCategories.id` | N : 1 | 카테고리 하나에 할 일 여러 개 |
+| `todos.bookmarkId` | `bookmarks.id` | 1 : 1 | 스크랩 → 할 일 전환 (1 : 0..1) |
+| `todos.repeatNextId` | `todos.id` | 1 : 1 | 반복 할 일을 끝내서 생긴 다음 할 일 |
+| `bookmarks.categoryId` | `scrapCategories.id` | N : 1 | 카테고리 하나에 스크랩 여러 개 |
+| `scrapMedia.bookmarkId` | `bookmarks.id` | N : 1 | 스크랩 하나에 썸네일 · 캡처 여러 개 |
+| `memos.folderId` | `memoFolders.id` | N : 1 | 파일집 하나에 메모 여러 개 |
+
+- IndexedDB에는 외래 키 제약이 없어서, 관계는 앱 코드(`src/repositories`)가 지켜요. 예: 스크랩을 지우면 붙은 사진(`scrapMedia`)도 같이 지워요.
+- `diaries` · `stickers` · `events`는 id 대신 **날짜**(`YYYY-MM-DD`)로 한 달력에 모여요. 가계부 · 할 일도 날짜 칸으로 같은 달력에 보여요.
+- 불리언은 인덱스를 쓰려고 `0 | 1` 숫자로 저장해요 (그림에서 `flag`).
+
+#### 표 정의 (물리명 · 논리명 · 타입)
+
+키: **PK** 기본 키 · **FK** 다른 표의 번호 · **UK** 중복 불가 인덱스 · **LK** 이름(값)으로 이어지는 칸 · IX 인덱스. 타입 끝의 `?`는 없을 수 있는 칸이에요.
+
+<details>
+<summary><b>가계부</b> · transactions (가계부 내역) · payMethods (내 카드 · 계좌) · merchantAliases (가게 이름 기억) · recurring (정기 내역 규칙) · budgets (한 달 예산) · moneyCategories (가계부 카테고리) · savings (적금)</summary>
+
+**`transactions` · 가계부 내역** — 기본 키 `id` 자동 번호 · 인덱스 `date`, `[type+date]`, `category`, `savingsId` · v1부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 내역 번호 | `number` | **PK** | 자동 증가 |
+| `type` | 수입/지출 | `'INCOME' \| 'EXPENSE'` | IX | [type+date] 묶음 인덱스 |
+| `amount` | 금액 | `number` |  | 원, 정수 1 ~ 999,999,999 |
+| `category` | 카테고리 | `string` | **LK** | 식비 · 교통 · 저축 등. 인덱스도 있다 → `moneyCategories.name` |
+| `date` | 날짜 | `string` | IX | YYYY-MM-DD |
+| `time` | 시각 | `string?` |  | HH:mm |
+| `memo` | 메모 (가게 이름) | `string` |  | 0 ~ 200자 |
+| `account` | 결제 수단 | `string?` | **LK** | 내 카드 · 계좌의 이름 → `payMethods.name` |
+| `recurringId` | 정기 내역 번호 | `number?` | **FK** | 정기 내역이 자동 기록했을 때 → `recurring.id` |
+| `savingsId` | 적금 번호 | `number?` | **FK** | 적금 납입으로 기록했을 때 → `savings.id` |
+| `originalMemo` | 원래 가게 이름 | `string?` | **LK** | 가게를 알려 주기 전 카드사 이름 (예: KCP*결제) → `merchantAliases.raw` |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`payMethods` · 내 카드 · 계좌** — 기본 키 `id` 자동 번호 · 인덱스 `order` · v12부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 결제 수단 번호 | `number` | **PK** | 자동 증가 |
+| `name` | 이름 | `string` | **LK** | 예: 신한 체크, 국민 월급통장. 내역 · 정기 내역 · 적금의 결제 수단 칸 값 |
+| `kind` | 종류 | `'card' \| 'account' \| 'pay' \| 'cash'` |  | 카드 / 계좌 / 간편결제 / 현금 |
+| `last4` | 끝 4자리 | `string?` |  | 결제 알림에서 찾을 때 쓴다 |
+| `order` | 순서 | `number` | IX | 작을수록 앞 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`merchantAliases` · 가게 이름 기억** — 기본 키 `raw` (정리한 원래 이름) · 인덱스 없음 · v3부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `raw` | 정리한 원래 이름 | `string` | **PK** | 원래 이름을 normalizeName 한 값 |
+| `original` | 원래 이름 | `string` |  | 화면 표시용 |
+| `name` | 실제 가게 이름 | `string` |  | 사용자가 알려 준 이름 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+
+**`recurring` · 정기 내역 규칙** — 기본 키 `id` 자동 번호 · 인덱스 `type`, `isActive` · v2부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 규칙 번호 | `number` | **PK** | 자동 증가 |
+| `type` | 수입/지출 | `'INCOME' \| 'EXPENSE'` | IX |  |
+| `amount` | 금액 | `number` |  | 금액을 매번 물으면 0 |
+| `category` | 카테고리 | `string` |  |  |
+| `memo` | 이름 | `string` |  | 예: 넷플릭스, 월급 |
+| `account` | 결제 수단 | `string?` | **LK** | 내 카드 · 계좌의 이름 → `payMethods.name` |
+| `askAmount` | 금액 매번 묻기 | `0 \| 1 ?` |  | 1이면 그날마다 금액을 물어본다 |
+| `day` | 매달 며칠 | `number` |  | 1 ~ 31 (없는 날이면 말일) |
+| `startDate` | 시작일 | `string` |  | YYYY-MM-DD |
+| `lastDate` | 마지막 기록일 | `string \| null` |  | YYYY-MM-DD |
+| `isActive` | 사용 중 | `0 \| 1` | IX |  |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`budgets` · 한 달 예산** — 기본 키 `category` · 인덱스 없음 · v9부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `category` | 카테고리 | `string` | **PK** | 지출 카테고리 이름. '' 이면 한 달 전체 예산 → `moneyCategories.name` |
+| `amount` | 예산 | `number` |  | 원, 1 이상 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`moneyCategories` · 가계부 카테고리** — 기본 키 `key` · 인덱스 `type` · v13부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `key` | 카테고리 키 | `string` | **PK** | 기본 카테고리는 '구분:처음 이름' (예: EXPENSE:식비) → 여러 기기에서 하나로 합쳐진다 |
+| `type` | 수입/지출 | `'INCOME' \| 'EXPENSE'` | IX |  |
+| `name` | 이름 | `string` | **LK** | 내역 · 정기 내역 · 예산의 카테고리 칸 값 |
+| `icon` | 아이콘 | `string` |  | MoneyIcon 목록의 이름 |
+| `order` | 순서 | `number` |  | 작을수록 앞 |
+| `hidden` | 지움 | `0 \| 1 ?` |  | 1이면 지운 기본 카테고리 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`savings` · 적금** — 기본 키 `id` 자동 번호 · 인덱스 없음 · v7부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 적금 번호 | `number` | **PK** | 자동 증가 |
+| `name` | 이름 | `string` |  | 예: 청년도약계좌 |
+| `bank` | 은행 | `string?` |  |  |
+| `fromAccount` | 나가는 계좌 | `string?` | **LK** | 내 카드 · 계좌의 이름. 납입 내역의 결제 수단 → `payMethods.name` |
+| `amount` | 한 번에 넣는 돈 | `number` |  | 원 |
+| `startDate` | 가입일 | `string` |  | YYYY-MM-DD, 첫 납입일 |
+| `endDate` | 만기일 | `string` |  | YYYY-MM-DD |
+| `rate` | 연 이율 | `number` |  | % (우대금리 포함) |
+| `interestType` | 이자 방식 | `'simple' \| 'compound'` |  | 단리 / 월복리 |
+| `taxType` | 이자 세금 | `'normal' \| 'preferential' \| 'free'` |  | 일반 15.4% / 세금우대 9.5% / 비과세 |
+| `schedule` | 넣는 날 | `Schedule` |  | 매일 · 매주 요일 · 매달 날짜 (아래 묶음 참고) |
+| `autoDeposit` | 자동이체 | `0 \| 1` |  | 1이면 넣는 날 가계부에 자동 기록, 0이면 습관 체크로 기록 |
+| `alarmOn` | 알림 켜짐 | `0 \| 1` |  |  |
+| `alarmTime` | 알림 시각 | `string` |  | HH:mm |
+| `habitId` | 습관 번호 | `number?` | **FK** | 같이 만든 습관 → `habits.id` |
+| `lastDate` | 마지막 자동 기록 | `string \| null` |  | YYYY-MM-DD |
+| `memo` | 메모 | `string` |  |  |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+</details>
+
+<details>
+<summary><b>할 일</b> · todoCategories (할 일 카테고리) · todos (할 일)</summary>
+
+**`todoCategories` · 할 일 카테고리** — 기본 키 `id` 자동 번호 · 인덱스 `order` · v8부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 카테고리 번호 | `number` | **PK** | 자동 증가 |
+| `name` | 이름 | `string` |  |  |
+| `color` | 색 | `'peach' \| 'sky' \| 'mint' \| 'lilac' \| 'lemon' \| 'rose'` |  |  |
+| `order` | 순서 | `number` | IX |  |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+
+**`todos` · 할 일** — 기본 키 `id` 자동 번호 · 인덱스 `dueDate`, `isCompleted`, `&bookmarkId`, `categoryId` · v1부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 할 일 번호 | `number` | **PK** | 자동 증가 |
+| `title` | 제목 | `string` |  | 1 ~ 100자 |
+| `isCompleted` | 완료 | `0 \| 1` | IX | 인덱스 때문에 불리언 대신 숫자 |
+| `completedAt` | 완료 시각 | `string \| null` |  | 되돌리면 null |
+| `dueDate` | 마감일 | `string \| null` | IX | YYYY-MM-DD |
+| `priority` | 중요도 | `'HIGH' \| 'MEDIUM' \| 'LOW'` |  | 기본 MEDIUM |
+| `bookmarkId` | 스크랩 번호 | `number?` | **FK** | 스크랩 → 할 일로 바꿨을 때. 중복 불가 (&bookmarkId) → `bookmarks.id` |
+| `categoryId` | 카테고리 번호 | `number?` | **FK** | 없으면 기본 → `todoCategories.id` |
+| `remindAt` | 알림 시각 | `string?` |  | HH:mm, 마감일 그날 |
+| `repeat` | 반복 | `TodoRepeat?` |  | 매일 · 매주 요일 · 매달 날짜 |
+| `repeatNextId` | 다음 반복 번호 | `number?` | **FK** | 끝내서 생긴 다음 할 일 (같은 표) → `todos.id` |
+| `memo` | 메모 | `string?` |  | 제목 아래 작게 |
+| `attachments` | 참고 사진 · 파일 | `Attachment[]?` |  | data URL로 기록 안에 들어간다 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+</details>
+
+<details>
+<summary><b>습관</b> · habits (습관) · habitChecks (습관 체크)</summary>
+
+**`habits` · 습관** — 기본 키 `id` 자동 번호 · 인덱스 `order` · v6부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 습관 번호 | `number` | **PK** | 자동 증가 |
+| `title` | 이름 | `string` |  | 예: 물 2L 마시기 |
+| `emoji` | 아이콘 | `string` |  | 이모지 하나 |
+| `order` | 순서 | `number` | IX |  |
+| `savingsId` | 적금 번호 | `number?` | **FK** | 적금이 만든 습관일 때 → `savings.id` |
+| `schedule` | 주기 | `Schedule?` |  | 없으면 매일 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`habitChecks` · 습관 체크** — 기본 키 `[habitId+date]` 묶음 키 · 인덱스 `habitId`, `date` · v6부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `habitId` | 습관 번호 | `number` | **PK** | 묶음 키 앞쪽 → `habits.id` |
+| `date` | 날짜 | `string` | **PK** | YYYY-MM-DD, 묶음 키 뒤쪽 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+
+</details>
+
+<details>
+<summary><b>스크랩</b> · scrapCategories (스크랩 카테고리) · bookmarks (스크랩) · scrapMedia (스크랩 사진 · 영상)</summary>
+
+**`scrapCategories` · 스크랩 카테고리** — 기본 키 `id` 자동 번호 · 인덱스 `&name`, `order` · v5부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 카테고리 번호 | `number` | **PK** | 자동 증가 |
+| `name` | 이름 | `string` | **UK** | 중복 불가 |
+| `order` | 순서 | `number` | IX |  |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+
+**`bookmarks` · 스크랩** — 기본 키 `id` 자동 번호 · 인덱스 `url`, `isRead`, `createdAt`, `categoryId` · v1부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 스크랩 번호 | `number` | **PK** | 자동 증가 |
+| `url` | 주소 | `string` | IX | http/https만. 중복 확인에 쓴다 |
+| `title` | 제목 | `string` |  | 비우면 도메인 |
+| `memo` | 메모 | `string` |  |  |
+| `isRead` | 읽음 | `0 \| 1` | IX |  |
+| `categoryId` | 카테고리 번호 | `number?` | **FK** | 없으면 미분류 → `scrapCategories.id` |
+| `source` | 출처 | `string?` |  | instagram · naver · x · youtube · web |
+| `description` | 설명 | `string?` |  | 링크 미리보기 설명 · 캡션 (1만 자까지) |
+| `siteName` | 사이트 이름 | `string?` |  |  |
+| `isVideo` | 동영상 게시물 | `0 \| 1 ?` |  |  |
+| `summary` | 요약 | `string?` |  | AI 또는 기본 요약 |
+| `summaryAt` | 요약한 시각 | `string?` |  |  |
+| `createdAt` | 만든 시각 | `string` | IX | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`scrapMedia` · 스크랩 사진 · 영상** — 기본 키 `id` 자동 번호 · 인덱스 `bookmarkId`, `[bookmarkId+kind]` · v5부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 사진 번호 | `number` | **PK** | 자동 증가 |
+| `bookmarkId` | 스크랩 번호 | `number` | **FK** | → `bookmarks.id` |
+| `kind` | 종류 | `'thumb' \| 'capture'` | IX | 썸네일 / 캡처 · 녹화 |
+| `blob` | 파일 | `Blob` |  | 보여 줄 파일 (편집했으면 편집본) |
+| `original` | 원본 파일 | `Blob?` |  | 편집하기 전 원본 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+</details>
+
+<details>
+<summary><b>메모</b> · memoFolders (메모 파일집) · memos (메모)</summary>
+
+**`memoFolders` · 메모 파일집** — 기본 키 `id` 자동 번호 · 인덱스 `order` · v11부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 파일집 번호 | `number` | **PK** | 자동 증가 |
+| `name` | 이름 | `string` |  |  |
+| `color` | 색 | `string` |  | #rrggbb |
+| `order` | 순서 | `number` | IX |  |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+
+**`memos` · 메모** — 기본 키 `id` 자동 번호 · 인덱스 `folderId`, `createdAt`, `updatedAt` · v11부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 메모 번호 | `number` | **PK** | 자동 증가 |
+| `title` | 제목 | `string` |  |  |
+| `text` | 본문 글자 | `string` |  | 꾸밈을 뺀 글자 (검색용) |
+| `folderId` | 파일집 번호 | `number?` | **FK** | 없으면 파일집 밖 → `memoFolders.id` |
+| `html` | 꾸민 글 | `string?` |  | 굵게 · 형광펜 · 글 사이 사진 |
+| `pics` | 글 사이 사진 | `MemoPic[]?` |  | html 의 <img data-pic> 자리 |
+| `ink` | 손글씨 | `MemoInk[]?` |  | 최대 10장, AI가 읽은 글자 포함 |
+| `attachments` | 사진 · 영상 · 파일 | `Attachment[]?` |  | 최대 10개, 하나 50MB |
+| `pinned` | 맨 위 고정 | `0 \| 1 ?` |  |  |
+| `createdAt` | 쓴 시각 | `string` | IX | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` | IX | ISO 8601 시각 |
+
+</details>
+
+<details>
+<summary><b>캘린더 · 일기</b> · events (캘린더 일정) · diaries (일기) · stickers (날짜 스티커)</summary>
+
+**`events` · 캘린더 일정** — 기본 키 `id` 자동 번호 · 인덱스 `startDate`, `endDate` · v4부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `id` | 일정 번호 | `number` | **PK** | 자동 증가 |
+| `title` | 제목 | `string` |  |  |
+| `startDate` | 시작일 | `string` | IX | YYYY-MM-DD |
+| `endDate` | 끝나는 날 | `string` | IX | YYYY-MM-DD (하루짜리면 시작일과 같다) |
+| `color` | 색 | `string` |  | 이름 있는 색 21가지 또는 #rrggbb |
+| `memo` | 메모 | `string` |  |  |
+| `source` | 가져온 곳 | `'google' \| 'device' ?` |  | 없으면 Tidy에서 만든 일정 |
+| `calId` | 가져온 캘린더 | `string?` |  | 구글 캘린더 번호 또는 d:기기:캘린더 |
+| `uid` | 원래 일정 id | `string?` |  | 가져온 일정의 원래 id |
+| `attachments` | 사진 · 파일 | `Attachment[]?` |  | 최대 10개 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`diaries` · 일기** — 기본 키 `date` (하루 하나) · 인덱스 없음 · v4부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `date` | 날짜 | `string` | **PK** | YYYY-MM-DD |
+| `text` | 본문 | `string` |  |  |
+| `photo` | 대표 사진 | `string?` |  | JPEG data URL (photos 의 첫 장) |
+| `photos` | 사진 | `DiaryPhoto[]?` |  | 최대 10장, 찍은 시간 순서 |
+| `hours` | 시간별 기록 | `DiaryHour[]?` |  | 0 ~ 23시 한 칸씩 |
+| `attachments` | 파일 | `Attachment[]?` |  | 최대 10개 |
+| `color` | 색 | `string` |  | 사진이 없을 때 달력에 칠할 색 |
+| `createdAt` | 만든 시각 | `string` |  | ISO 8601 시각 |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+**`stickers` · 날짜 스티커** — 기본 키 `date` (하루 하나) · 인덱스 없음 · v10부터
+
+| 물리명 | 논리명 | 타입 | 키 | 설명 |
+|---|---|---|:---:|---|
+| `date` | 날짜 | `string` | **PK** | YYYY-MM-DD |
+| `emoji` | 이모티콘 | `string` |  |  |
+| `updatedAt` | 고친 시각 | `string` |  | ISO 8601 시각 (동기화할 때 더 새것이 이긴다) |
+
+</details>
+
+<details>
+<summary><b>기록 안에 들어가는 묶음 (JSON)</b> · 따로 표가 아니라 칸 하나에 통째로 저장</summary>
+
+| 물리명 (타입) | 논리명 | 들어가는 곳 | 칸 |
+|---|---|---|---|
+| `Attachment` | 첨부 파일 | todos · events · diaries · memos | `name` 파일 이름 · `type` MIME 종류 · `size` 바이트 · `src` data URL |
+| `DiaryPhoto` | 일기 사진 | diaries.photos | `src` JPEG data URL · `time?` 찍은 시각 HH:mm · `note?` 한 줄 메모 |
+| `DiaryHour` | 시간별 일기 칸 | diaries.hours | `hour` 0~23 · `text` 글자 · `html?` 꾸민 글 · `pics?` 글 사이 사진(MemoPic[]) |
+| `MemoPic` | 글 사이 사진 | memos.pics · DiaryHour.pics | `id` 자리 이름 · `src` 사진 data URL |
+| `MemoInk` | 손글씨 한 장 | memos.ink | `src` PNG data URL · `text?` AI가 읽은 글자 · `at` 쓴 시각 |
+| `Schedule` | 반복 주기 | savings.schedule · habits.schedule | `freq` 'daily' · 'weekly' · 'monthly' · `weekday?` 0(일)~6(토) · `day?` 1~31 |
+| `TodoRepeat` | 할 일 반복 | todos.repeat | `every` 'day' · 'week'(+`days` 요일들) · 'month'(+`day` 날짜) |
+
+</details>
+
+<details>
+<summary><b>동기화 (Cloud Firestore)</b> · 구글 로그인했을 때 올라가는 모양</summary>
+
+기기 안 표를 그대로 옮기지 않고, 모든 표의 기록을 **한 줄 = 문서 하나**로 담아요. 내 uid 아래만 읽고 쓸 수 있어요 ([firestore.rules](firestore.rules)).
+
+| 경로 (물리명) | 논리명 | 칸 |
+|---|---|---|
+| `users/{uid}/rows/{표~키}` | 기록 한 줄 | `t` 표 이름 · `j` 기록 JSON (지웠으면 null) · `u` 서버 시각 · `d` 올린 기기 번호 |
+| `users/{uid}/files/{해시}` | 사진 · 파일 | `v` data URL (같은 사진은 한 번만, 약 650KB 넘으면 기기에만) |
+| `users/{uid}/meta/devices` | 기기 번호 | `next` 다음 기기 번호 |
+
+</details>
+
+<!-- ERD:END -->
 
 ## 문서
 
