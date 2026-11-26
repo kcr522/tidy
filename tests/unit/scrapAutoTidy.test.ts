@@ -5,60 +5,81 @@ import type { Bookmark, ScrapCategory } from '../../src/db/types'
 const { db } = await import('../../src/db/database')
 const { applyTidy, planTidy, topicOf, undoTidy } = await import('../../src/lib/scrap/autoTidy')
 
-let n = 1
-const bm = (p: Partial<Bookmark>): Bookmark => ({ id: n++, url: 'https://www.instagram.com/p/x/', title: '', memo: '', isRead: 0, createdAt: '', updatedAt: '', ...p })
-const cats: ScrapCategory[] = [
-  { id: 1, name: '꿀팁', order: 0, createdAt: '' },
-  { id: 2, name: '나중에 만들 거', order: 1, createdAt: '' },
+const UNREAD = 0 as const
+const NO_CATEGORIES: ScrapCategory[] = []
+const TIPS_ID = 1
+const TO_MAKE_ID = 2
+
+let nextId = 1
+/** 인스타 게시물 스크랩 하나에서 필요한 칸만 바꾼다 */
+const okBookmark = (over: Partial<Bookmark>): Bookmark => ({ id: nextId++, url: 'https://www.instagram.com/p/x/', title: '', memo: '', isRead: UNREAD, createdAt: '', updatedAt: '', ...over })
+const myCategories: ScrapCategory[] = [
+  { id: TIPS_ID, name: '꿀팁', order: 0, createdAt: '' },
+  { id: TO_MAKE_ID, name: '나중에 만들 거', order: 1, createdAt: '' },
 ]
 
 describe('예전 스크랩 한 번에 정리 (planTidy)', () => {
-  it('주제', () => {
-    expect(topicOf('오사카 3박 4일 여행 코스')).toBe('여행')
-    expect(topicOf('성수 카페 추천 커피 맛있음')).toBe('카페')
-    expect(topicOf('오늘 날씨')).toBeNull()
+  it.each([
+    ['오사카 3박 4일 여행 코스', '여행'],
+    ['성수 카페 추천 커피 맛있음', '카페'],
+    ['오늘 날씨', null],
+  ])('"%s" 의 주제는 %s', (title, topic) => {
+    expect(topicOf(title)).toBe(topic)
   })
-  it('맞는 카테고리가 있으면 거기로, 없으면 주제끼리 새 카테고리, 이미 나눈 건 그대로', () => {
-    const all = [
-      bm({ title: '5분 계란 덮밥 레시피', description: '재료: 계란 2개' }),
-      bm({ title: '오사카 여행 코스', description: '도톤보리' }),
-      bm({ title: '후쿠오카 2박 3일', description: '일본 여행 숙소' }),
-      bm({ title: '제주 숙소 정리', description: '', categoryId: 1 }),
-      bm({ title: '오늘 날씨 좋다' }),
-      bm({ title: '도쿄 호텔 추천' }),
-    ]
-    const p = planTidy(all, cats)
-    const to = new Map(p.moves.map((m) => [m.id, m.categoryId ?? m.newName]))
-    expect(to.get(all[0].id!)).toBe(2)
-    expect(to.get(all[1].id!)).toBe('여행')
-    expect(to.get(all[2].id!)).toBe('여행')
-    expect(to.get(all[5].id!)).toBe('여행')
-    expect(to.has(all[3].id!)).toBe(false)
-    expect(to.has(all[4].id!)).toBe(false)
-    expect(p.newNames).toEqual(['여행'])
+
+  it('맞는 카테고리가 있으면 거기로, 없으면 같은 주제끼리 새 카테고리로, 이미 나눈 것 · 주제 없는 것은 그대로 둔다', () => {
+    const recipe = okBookmark({ title: '5분 계란 덮밥 레시피', description: '재료: 계란 2개' })
+    const trips = [okBookmark({ title: '오사카 여행 코스', description: '도톤보리' }), okBookmark({ title: '후쿠오카 2박 3일', description: '일본 여행 숙소' }), okBookmark({ title: '도쿄 호텔 추천' })]
+    const alreadySorted = okBookmark({ title: '제주 숙소 정리', description: '', categoryId: TIPS_ID })
+    const noTopic = okBookmark({ title: '오늘 날씨 좋다' })
+
+    const plan = planTidy([recipe, ...trips, alreadySorted, noTopic], myCategories)
+
+    const target = new Map(plan.moves.map((move) => [move.id, move.categoryId ?? move.newName]))
+    expect(target.get(recipe.id!)).toBe(TO_MAKE_ID)
+    expect(trips.map((trip) => target.get(trip.id!))).toEqual(['여행', '여행', '여행'])
+    expect(target.has(alreadySorted.id!)).toBe(false)
+    expect(target.has(noTopic.id!)).toBe(false)
+    expect(plan.newNames).toEqual(['여행'])
   })
-  it('주제가 하나뿐이면 새로 만들지 않는다, 같은 해시태그 셋이면 그 이름으로', () => {
-    const all = [bm({ title: '도쿄 여행' }), bm({ title: 'a', description: '#성수동 좋아' }), bm({ title: 'b', description: '#성수동 굿' }), bm({ title: 'c', description: '#성수동' })]
-    const p = planTidy(all, [])
-    expect(p.newNames).toEqual(['성수동'])
-    expect(p.moves.find((m) => m.id === all[0].id)).toBeUndefined()
+
+  it('주제가 같은 스크랩이 하나뿐이면 새 카테고리를 만들지 않고, 같은 해시태그가 셋이면 그 이름으로 만든다', () => {
+    const lonelyTrip = okBookmark({ title: '도쿄 여행' })
+    const tagged = [okBookmark({ title: 'a', description: '#성수동 좋아' }), okBookmark({ title: 'b', description: '#성수동 굿' }), okBookmark({ title: 'c', description: '#성수동' })]
+
+    const plan = planTidy([lonelyTrip, ...tagged], NO_CATEGORIES)
+
+    expect(plan.newNames).toEqual(['성수동'])
+    expect(plan.moves.find((move) => move.id === lonelyTrip.id)).toBeUndefined()
   })
 })
 
-describe('applyTidy · undoTidy', () => {
+describe('정리 적용 · 되돌리기 (applyTidy · undoTidy)', () => {
   beforeEach(async () => {
     await db.bookmarks.clear()
     await db.scrapCategories.clear()
   })
-  it('새 카테고리를 만들어 넣고, 되돌리면 미분류 + 빈 새 카테고리는 지운다', async () => {
-    const a = (await db.bookmarks.add({ url: 'https://a.com', title: '오사카 여행', memo: '', isRead: 0, createdAt: '', updatedAt: '' })) as number
-    const b = (await db.bookmarks.add({ url: 'https://b.com', title: '교토 여행', memo: '', isRead: 0, createdAt: '', updatedAt: '' })) as number
-    const r = await applyTidy({ moves: [{ id: a, newName: '여행' }, { id: b, newName: '여행' }], newNames: ['여행'] })
-    expect(r.moved).toBe(2)
-    expect(r.created).toEqual(['여행'])
-    expect((await db.bookmarks.get(a))?.categoryId).toBeDefined()
-    await undoTidy(r.undo)
-    expect((await db.bookmarks.get(a))?.categoryId).toBeUndefined()
+
+  const addTrip = async (url: string, title: string) => (await db.bookmarks.add({ url, title, memo: '', isRead: UNREAD, createdAt: '', updatedAt: '' })) as number
+
+  it('새 카테고리를 만들어 스크랩을 넣는다', async () => {
+    const osaka = await addTrip('https://a.com', '오사카 여행')
+    const kyoto = await addTrip('https://b.com', '교토 여행')
+
+    const result = await applyTidy({ moves: [{ id: osaka, newName: '여행' }, { id: kyoto, newName: '여행' }], newNames: ['여행'] })
+
+    expect(result.moved).toBe(2)
+    expect(result.created).toEqual(['여행'])
+    expect((await db.bookmarks.get(osaka))?.categoryId).toBeDefined()
+  })
+
+  it('되돌리면 스크랩은 미분류로 돌아가고 비게 된 새 카테고리는 지운다', async () => {
+    const osaka = await addTrip('https://a.com', '오사카 여행')
+    const result = await applyTidy({ moves: [{ id: osaka, newName: '여행' }], newNames: ['여행'] })
+
+    await undoTidy(result.undo)
+
+    expect((await db.bookmarks.get(osaka))?.categoryId).toBeUndefined()
     expect(await db.scrapCategories.count()).toBe(0)
   })
 })
