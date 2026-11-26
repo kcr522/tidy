@@ -56,30 +56,35 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
-            <span className={`size-2 shrink-0 rounded-full ${p.dot}`} title={`중요도 ${p.label}`} aria-label={`중요도 ${p.label}`} />
-            <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-slate-400 line-through' : 'font-medium text-slate-800'}`}>{todo.title}</span>
-            {todo.repeat && !done && (
-              <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-500" title="반복">
-                <Repeat className="size-3.5" aria-hidden />
-                <span className="sr-only">반복</span>
-                {repeatLabel(todo.repeat)}
-              </span>
-            )}
-            {todo.remindAt && todo.dueDate && !done && (
-              <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-600" title="알림">
-                <Bell className="size-3.5" aria-hidden />
-                <span className="sr-only">알림</span>
-                {timeLabel(todo.remindAt)}
-              </span>
-            )}
-            {overdue && <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-expense">기한 지남</span>}
-            {todo.dueDate && !overdue && (
-              <span className={`shrink-0 text-xs ${todo.dueDate === today ? 'font-bold text-brand-600' : 'text-slate-400'}`}>
-                {todo.dueDate === today ? '오늘' : formatDateLabel(todo.dueDate)}
-              </span>
-            )}
-            {overdue && todo.dueDate && <span className="shrink-0 text-xs text-red-400">{formatDateLabel(todo.dueDate)}</span>}
+          {/* 제목은 자르지 않고 다 보여 준다: 한 줄에 다 안 들어가면 제목이 줄을 바꾸고, 반복 · 기한 표시는 아래 줄 오른쪽으로 내려간다 */}
+          <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-3 text-left">
+            <span className="flex min-w-0 flex-auto items-start gap-2">
+              <span className={`mt-[0.45rem] size-2 shrink-0 rounded-full ${p.dot}`} title={`중요도 ${p.label}`} aria-label={`중요도 ${p.label}`} />
+              <span className={`min-w-0 flex-1 text-[15px] leading-snug break-words break-keep ${done ? 'text-slate-400 line-through' : 'font-medium text-slate-800'}`}>{todo.title}</span>
+            </span>
+            <span className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 empty:hidden">
+              {todo.repeat && !done && (
+                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-500" title="반복">
+                  <Repeat className="size-3.5" aria-hidden />
+                  <span className="sr-only">반복</span>
+                  {repeatLabel(todo.repeat)}
+                </span>
+              )}
+              {todo.remindAt && todo.dueDate && !done && (
+                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-600" title="알림">
+                  <Bell className="size-3.5" aria-hidden />
+                  <span className="sr-only">알림</span>
+                  {timeLabel(todo.remindAt)}
+                </span>
+              )}
+              {overdue && <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-expense">기한 지남</span>}
+              {todo.dueDate && !overdue && (
+                <span className={`shrink-0 text-xs ${todo.dueDate === today ? 'font-bold text-brand-600' : 'text-slate-400'}`}>
+                  {todo.dueDate === today ? '오늘' : formatDateLabel(todo.dueDate)}
+                </span>
+              )}
+              {overdue && todo.dueDate && <span className="shrink-0 text-xs text-red-400">{formatDateLabel(todo.dueDate)}</span>}
+            </span>
           </button>
           {onOpenLink && (
             <button
