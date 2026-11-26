@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import EmptyState from '../components/common/EmptyState'
-import { extractSharedUrl, sharedTextWithoutUrl } from '../lib/scrap/link'
+import { cleanSharedUrl, extractSharedUrl, sharedTextWithoutUrl } from '../lib/scrap/link'
 import type { ShareState } from './BookmarksPage'
 
 /**
@@ -12,7 +12,8 @@ export default function SharePage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const shared = { url: params.get('url'), text: params.get('text'), title: params.get('title') }
-  const url = extractSharedUrl(shared)
+  const found = extractSharedUrl(shared)
+  const url = found ? cleanSharedUrl(found) : null
 
   useEffect(() => {
     if (!url) return

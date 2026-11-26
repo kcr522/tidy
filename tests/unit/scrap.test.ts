@@ -4,6 +4,7 @@ import { DEFAULT_SCRAP_CATEGORIES, TidyDB } from '../../src/db/database'
 import { localSummary, sanitizeSummaryInput, summaryPrompt } from '../../src/lib/ai/scrapSummary'
 import {
   detectSource,
+  cleanSharedUrl,
   extractSharedUrl,
   instagramEmbedUrl,
   isPublicHttpUrl,
@@ -56,6 +57,11 @@ describe('링크 출처와 공유받기', () => {
 
   it('공유받은 글에서 주소를 뺀 나머지 글을 남긴다', () => {
     expect(sharedTextWithoutUrl('성수 맛집 https://naver.me/5abc')).toBe('성수 맛집')
+    // X 앱 공유: 추적용 ?s= · ?t= 는 떼고, 다른 사이트 주소는 그대로
+    expect(cleanSharedUrl('https://x.com/someone/status/1790000000000000000?s=46&t=AbC')).toBe('https://x.com/someone/status/1790000000000000000')
+    expect(cleanSharedUrl('https://twitter.com/someone/status/123/')).toBe('https://twitter.com/someone/status/123')
+    expect(cleanSharedUrl('https://x.com/someone?s=20')).toBe('https://x.com/someone?s=20')
+    expect(cleanSharedUrl('https://naver.me/5abc?s=1')).toBe('https://naver.me/5abc?s=1')
   })
 
   it.each([
