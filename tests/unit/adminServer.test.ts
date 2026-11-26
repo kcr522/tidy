@@ -48,64 +48,118 @@ function fakeGoogle(log: string[] = []): typeof fetch {
 
 const env = (extra: Record<string, string> = {}) => adminEnvFrom({ ADMIN_EMAILS: 'boss@gmail.com', FIREBASE_SERVICE_ACCOUNT: SA, AI_DAILY_LIMIT: '30', GEMINI_API_KEY: 'g', ...extra })
 
+const ADMIN = { method: 'GET', authorization: 'Bearer tok-admin' }
+const OTHER_USER = { method: 'GET', authorization: 'Bearer tok-user' }
+const NOT_LOGGED_IN = { method: 'GET' }
+const BAD_TOKEN = { method: 'GET', authorization: 'Bearer bad' }
+
 describe('관리자 페이지 서버', () => {
-  it('관리자 확인은 서버에서: 로그인 안 함 401, 다른 사람 403, 관리자 메일이 없으면 403', async () => {
-    expect((await handleAdmin({ method: 'GET' }, env(), fakeGoogle())).status).toBe(401)
-    expect((await handleAdmin({ method: 'GET', authorization: 'Bearer bad' }, env(), fakeGoogle())).status).toBe(401)
+  it.each([
+    ['로그인 안 함', NOT_LOGGED_IN],
+    ['깨진 토큰', BAD_TOKEN],
+  ])('%s 이면 401 로 거절한다', async (_case, request) => {
+    const result = await handleAdmin(request, env(), fakeGoogle())
+
+    expect(result.status).toBe(401)
+  })
+
+  it('관리자가 아닌 사람은 403 이고, 서비스 계정은 쓰지도 않는다', async () => {
     const log: string[] = []
-    const other = await handleAdmin({ method: 'GET', authorization: 'Bearer tok-user' }, env(), fakeGoogle(log))
-    expect(other.status).toBe(403)
-    expect(log.some((u) => u.includes('oauth2'))).toBe(false) // 다른 사람이면 서비스 계정을 쓰지도 않는다
-    const noAdmin = await handleAdmin({ method: 'GET', authorization: 'Bearer tok-admin' }, env({ ADMIN_EMAILS: '' }), fakeGoogle())
-    expect(noAdmin).toMatchObject({ status: 403, body: { setup: 'ADMIN_EMAILS' } })
+
+    const result = await handleAdmin(OTHER_USER, env(), fakeGoogle(log))
+
+    expect(result.status).toBe(403)
+    expect(log.some((url) => url.includes('oauth2'))).toBe(false) // 서비스 계정 토큰을 받으러 가지 않았는지 확인
   })
 
-  it('check=1 은 관리자인지만 알려 준다', async () => {
-    expect((await handleAdmin({ method: 'GET', authorization: 'Bearer tok-admin', check: true }, env(), fakeGoogle())).body).toEqual({ admin: true })
-    expect((await handleAdmin({ method: 'GET', authorization: 'Bearer tok-user', check: true }, env(), fakeGoogle())).body).toEqual({ admin: false })
+  it('관리자 메일 설정이 비어 있으면 403 과 ADMIN_EMAILS 설정 안내를 준다', async () => {
+    const noAdminEmails = env({ ADMIN_EMAILS: '' })
+
+    const result = await handleAdmin(ADMIN, noAdminEmails, fakeGoogle())
+
+    expect(result).toMatchObject({ status: 403, body: { setup: 'ADMIN_EMAILS' } })
   })
 
-  it('서비스 계정이 없거나 깨졌으면 설정 안내', async () => {
-    expect(await handleAdmin({ method: 'GET', authorization: 'Bearer tok-admin' }, env({ FIREBASE_SERVICE_ACCOUNT: '' }), fakeGoogle())).toMatchObject({ status: 503, body: { setup: 'FIREBASE_SERVICE_ACCOUNT' } })
-    expect(await handleAdmin({ method: 'GET', authorization: 'Bearer tok-admin' }, env({ FIREBASE_SERVICE_ACCOUNT: '{nope' }), fakeGoogle())).toMatchObject({ status: 503 })
+  it.each([
+    [ADMIN, true],
+    [OTHER_USER, false],
+  ])('check=1 이면 관리자인지만 알려 준다 (관리자 여부 $1)', async (request, isAdmin) => {
+    const result = await handleAdmin({ ...request, check: true }, env(), fakeGoogle())
+
+    expect(result.body).toEqual({ admin: isAdmin })
   })
 
-  it('사용자 목록 · AI 사용량 · 기록 수를 모은다', async () => {
-    const r = await handleAdmin({ method: 'GET', authorization: 'Bearer tok-admin' }, env(), fakeGoogle(), NOW)
-    expect(r.status).toBe(200)
-    const rep = r.body as AdminReport
-    expect(rep.today).toBe('2026-11-18')
-    expect(rep.users.map((u) => u.email)).toEqual(['boss@gmail.com', 'friend@gmail.com'])
-    const [boss, friend] = rep.users
+  it('서비스 계정 설정이 비어 있으면 503 과 설정 안내를 준다', async () => {
+    const noAccount = env({ FIREBASE_SERVICE_ACCOUNT: '' })
+
+    const result = await handleAdmin(ADMIN, noAccount, fakeGoogle())
+
+    expect(result).toMatchObject({ status: 503, body: { setup: 'FIREBASE_SERVICE_ACCOUNT' } })
+  })
+
+  it('서비스 계정 값이 깨진 JSON 이면 503 을 준다', async () => {
+    const brokenAccount = env({ FIREBASE_SERVICE_ACCOUNT: '{nope' })
+
+    const result = await handleAdmin(ADMIN, brokenAccount, fakeGoogle())
+
+    expect(result).toMatchObject({ status: 503 })
+  })
+
+  it('관리자가 열면 사용자 목록 · 기록 수 · 기기 수를 모아 준다', async () => {
+    const result = await handleAdmin(ADMIN, env(), fakeGoogle(), NOW)
+
+    expect(result.status).toBe(200)
+    const report = result.body as AdminReport
+    expect(report.today).toBe('2026-11-18')
+    expect(report.users.map((user) => user.email)).toEqual(['boss@gmail.com', 'friend@gmail.com'])
+    const [boss, friend] = report.users
     expect(boss).toMatchObject({ name: '주인', admin: true, rows: 820, files: 5, devices: 2, lastSyncAt: Date.parse('2026-11-18T01:30:00Z'), lastActiveAt: Date.parse('2026-11-18T02:00:00Z') })
-    expect(boss.ai[0]).toEqual({ day: '2026-11-18', count: 12, tokens: 3400 })
     expect(friend).toMatchObject({ admin: false, rows: 40, devices: 0 })
+    expect(report.warnings).toEqual([])
+  })
+
+  it('관리자가 열면 사람별 · 날짜별 AI 사용량을 7일치 모아 준다', async () => {
+    const result = await handleAdmin(ADMIN, env(), fakeGoogle(), NOW)
+
+    const report = result.body as AdminReport
+    const [boss, friend] = report.users
+    expect(boss.ai[0]).toEqual({ day: '2026-11-18', count: 12, tokens: 3400 })
     expect(friend.ai[1]).toEqual({ day: '2026-11-17', count: 3, tokens: 900 })
-    expect(rep.ai).toMatchObject({ limit: 30, gemini: true, groq: false })
-    expect(rep.ai.days).toHaveLength(7)
-    expect(rep.ai.days[0]).toEqual({ day: '2026-11-18', count: 12, tokens: 3400, users: 1 })
-    expect(rep.warnings).toEqual([])
+    expect(report.ai).toMatchObject({ limit: 30, gemini: true, groq: false })
+    expect(report.ai.days).toHaveLength(7)
+    expect(report.ai.days[0]).toEqual({ day: '2026-11-18', count: 12, tokens: 3400, users: 1 })
   })
 
   it('서비스 계정 값은 JSON 이나 base64 둘 다 받는다', () => {
+    const base64 = Buffer.from(SA).toString('base64')
+
     expect(parseServiceAccount(SA)).toMatchObject({ client_email: 'admin@tidy-b0d8d.iam.gserviceaccount.com' })
-    expect(parseServiceAccount(Buffer.from(SA).toString('base64'))).toMatchObject({ project_id: 'tidy-b0d8d' })
+    expect(parseServiceAccount(base64)).toMatchObject({ project_id: 'tidy-b0d8d' })
+  })
+
+  it('서비스 계정 값이 깨졌으면 broken, 없으면 null 을 준다', () => {
     expect(parseServiceAccount('x')).toBe('broken')
     expect(parseServiceAccount(undefined)).toBeNull()
   })
 
-  it('날짜는 한국 시간', () => {
+  it('날짜는 한국 시간으로 센다 (UTC 15:30 = 한국 다음 날 0:30)', () => {
     expect(kstDay(new Date('2026-11-17T15:30:00Z'))).toBe('2026-11-18')
     expect(lastDays(3, NOW)).toEqual(['2026-11-18', '2026-11-17', '2026-11-16'])
   })
 
-  it('얼마 전인지 쉽게', () => {
-    const now = NOW.getTime()
-    expect(ago(undefined, now)).toBe('—')
-    expect(ago(now - 30_000, now)).toBe('방금')
-    expect(ago(now - 5 * 60_000, now)).toBe('5분 전')
-    expect(ago(now - 3 * 3600_000, now)).toBe('3시간 전')
-    expect(ago(now - 30 * 3600_000, now)).toBe('어제')
-    expect(ago(Date.parse('2026-10-02T03:00:00Z'), now)).toBe('10월 2일')
+  const SECOND = 1000
+  const MINUTE = 60 * SECOND
+  const HOUR = 60 * MINUTE
+  const now = NOW.getTime()
+
+  it.each([
+    ['기록 없음', '—', undefined],
+    ['30초 전', '방금', now - 30 * SECOND],
+    ['5분 전', '5분 전', now - 5 * MINUTE],
+    ['3시간 전', '3시간 전', now - 3 * HOUR],
+    ['30시간 전', '어제', now - 30 * HOUR],
+    ['한 달 넘게 전', '10월 2일', Date.parse('2026-10-02T03:00:00Z')],
+  ])('%s 이면 "%s" 라고 보여 준다', (_case, label, time) => {
+    expect(ago(time, now)).toBe(label)
   })
 })

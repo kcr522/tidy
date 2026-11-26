@@ -11,6 +11,7 @@ import DeviceCalendarCard from '../components/settings/DeviceCalendarCard'
 import GoogleCalendarCard from '../components/settings/GoogleCalendarCard'
 import { markBackedUp } from '../hooks/useAutoBackup'
 import CustomizeCard from '../components/settings/CustomizeCard'
+import FontCard from '../components/settings/FontCard'
 import WidgetCard from '../components/settings/WidgetCard'
 import PayNotifyCard from '../components/settings/PayNotifyCard'
 import RouteTrackCard from '../components/settings/RouteTrackCard'
@@ -141,6 +142,8 @@ export default function SettingsPage() {
         <PayNotifyCard />
 
         <CustomizeCard />
+
+        <FontCard />
 
         <GoogleCalendarCard />
 

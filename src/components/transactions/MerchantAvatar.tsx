@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { SAVING_CATEGORY } from '../../lib/categories'
+import { useState, useSyncExternalStore } from 'react'
+import { categorySnapshot, SAVING_CATEGORY, subscribeCategories } from '../../lib/categories'
 import { categoryIcon } from '../common/MoneyIcon'
 import { brandShort, brandTextColor, logoUrls, type Brand } from '../../lib/merchants'
 
@@ -7,6 +7,8 @@ import { brandShort, brandTextColor, logoUrls, type Brand } from '../../lib/merc
 export default function MerchantAvatar({ brand, category, size = 40 }: { brand: Brand | null; category: string; size?: number }) {
   // 몇 번째 로고 주소를 쓰는 중인지 (앱에 넣어 둔 아이콘 → 홈페이지 아이콘 → 글자 동그라미)
   const [at, setAt] = useState({ name: brand?.name, tried: 0 })
+  // 카테고리 아이콘을 바꾸면 다시 그린다
+  useSyncExternalStore(subscribeCategories, categorySnapshot)
   // 다른 가게로 바뀌면 처음 주소부터 다시
   const tried = at.name === brand?.name ? at.tried : 0
   const urls = brand ? logoUrls(brand) : []

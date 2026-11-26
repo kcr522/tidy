@@ -1,6 +1,6 @@
 import { isEventColor } from '../lib/eventLayout'
 import { db as defaultDb, seedCategories, type TidyDB } from '../db/database'
-import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, PayMethod, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
+import type { Budget, DaySticker, Bookmark, CalendarEvent, Diary, Habit, HabitCheck, Memo, MemoFolder, MerchantAlias, MoneyCategory, PayMethod, Recurring, SavingsPlan, ScrapCategory, ScrapMedia, Todo, TodoCategory, Transaction } from '../db/types'
 import { nowIso } from '../lib/date'
 import { isTodoRepeat } from '../lib/todoRepeat'
 import { isAttachmentList } from '../lib/attachments'
@@ -44,6 +44,8 @@ export interface Backup {
   memos?: Memo[]
   /** 내 카드 · 계좌 (스키마 12부터) */
   payMethods?: PayMethod[]
+  /** 가계부 카테고리: 내가 만든 것 · 바꾼 것 (스키마 13부터) */
+  moneyCategories?: MoneyCategory[]
 }
 
 export interface BackupMedia {
@@ -106,6 +108,10 @@ function isSticker(v: unknown): v is DaySticker {
 
 function isMemoFolder(v: unknown): v is MemoFolder {
   return isObj(v) && isId(v.id) && isStr(v.name) && isStr(v.color) && isNum(v.order) && isStr(v.createdAt)
+}
+
+function isMoneyCategory(v: unknown): v is MoneyCategory {
+  return isObj(v) && isStr(v.key) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isStr(v.name) && isStr(v.icon) && isNum(v.order) && (v.hidden === undefined || v.hidden === 0 || v.hidden === 1) && isStr(v.createdAt) && isStr(v.updatedAt)
 }
 
 function isPayMethod(v: unknown): v is PayMethod {
@@ -236,7 +242,8 @@ export function parseBackup(text: string, currentSchema: number): Backup {
   const memoFolders = data.memoFolders ?? []
   const memos = data.memos ?? []
   const payMethods = data.payMethods ?? []
-  if (!Array.isArray(memoFolders) || !Array.isArray(memos) || !Array.isArray(payMethods)) throw new InvalidBackupError()
+  const moneyCategories = data.moneyCategories ?? []
+  if (!Array.isArray(memoFolders) || !Array.isArray(memos) || !Array.isArray(payMethods) || !Array.isArray(moneyCategories)) throw new InvalidBackupError()
   if (!Array.isArray(recurring) || !Array.isArray(aliases) || !Array.isArray(categories) || !Array.isArray(media) || !Array.isArray(events) || !Array.isArray(diaries) || !Array.isArray(habits) || !Array.isArray(habitChecks) || !Array.isArray(savings) || !Array.isArray(todoCategories) || !Array.isArray(budgets) || !Array.isArray(stickers)) throw new InvalidBackupError()
   if (
     !transactions.every(isTransaction) || !todos.every(isTodo) || !bookmarks.every(isBookmark) || !recurring.every(isRecurring) || !aliases.every(isAlias) ||
@@ -246,7 +253,8 @@ export function parseBackup(text: string, currentSchema: number): Backup {
     !stickers.every(isSticker) ||
     !memoFolders.every(isMemoFolder) ||
     !memos.every(isMemo) ||
-    !payMethods.every(isPayMethod)
+    !payMethods.every(isPayMethod) ||
+    !moneyCategories.every(isMoneyCategory)
   ) {
     throw new InvalidBackupError('백업 파일 내용이 손상됐어요')
   }
@@ -258,7 +266,7 @@ export function backupFileName(dateKey: string): string {
   return `tidy-backup-${dateKey}.json`
 }
 
-const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets, d.stickers, d.memoFolders, d.memos, d.payMethods]
+const tables = (d: TidyDB) => [d.transactions, d.todos, d.bookmarks, d.recurring, d.merchantAliases, d.events, d.diaries, d.habits, d.habitChecks, d.savings, d.scrapCategories, d.scrapMedia, d.todoCategories, d.budgets, d.stickers, d.memoFolders, d.memos, d.payMethods, d.moneyCategories]
 
 export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __APP_VERSION__) {
   return {
@@ -285,6 +293,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         memoFolders: await database.memoFolders.toArray(),
         memos: await database.memos.toArray(),
         payMethods: await database.payMethods.toArray(),
+        moneyCategories: await database.moneyCategories.toArray(),
         rawMedia: await database.scrapMedia.toArray(),
       })).then(async ({ rawMedia, ...rest }) => ({
         ...rest,
@@ -321,6 +330,7 @@ export function createBackupRepo(database: TidyDB = defaultDb, appVersion = __AP
         await database.memoFolders.bulkAdd(backup.memoFolders ?? [])
         await database.memos.bulkAdd(backup.memos ?? [])
         await database.payMethods.bulkAdd(backup.payMethods ?? [])
+        await database.moneyCategories.bulkAdd(backup.moneyCategories ?? [])
         await database.transactions.bulkAdd(backup.transactions)
         await database.bookmarks.bulkAdd(backup.bookmarks)
         await database.todos.bulkAdd(backup.todos)

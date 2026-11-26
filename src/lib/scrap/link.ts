@@ -75,6 +75,21 @@ export function extractSharedUrl(shared: { url?: string | null; text?: string | 
   return null
 }
 
+/**
+ * 공유로 들어온 주소 다듬기: X 게시물 주소 끝의 추적용 ?s=…&t=… 를 뗀다
+ * 예: https://x.com/someone/status/123?s=46&t=abc → https://x.com/someone/status/123
+ */
+export function cleanSharedUrl(url: string): string {
+  if (detectSource(url) !== 'x') return url
+  try {
+    const u = new URL(url)
+    if (!/\/status(?:es)?\/\d+/.test(u.pathname)) return url
+    return `${u.origin}${u.pathname.replace(/\/+$/, '')}`
+  } catch {
+    return url
+  }
+}
+
 /** 공유 글에서 주소를 뺀 나머지 (제목 후보) */
 export function sharedTextWithoutUrl(text: string | null | undefined): string {
   return (text ?? '').replace(new RegExp(URL_RE.source, 'gi'), '').replace(/\s+/g, ' ').trim()

@@ -54,7 +54,7 @@ async function askWith(settings: AiSettings, req: AssistantRequest, signal?: Abo
 async function askGroq(apiKey: string, req: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
   const user = `${assistantPrompt(req).replace(/report로 알려 줘\.$/, '알려 줘.')}\n\n${JSON_SHAPE}`
   const { text } = await callGroq(apiKey, { system: ASSISTANT_SYSTEM, user, json: true, maxTokens: 2048, signal })
-  const out = parseAssistantJson(text)
+  const out = parseAssistantJson(text, req.context?.categories)
   if (!out) throw new AssistantError('Groq 답을 알아보지 못했어요')
   if (out.kind === 'question') {
     const a = await callGroq(apiKey, { system: ADVISOR_SYSTEM, user: advisorPrompt(req.text ?? '', req.today, req.context), maxTokens: 1500, signal })
@@ -82,7 +82,7 @@ async function askAi(settings: AiSettings, req: AssistantRequest, signal?: Abort
     ]
     try {
       const text = await callGemini(settings.geminiKey.trim(), { system: ASSISTANT_SYSTEM, parts, schema: {}, maxTokens: 4096, signal })
-      const out = parseAssistantJson(text)
+      const out = parseAssistantJson(text, req.context?.categories)
       if (!out) throw new AssistantError('Gemini 답을 알아보지 못했어요')
       return { ...out, engine: 'gemini' }
     } catch (err) {

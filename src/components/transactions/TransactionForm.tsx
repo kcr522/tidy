@@ -3,7 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Calculator, PiggyBank } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Transaction, TransactionType } from '../../db/types'
-import { categoriesFor, SAVING_CATEGORY } from '../../lib/categories'
+import { categoriesFor, resolveCategory, SAVING_CATEGORY } from '../../lib/categories'
+import { useCategories } from '../common/MoneyIcon'
+import NewCategoryInline from './NewCategoryInline'
 import { todayKey } from '../../lib/date'
 import { formatNumber } from '../../lib/format'
 import { isUnclearMerchant, matchMerchant } from '../../lib/merchants'
@@ -53,7 +55,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   const [saving, setSaving] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
 
-  const categories = categoriesFor(type)
+  const categories = useCategories(type).map((c) => c.name)
   const merchant = matchMerchant(memo)
   const unclear = !initial?.originalMemo && isUnclearMerchant(memo)
   // 새 내역일 때만: 저장하면 알려 준 가게 이름으로 바뀐다
@@ -63,7 +65,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
   function changeMemo(text: string) {
     setMemo(text)
     const m = matchMerchant(text)
-    if (m && type === 'EXPENSE' && !category && categories.includes(m.brand.category)) setCategory(m.brand.category)
+    if (m && type === 'EXPENSE' && !category) setCategory(resolveCategory('EXPENSE', m.brand.category))
   }
 
   function changeType(next: TransactionType) {
@@ -196,6 +198,7 @@ export default function TransactionForm({ initial, draft, onSubmit, onDelete, de
             </option>
           ))}
         </select>
+        <NewCategoryInline type={type} onAdded={setCategory} />
         {type === 'EXPENSE' && category === SAVING_CATEGORY && <p className="mt-1.5 text-xs font-semibold text-saving"><PiggyBank className="inline size-[1.1em] -mt-0.5 align-middle" aria-hidden /> 저축은 지출 합계에 넣지 않고 저금통 안에 따로 모여요</p>}
       </Field>
 

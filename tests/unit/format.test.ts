@@ -2,18 +2,25 @@ import { describe, expect, it } from 'vitest'
 import { formatDateLabel, formatMonthLabel, formatNumber, formatWon } from '../../src/lib/format'
 
 describe('format', () => {
-  it('금액에 쉼표와 원을 붙인다', () => {
-    expect(formatWon(15000)).toBe('15,000원')
-    expect(formatWon(3500000)).toBe('3,500,000원')
+  it.each([
+    [15000, '15,000원'],
+    [3500000, '3,500,000원'],
+  ])('금액 %i 은 쉼표와 원을 붙여 "%s" 로 보여 준다', (amount, label) => {
+    expect(formatWon(amount)).toBe(label)
+  })
+
+  it('숫자만 보여 줄 때는 쉼표만 붙인다', () => {
     expect(formatNumber(1240000)).toBe('1,240,000')
   })
 
-  it('날짜를 "11월 10일 (화)" 형식으로 표시한다', () => {
-    expect(formatDateLabel('2026-11-10')).toBe('11월 10일 (화)')
-    expect(formatDateLabel('2026-01-01')).toBe('1월 1일 (목)')
+  it.each([
+    ['2026-11-10', '11월 10일 (화)'],
+    ['2026-01-01', '1월 1일 (목)'],
+  ])('날짜 %s 는 "%s" 로 보여 준다', (date, label) => {
+    expect(formatDateLabel(date)).toBe(label)
   })
 
-  it('월을 "2026년 11월"로 표시한다', () => {
+  it('월은 "2026년 11월" 로 보여 준다', () => {
     expect(formatMonthLabel(2026, 11)).toBe('2026년 11월')
   })
 })

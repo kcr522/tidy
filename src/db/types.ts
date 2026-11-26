@@ -110,6 +110,26 @@ export interface Budget {
   updatedAt: string
 }
 
+/**
+ * 가계부 카테고리 (스키마 13부터, 사용자 요청 2026-11-25: 직접 만들고 지우기)
+ * 기본 카테고리는 코드에 있고, 바꾼 것(이름 · 아이콘 · 순서 · 지움)과 새로 만든 것만 여기에 적는다.
+ * 기본 카테고리의 key 는 '구분:처음 이름' (예: 'EXPENSE:식비') 이라서 여러 기기에서 겹쳐도 하나로 합쳐진다
+ */
+export interface MoneyCategory {
+  key: string
+  type: TransactionType
+  /** 내역의 category 칸에 들어가는 이름 */
+  name: string
+  /** 아이콘 이름 (components/common/MoneyIcon 의 목록) */
+  icon: string
+  /** 보여 줄 순서 (작을수록 앞) */
+  order: number
+  /** 1이면 지운 기본 카테고리 */
+  hidden?: Flag
+  createdAt: string
+  updatedAt: string
+}
+
 /** 할 일 카테고리 색 */
 export type TodoCategoryColor = 'peach' | 'sky' | 'mint' | 'lilac' | 'lemon' | 'rose'
 

@@ -1,0 +1,412 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1960 1034" width="1960" height="1034" font-family="Pretendard, 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#4FD1FF"/><stop offset="0.5" stop-color="#8B7CFF"/><stop offset="1" stop-color="#FF7EB3"/></linearGradient>
+    <linearGradient id="g-money" x1="0" x2="1"><stop offset="0" stop-color="#4F9DFF"/><stop offset="1" stop-color="#4F9DFF" stop-opacity=".72"/></linearGradient><linearGradient id="g-todo" x1="0" x2="1"><stop offset="0" stop-color="#8B7CFF"/><stop offset="1" stop-color="#8B7CFF" stop-opacity=".72"/></linearGradient><linearGradient id="g-habit" x1="0" x2="1"><stop offset="0" stop-color="#FF8A5B"/><stop offset="1" stop-color="#FF8A5B" stop-opacity=".72"/></linearGradient><linearGradient id="g-scrap" x1="0" x2="1"><stop offset="0" stop-color="#FF7EB3"/><stop offset="1" stop-color="#FF7EB3" stop-opacity=".72"/></linearGradient><linearGradient id="g-memo" x1="0" x2="1"><stop offset="0" stop-color="#2BB673"/><stop offset="1" stop-color="#2BB673" stop-opacity=".72"/></linearGradient><linearGradient id="g-cal" x1="0" x2="1"><stop offset="0" stop-color="#F5A524"/><stop offset="1" stop-color="#F5A524" stop-opacity=".72"/></linearGradient>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#6D28D9" flood-opacity=".10"/></filter>
+    <style>
+      .tn { fill: #fff; font-size: 15px; font-weight: 800; }
+      .tl { fill: #fff; font-size: 12px; font-weight: 600; opacity: .95; }
+      .tv { fill: #fff; font-size: 11px; font-weight: 700; opacity: .9; }
+      .f { fill: #111827; font-size: 12.5px; font-weight: 600; }
+      .l { fill: #4B5563; font-size: 12px; }
+      .t { fill: #9CA3AF; font-size: 11px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+      .k { font-size: 10.5px; font-weight: 800; }
+      .more { fill: #9CA3AF; font-size: 11.5px; }
+      .grp { font-size: 13px; font-weight: 800; }
+      .lg { fill: #4B5563; font-size: 12.5px; }
+      .h1 { fill: url(#g); font-size: 30px; font-weight: 900; }
+      .h2 { fill: #6B7280; font-size: 14px; }
+    </style>
+  </defs>
+  <rect width="1960" height="1034" fill="#fff"/>
+  <text x="50" y="56" class="h1">TIDY: ERD</text>
+  <text x="50" y="82" class="h2">기기 안 DB (IndexedDB · Dexie) · DB 버전 13 · 표 19개 · 키 · 연결 칸만 (모든 칸은 erd-full.svg)</text>
+  <rect x="40" y="92" width="320" height="562" rx="18" fill="#4F9DFF" fill-opacity=".07" stroke="#4F9DFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="54" y="110" class="grp" fill="#4F9DFF">● 가계부</text>
+  <rect x="430" y="92" width="320" height="664" rx="18" fill="#4F9DFF" fill-opacity=".07" stroke="#4F9DFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="444" y="110" class="grp" fill="#4F9DFF">● 가계부</text>
+  <rect x="820" y="92" width="320" height="355" rx="18" fill="#8B7CFF" fill-opacity=".07" stroke="#8B7CFF" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="834" y="110" class="grp" fill="#8B7CFF">● 할 일</text>
+  <rect x="820" y="443" width="320" height="334" rx="18" fill="#FF8A5B" fill-opacity=".07" stroke="#FF8A5B" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="834" y="461" class="grp" fill="#FF8A5B">● 습관</text>
+  <rect x="1210" y="92" width="320" height="499" rx="18" fill="#FF7EB3" fill-opacity=".07" stroke="#FF7EB3" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="1224" y="110" class="grp" fill="#FF7EB3">● 스크랩</text>
+  <rect x="1210" y="587" width="320" height="313" rx="18" fill="#2BB673" fill-opacity=".07" stroke="#2BB673" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="1224" y="605" class="grp" fill="#2BB673">● 메모</text>
+  <rect x="1600" y="92" width="320" height="436" rx="18" fill="#F5A524" fill-opacity=".07" stroke="#F5A524" stroke-opacity=".35" stroke-dasharray="4 4"/>
+  <text x="1614" y="110" class="grp" fill="#F5A524">● 캘린더 · 일기</text>
+  <path d="M350 416.5 H385 V188.5 H440" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M433 182.5V194.5M429 182.5V194.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M350 409.5L362 416.5L350 423.5M365 410.5V422.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M350 437.5 H395 V662.5 H440" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M433 656.5V668.5M429 656.5V668.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M350 430.5L362 437.5L350 444.5M365 431.5V443.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M50 395.5 H27 V209.5 H50" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="45" cy="209.5" r="3.5" fill="#DB2777"/>
+  <path d="M50 458.5 H18 V602.5 H50" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="45" cy="602.5" r="3.5" fill="#DB2777"/>
+  <path d="M350 374.5 H405 V518.5 H440" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="435" cy="518.5" r="3.5" fill="#DB2777"/>
+  <path d="M440 353.5 H390 V518.5 H440" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="435" cy="518.5" r="3.5" fill="#DB2777"/>
+  <path d="M440 209.5 H425 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="355" cy="209.5" r="3.5" fill="#DB2777"/>
+  <path d="M440 683.5 H435 V209.5 H350" fill="none" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5" opacity=".85"/>
+  <circle cx="355" cy="209.5" r="3.5" fill="#DB2777"/>
+  <path d="M740 704.5 H775 V539.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M823 533.5V545.5M819 533.5V545.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M749 698.5V710.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M830 704.5 H798 V539.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M823 533.5V545.5M819 533.5V545.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M830 697.5L818 704.5L830 711.5M815 698.5V710.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M830 374.5 H789 V188.5 H830" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M823 182.5V194.5M819 182.5V194.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M830 367.5L818 374.5L830 381.5M815 368.5V380.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1130 353.5 H1165 V353.5 H1220" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M1213 347.5V359.5M1209 347.5V359.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1139 347.5V359.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1130 395.5 H1156 V332.5 H1130" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M1137 326.5V338.5M1141 326.5V338.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1139 389.5V401.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 374.5 H1188 V188.5 H1220" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M1213 182.5V194.5M1209 182.5V194.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 367.5L1208 374.5L1220 381.5M1205 368.5V380.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 539.5 H1179 V353.5 H1220" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M1213 347.5V359.5M1209 347.5V359.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 532.5L1208 539.5L1220 546.5M1205 533.5V545.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 848.5 H1170 V683.5 H1220" fill="none" stroke="#7C3AED" stroke-width="1.8" opacity=".85"/>
+  <path d="M1213 677.5V689.5M1209 677.5V689.5" stroke="#7C3AED" stroke-width="1.8"/>
+  <path d="M1220 841.5L1208 848.5L1220 855.5M1205 842.5V854.5" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+  <g transform="translate(50,120)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">payMethods</text>
+  <text x="14" y="40" class="tl">내 카드 · 계좌</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v12</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">결제 수단 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">name</text>
+  <text x="150" y="94" class="l">이름</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 5개</text>
+  </g>
+  <g transform="translate(50,285)">
+  <rect width="300" height="215" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">transactions</text>
+  <text x="14" y="40" class="tl">가계부 내역</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v1</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">내역 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">category</text>
+  <text x="150" y="94" class="l">카테고리</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="12" y="115" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="115" class="f">account</text>
+  <text x="150" y="115" class="l">결제 수단</text>
+  <text x="288" y="115" class="t" text-anchor="end">string?</text>
+  <rect x="1" y="121" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="136" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="136" class="f">recurringId</text>
+  <text x="150" y="136" class="l">정기 내역 번호</text>
+  <text x="288" y="136" class="t" text-anchor="end">number?</text>
+  <text x="12" y="157" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="157" class="f">savingsId</text>
+  <text x="150" y="157" class="l">적금 번호</text>
+  <text x="288" y="157" class="t" text-anchor="end">number?</text>
+  <rect x="1" y="163" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="178" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="178" class="f">originalMemo</text>
+  <text x="150" y="178" class="l">원래 가게 이름</text>
+  <text x="288" y="178" class="t" text-anchor="end">string?</text>
+  <text x="40" y="199" class="more">+ 그 밖의 칸 7개</text>
+  </g>
+  <g transform="translate(50,534)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">merchantAliases</text>
+  <text x="14" y="40" class="tl">가게 이름 기억</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v3</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">raw</text>
+  <text x="150" y="73" class="l">정리한 원래 이름</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 3개</text>
+  </g>
+  <g transform="translate(440,120)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">recurring</text>
+  <text x="14" y="40" class="tl">정기 내역 규칙</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v2</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">규칙 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">account</text>
+  <text x="150" y="94" class="l">결제 수단</text>
+  <text x="288" y="94" class="t" text-anchor="end">string?</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 11개</text>
+  </g>
+  <g transform="translate(440,285)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">budgets</text>
+  <text x="14" y="40" class="tl">한 달 예산</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v9</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">category</text>
+  <text x="150" y="73" class="l">카테고리</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 2개</text>
+  </g>
+  <g transform="translate(440,429)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">moneyCategories</text>
+  <text x="14" y="40" class="tl">가계부 카테고리</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v13</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">key</text>
+  <text x="150" y="73" class="l">카테고리 키</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">name</text>
+  <text x="150" y="94" class="l">이름</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 6개</text>
+  </g>
+  <g transform="translate(440,594)">
+  <rect width="300" height="152" rx="14" fill="#fff" stroke="#4F9DFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-money)"/>
+  <text x="14" y="22" class="tn">savings</text>
+  <text x="14" y="40" class="tl">적금</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v7</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">적금 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#DB2777">LK</text>
+  <text x="40" y="94" class="f">fromAccount</text>
+  <text x="150" y="94" class="l">나가는 계좌</text>
+  <text x="288" y="94" class="t" text-anchor="end">string?</text>
+  <text x="12" y="115" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="115" class="f">habitId</text>
+  <text x="150" y="115" class="l">습관 번호</text>
+  <text x="288" y="115" class="t" text-anchor="end">number?</text>
+  <text x="40" y="136" class="more">+ 그 밖의 칸 16개</text>
+  </g>
+  <g transform="translate(830,120)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#8B7CFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-todo)"/>
+  <text x="14" y="22" class="tn">todoCategories</text>
+  <text x="14" y="40" class="tl">할 일 카테고리</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v8</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">카테고리 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 4개</text>
+  </g>
+  <g transform="translate(830,264)">
+  <rect width="300" height="173" rx="14" fill="#fff" stroke="#8B7CFF" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-todo)"/>
+  <text x="14" y="22" class="tn">todos</text>
+  <text x="14" y="40" class="tl">할 일</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v1</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">할 일 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="94" class="f">bookmarkId</text>
+  <text x="150" y="94" class="l">스크랩 번호</text>
+  <text x="288" y="94" class="t" text-anchor="end">number?</text>
+  <text x="12" y="115" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="115" class="f">categoryId</text>
+  <text x="150" y="115" class="l">카테고리 번호</text>
+  <text x="288" y="115" class="t" text-anchor="end">number?</text>
+  <rect x="1" y="121" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="136" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="136" class="f">repeatNextId</text>
+  <text x="150" y="136" class="l">다음 반복 번호</text>
+  <text x="288" y="136" class="t" text-anchor="end">number?</text>
+  <text x="40" y="157" class="more">+ 그 밖의 칸 11개</text>
+  </g>
+  <g transform="translate(830,471)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#FF8A5B" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-habit)"/>
+  <text x="14" y="22" class="tn">habits</text>
+  <text x="14" y="40" class="tl">습관</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v6</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">습관 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="94" class="f">savingsId</text>
+  <text x="150" y="94" class="l">적금 번호</text>
+  <text x="288" y="94" class="t" text-anchor="end">number?</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 6개</text>
+  </g>
+  <g transform="translate(830,636)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#FF8A5B" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-habit)"/>
+  <text x="14" y="22" class="tn">habitChecks</text>
+  <text x="14" y="40" class="tl">습관 체크</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v6</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">habitId</text>
+  <text x="150" y="73" class="l">습관 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#B45309">PK</text>
+  <text x="40" y="94" class="f">date</text>
+  <text x="150" y="94" class="l">날짜</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 1개</text>
+  </g>
+  <g transform="translate(1220,120)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#FF7EB3" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-scrap)"/>
+  <text x="14" y="22" class="tn">scrapCategories</text>
+  <text x="14" y="40" class="tl">스크랩 카테고리</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v5</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">카테고리 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#0E7490">UK</text>
+  <text x="40" y="94" class="f">name</text>
+  <text x="150" y="94" class="l">이름</text>
+  <text x="288" y="94" class="t" text-anchor="end">string</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 2개</text>
+  </g>
+  <g transform="translate(1220,285)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#FF7EB3" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-scrap)"/>
+  <text x="14" y="22" class="tn">bookmarks</text>
+  <text x="14" y="40" class="tl">스크랩</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v1</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">스크랩 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="94" class="f">categoryId</text>
+  <text x="150" y="94" class="l">카테고리 번호</text>
+  <text x="288" y="94" class="t" text-anchor="end">number?</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 12개</text>
+  </g>
+  <g transform="translate(1220,450)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#FF7EB3" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-scrap)"/>
+  <text x="14" y="22" class="tn">scrapMedia</text>
+  <text x="14" y="40" class="tl">스크랩 사진 · 영상</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v5</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">사진 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="94" class="f">bookmarkId</text>
+  <text x="150" y="94" class="l">스크랩 번호</text>
+  <text x="288" y="94" class="t" text-anchor="end">number</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 5개</text>
+  </g>
+  <g transform="translate(1220,615)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#2BB673" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-memo)"/>
+  <text x="14" y="22" class="tn">memoFolders</text>
+  <text x="14" y="40" class="tl">메모 파일집</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v11</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">파일집 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 4개</text>
+  </g>
+  <g transform="translate(1220,759)">
+  <rect width="300" height="131" rx="14" fill="#fff" stroke="#2BB673" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-memo)"/>
+  <text x="14" y="22" class="tn">memos</text>
+  <text x="14" y="40" class="tl">메모</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v11</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">메모 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <rect x="1" y="79" width="298" height="21" fill="#F7F5FF"/>
+  <text x="12" y="94" class="k" fill="#7C3AED">FK</text>
+  <text x="40" y="94" class="f">folderId</text>
+  <text x="150" y="94" class="l">파일집 번호</text>
+  <text x="288" y="94" class="t" text-anchor="end">number?</text>
+  <text x="40" y="115" class="more">+ 그 밖의 칸 9개</text>
+  </g>
+  <g transform="translate(1610,120)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#F5A524" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-cal)"/>
+  <text x="14" y="22" class="tn">events</text>
+  <text x="14" y="40" class="tl">캘린더 일정</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v4</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">id</text>
+  <text x="150" y="73" class="l">일정 번호</text>
+  <text x="288" y="73" class="t" text-anchor="end">number</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 11개</text>
+  </g>
+  <g transform="translate(1610,264)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#F5A524" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-cal)"/>
+  <text x="14" y="22" class="tn">diaries</text>
+  <text x="14" y="40" class="tl">일기</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v4</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">date</text>
+  <text x="150" y="73" class="l">날짜</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 8개</text>
+  </g>
+  <g transform="translate(1610,408)">
+  <rect width="300" height="110" rx="14" fill="#fff" stroke="#F5A524" stroke-opacity=".6" stroke-width="1.5" filter="url(#sh)"/>
+  <path d="M0 14a14 14 0 0 1 14-14h272a14 14 0 0 1 14 14v36H0z" fill="url(#g-cal)"/>
+  <text x="14" y="22" class="tn">stickers</text>
+  <text x="14" y="40" class="tl">날짜 스티커</text>
+  <text x="288" y="40" class="tv" text-anchor="end">v10</text>
+  <text x="12" y="73" class="k" fill="#B45309">PK</text>
+  <text x="40" y="73" class="f">date</text>
+  <text x="150" y="73" class="l">날짜</text>
+  <text x="288" y="73" class="t" text-anchor="end">string</text>
+  <text x="40" y="94" class="more">+ 그 밖의 칸 2개</text>
+  </g>
+  
+  <g transform="translate(50,946)">
+    <rect width="1860" height="68" rx="14" fill="#FAFAFF" stroke="#E5E7EB"/>
+    <text x="18" y="27" class="lg"><tspan class="k" fill="#B45309">PK</tspan><tspan dx="6">기본 키</tspan></text><text x="120" y="27" class="lg"><tspan class="k" fill="#7C3AED">FK</tspan><tspan dx="6">다른 표의 번호</tspan></text><text x="262" y="27" class="lg"><tspan class="k" fill="#0E7490">UK</tspan><tspan dx="6">중복 불가</tspan></text><text x="378" y="27" class="lg"><tspan class="k" fill="#DB2777">LK</tspan><tspan dx="6">이름(값)으로 이어지는 칸</tspan></text><text x="578" y="27" class="lg"><tspan class="k" fill="#9CA3AF">IX</tspan><tspan dx="6">인덱스</tspan></text>
+    <text x="680" y="27" class="lg"><tspan font-weight="800">v12</tspan><tspan dx="6">처음 생긴 DB 버전</tspan></text><text x="850" y="27" class="lg"><tspan font-weight="800">?</tspan><tspan dx="6">없을 수 있음</tspan></text><text x="970" y="27" class="lg"><tspan font-weight="800">flag</tspan><tspan dx="6">0 또는 1 숫자 (불리언)</tspan></text>
+    <path d="M18 50H58" stroke="#7C3AED" stroke-width="1.8"/><path d="M51 44V56M47 44V56" stroke="#7C3AED" stroke-width="1.8"/><path d="M18 43L30 50L18 57M33 44V56" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+    <text x="68" y="54" class="lg">여러 : 하나</text>
+    <path d="M168 50H208" stroke="#7C3AED" stroke-width="1.8"/><path d="M201 44V56M197 44V56M177 44V56" stroke="#7C3AED" stroke-width="1.8"/>
+    <text x="218" y="54" class="lg">하나 : 하나</text>
+    <path d="M318 50H358" stroke="#DB2777" stroke-width="1.8" stroke-dasharray="6 5"/><circle cx="361" cy="50" r="3.5" fill="#DB2777"/>
+    <text x="374" y="54" class="lg">id 대신 이름 · 값으로 이어짐 (DB가 강제하지 않음)</text>
+    <text x="1842" y="54" class="lg" text-anchor="end">IndexedDB에는 외래 키 제약이 없어서 관계는 앱 코드가 지켜요</text>
+  </g>
+</svg>

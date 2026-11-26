@@ -33,77 +33,117 @@ describe('AI 없이 답할 질문 알아보기', () => {
     ['오늘 산책하고 기분 좋았다', null],
     ['청년도약계좌 가입 조건이 뭐야?', null],
   ]
-  for (const [text, kind, fields] of cases) {
-    it(`"${text}" → ${kind ?? 'AI'}`, () => {
-      const q = detectQuick(text, TODAY)
-      expect(q?.kind ?? null).toBe(kind)
-      if (q && fields) expect(q).toMatchObject(fields)
-    })
-  }
+  const answered = cases.filter(([, kind]) => kind !== null) as [string, QuickIntent['kind'], Partial<Record<string, string>>?][]
+  const forAi = cases.filter(([, kind]) => kind === null).map(([text]) => text)
+
+  it.each(answered.map(([text, kind, fields]) => [text, kind, fields ?? {}] as const))('"%s" 는 AI 없이 %s 질문으로 알아본다', (text, kind, fields) => {
+    const intent = detectQuick(text, TODAY)
+
+    expect(intent?.kind).toBe(kind)
+    expect(intent).toMatchObject(fields)
+  })
+
+  it.each(forAi)('"%s" 는 AI 에게 넘긴다', (text) => {
+    expect(detectQuick(text, TODAY)).toBeNull()
+  })
 })
 
 const now = '2026-11-01T00:00:00Z'
-const ev = (title: string, startDate: string, endDate = startDate, memo = ''): CalendarEvent => ({ title, startDate, endDate, memo, color: 'sky', createdAt: now, updatedAt: now })
+const event = (title: string, startDate: string, endDate = startDate, memo = ''): CalendarEvent => ({ title, startDate, endDate, memo, color: 'sky', createdAt: now, updatedAt: now })
 const todo = (title: string, dueDate: string | null, done = false): Todo => ({ title, dueDate, isCompleted: done ? 1 : 0, completedAt: null, priority: 'MEDIUM', createdAt: now, updatedAt: now }) as Todo
-const tx = (amount: number, category: string, date: string, type: 'EXPENSE' | 'INCOME' = 'EXPENSE'): Transaction => ({ type, amount, category, date, memo: '', createdAt: now, updatedAt: now }) as Transaction
+const row = (amount: number, category: string, date: string, type: 'EXPENSE' | 'INCOME' = 'EXPENSE'): Transaction => ({ type, amount, category, date, memo: '', createdAt: now, updatedAt: now }) as Transaction
+const ask = (text: string) => detectQuick(text, TODAY)!
+const TOTAL_BUDGET = ''
 
 describe('기록으로 답 만들기', () => {
-  it('오늘 일정: 일정은 시간 순, 할 일, 결제일, 마감 지난 할 일', () => {
-    const q = detectQuick('오늘 뭐해야해?', TODAY)!
-    const text = answerQuick(
-      q,
-      {
-        events: [ev('팀 회의', TODAY), ev('치과', TODAY, TODAY, '오후 3:00 · 강남'), ev('아침 요가', TODAY, TODAY, '오전 7:30')],
-        todos: [todo('보고서 내기', TODAY), todo('끝낸 일', TODAY, true), todo('택배 반품', '2026-11-10')],
-        recurring: [{ type: 'EXPENSE', amount: 17000, category: '문화/여가', memo: '넷플릭스', day: 13, startDate: '2026-01-01', lastDate: null, isActive: 1 } as Recurring],
-        holidays: holidaysBetween(TODAY, TODAY),
-      },
-      TODAY,
-    )
+  const todayRecords = {
+    events: [event('팀 회의', TODAY), event('치과', TODAY, TODAY, '오후 3:00 · 강남'), event('아침 요가', TODAY, TODAY, '오전 7:30')],
+    todos: [todo('보고서 내기', TODAY), todo('끝낸 일', TODAY, true), todo('택배 반품', '2026-11-10')],
+    recurring: [{ type: 'EXPENSE', amount: 17000, category: '문화/여가', memo: '넷플릭스', day: 13, startDate: '2026-01-01', lastDate: null, isActive: 1 } as Recurring],
+    holidays: holidaysBetween(TODAY, TODAY),
+  }
+
+  it('오늘 일정은 날짜 제목 아래 시간 순으로 놓고 시각을 앞에 쓴다', () => {
+    const text = answerQuick(ask('오늘 뭐해야해?'), todayRecords, TODAY)
+
     expect(text).toContain('오늘 11월 13일 (금) 일정이에요')
     expect(text.indexOf('아침 요가')).toBeLessThan(text.indexOf('치과'))
     expect(text).toContain('오후 3:00 치과')
+  })
+
+  it('오늘 답에는 남은 할 일 · 결제일 · 마감 지난 할 일을 넣고 끝낸 일은 뺀다', () => {
+    const text = answerQuick(ask('오늘 뭐해야해?'), todayRecords, TODAY)
+
     expect(text).toContain('✅ 보고서 내기')
     expect(text).not.toContain('끝낸 일')
     expect(text).toContain('넷플릭스 나가는 날 (17,000원)')
     expect(text).toContain('마감이 지난 할 일 1개: 택배 반품')
   })
 
-  it('공휴일과 빈 날', () => {
-    const q = detectQuick('12월 25일 무슨 날이야?', TODAY)!
-    expect(answerQuick(q, { events: [], todos: [], holidays: holidaysBetween('2026-12-25', '2026-12-25') }, TODAY)).toContain('🎌 성탄절')
-    const empty = detectQuick('내일 일정 있어?', TODAY)!
-    expect(answerQuick(empty, { events: [], todos: [], holidays: new Map() }, TODAY)).toContain('여유로운 하루')
+  it('공휴일은 🎌 를 붙여 알려 준다', () => {
+    const text = answerQuick(ask('12월 25일 무슨 날이야?'), { events: [], todos: [], holidays: holidaysBetween('2026-12-25', '2026-12-25') }, TODAY)
+
+    expect(text).toContain('🎌 성탄절')
   })
 
-  it('지출 합계와 카테고리', () => {
-    const list = [tx(9000, '식비', '2026-11-02'), tx(30000, '쇼핑', '2026-11-05'), tx(6000, '식비', TODAY), tx(2500000, '월급', '2026-11-10', 'INCOME'), tx(5000, '식비', '2026-10-31')]
-    const month = answerQuick(detectQuick('이번 달 얼마 썼어?', TODAY)!, { transactions: list }, TODAY, '이번 달 얼마 썼어?')
-    expect(month).toContain('이번 달(11월) 지출은 모두 45,000원이에요 (3건)')
-    expect(month).toContain('쇼핑 30,000원')
-    expect(month).toContain('수입은 2,500,000원')
-    const food = answerQuick(detectQuick('이번 달 식비 얼마 썼어?', TODAY)!, { transactions: list }, TODAY, '이번 달 식비 얼마 썼어?')
-    expect(food).toContain('식비는 15,000원이에요 (2건')
+  it('아무 일정도 없는 날은 여유로운 하루라고 한다', () => {
+    const text = answerQuick(ask('내일 일정 있어?'), { events: [], todos: [], holidays: new Map() }, TODAY)
+
+    expect(text).toContain('여유로운 하루')
   })
 
-  it('예산', () => {
-    const none = answerQuick({ kind: 'budget' }, { budgets: [], transactions: [] }, TODAY)
-    expect(none).toContain('예산을 정하지 않았어요')
-    const text = answerQuick({ kind: 'budget' }, { budgets: [{ category: '', amount: 500000, updatedAt: now }], transactions: [tx(200000, '식비', '2026-11-03')] }, TODAY)
+  const novemberRows = [row(9000, '식비', '2026-11-02'), row(30000, '쇼핑', '2026-11-05'), row(6000, '식비', TODAY), row(2500000, '월급', '2026-11-10', 'INCOME'), row(5000, '식비', '2026-10-31')]
+
+  it('이번 달 지출은 합계 · 건수 · 카테고리 · 수입을 알려 준다 (지난달은 빼고)', () => {
+    const question = '이번 달 얼마 썼어?'
+
+    const text = answerQuick(ask(question), { transactions: novemberRows }, TODAY, question)
+
+    expect(text).toContain('이번 달(11월) 지출은 모두 45,000원이에요 (3건)')
+    expect(text).toContain('쇼핑 30,000원')
+    expect(text).toContain('수입은 2,500,000원')
+  })
+
+  it('카테고리를 물으면 그 카테고리 합계만 알려 준다', () => {
+    const question = '이번 달 식비 얼마 썼어?'
+
+    const text = answerQuick(ask(question), { transactions: novemberRows }, TODAY, question)
+
+    expect(text).toContain('식비는 15,000원이에요 (2건')
+  })
+
+  it('예산이 없으면 정하지 않았다고 한다', () => {
+    expect(answerQuick({ kind: 'budget' }, { budgets: [], transactions: [] }, TODAY)).toContain('예산을 정하지 않았어요')
+  })
+
+  it('예산은 쓴 돈 · 남은 돈과 남은 날 하루에 쓸 돈을 알려 준다', () => {
+    const records = { budgets: [{ category: TOTAL_BUDGET, amount: 500000, updatedAt: now }], transactions: [row(200000, '식비', '2026-11-03')] }
+
+    const text = answerQuick({ kind: 'budget' }, records, TODAY)
+
     expect(text).toContain('500,000원 중 200,000원을 썼어요 (40%). 300,000원 남았어요')
-    expect(text).toContain('남은 18일 동안 하루 16,666원씩')
+    expect(text).toContain('남은 18일 동안 하루 16,666원씩') // 300,000 ÷ 18일 (13일 ~ 30일), 내림
   })
 
-  it('적금과 월급날', () => {
+  it('적금은 지금까지 모은 돈과 낸 회차를 알려 준다', () => {
     const plan = { name: '청년적금', amount: 100000, startDate: '2026-09-13', endDate: '2027-09-13', rate: 4, interestType: 'simple', taxType: 'normal', schedule: { freq: 'monthly', day: 13 } } as SavingsPlan
+
     expect(answerQuick({ kind: 'savings' }, { savings: [plan] }, TODAY)).toContain('청년적금: 300,000원 모았어요 (3/12회)')
-    const pay = { type: 'INCOME', amount: 2500000, category: '월급', memo: '월급', day: 25, startDate: '2026-01-01', lastDate: null, isActive: 1 } as Recurring
-    expect(answerQuick({ kind: 'recurring', income: true }, { recurring: [pay] }, TODAY)).toContain('월급 2,500,000원: 11월 25일 (수), D-12')
   })
 
-  it('일기', () => {
-    const q = detectQuick('어제 일기 뭐 썼어?', TODAY)!
-    expect(answerQuick(q, { diary: { date: '2026-11-12', text: '산책했다', createdAt: now, updatedAt: now } as never }, TODAY)).toContain('"산책했다"')
-    expect(answerQuick(q, { diary: null }, TODAY)).toContain('쓴 일기가 없어요')
+  it('월급날은 다음 날짜와 남은 날(D-) 을 알려 준다', () => {
+    const payday = { type: 'INCOME', amount: 2500000, category: '월급', memo: '월급', day: 25, startDate: '2026-01-01', lastDate: null, isActive: 1 } as Recurring
+
+    expect(answerQuick({ kind: 'recurring', income: true }, { recurring: [payday] }, TODAY)).toContain('월급 2,500,000원: 11월 25일 (수), D-12')
+  })
+
+  it('그날 일기가 있으면 글을 따옴표로 보여 준다', () => {
+    const diary = { date: '2026-11-12', text: '산책했다', createdAt: now, updatedAt: now } as never
+
+    expect(answerQuick(ask('어제 일기 뭐 썼어?'), { diary }, TODAY)).toContain('"산책했다"')
+  })
+
+  it('그날 일기가 없으면 쓴 일기가 없다고 한다', () => {
+    expect(answerQuick(ask('어제 일기 뭐 썼어?'), { diary: null }, TODAY)).toContain('쓴 일기가 없어요')
   })
 })

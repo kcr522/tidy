@@ -3,6 +3,7 @@ import { BookHeart, Bookmark as BookmarkIcon, CalendarDays, Check, ListChecks, N
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
+import Marked from '../components/common/Marked'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
 import PageHeader from '../components/common/PageHeader'
@@ -13,7 +14,7 @@ import TransactionForm from '../components/transactions/TransactionForm'
 import { db } from '../db/database'
 import type { Bookmark, Todo, Transaction } from '../db/types'
 import { formatDateLabel, formatWon } from '../lib/format'
-import { KIND_LABEL, KIND_ORDER, highlightParts, searchAll, splitQuery, type SearchHit, type SearchKind } from '../lib/search'
+import { KIND_LABEL, KIND_ORDER, searchAll, splitQuery, type SearchHit, type SearchKind } from '../lib/search'
 import { clockLabel } from '../lib/memo'
 import { toDateKey } from '../lib/date'
 import { openUrl } from '../platform/openUrl'
@@ -63,7 +64,7 @@ export default function SearchPage() {
 
   // 기기 안의 기록을 한 번에 읽는다 (바뀌면 다시 읽는다)
   const data = useLiveQuery(async () => {
-    const [transactions, todos, diaries, bookmarks, events, memos, memoFolders] = await Promise.all([
+    const [transactions, todos, diaries, bookmarks, events, memos, memoFolders, scrapCategories] = await Promise.all([
       db.transactions.toArray(),
       db.todos.toArray(),
       db.diaries.toArray(),
@@ -71,8 +72,9 @@ export default function SearchPage() {
       db.events.toArray(),
       db.memos.toArray(),
       db.memoFolders.toArray(),
+      db.scrapCategories.toArray(),
     ])
-    return { transactions, todos, diaries, bookmarks, events, memos, memoFolders }
+    return { transactions, todos, diaries, bookmarks, events, memos, memoFolders, scrapCategories }
   }, [])
 
   const hits = useMemo(() => (data ? searchAll(data, debounced) : []), [data, debounced])
@@ -336,23 +338,6 @@ function hostOf(url: string): string {
   } catch {
     return ''
   }
-}
-
-/** 찾은 글자에 형광펜 */
-function Marked({ text, terms }: { text: string; terms: string[] }) {
-  return (
-    <>
-      {highlightParts(text, terms).map((p, i) =>
-        p.hit ? (
-          <mark key={i} className="rounded bg-brand-100 px-0.5 text-brand-700">
-            {p.text}
-          </mark>
-        ) : (
-          <span key={i}>{p.text}</span>
-        ),
-      )}
-    </>
-  )
 }
 
 /** 검색어를 쓰기 전 안내 */

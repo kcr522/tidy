@@ -11,9 +11,11 @@ import { initColorMode, isDark, onDarkChange } from './lib/colorMode'
 import { loadPhotos } from './lib/customPhotos'
 import { applyCustomization, loadCustomization, onCustomizationChange, photoRefs, withFixedColors, withSplashColors } from './lib/customize'
 import { applyTheme } from './lib/palette'
+import { initFont } from './lib/appFont'
 import { randomTheme } from './lib/sessionTheme'
 import { initAccount } from './lib/sync/account'
 import { installSyncHooks } from './lib/sync/engine'
+import { moneyCategoryRepo } from './repositories/moneyCategoryRepo'
 import { setupServiceWorker } from './platform/serviceWorker'
 
 // 화면 밝기(라이트/다크/자동)를 먼저 정하고,
@@ -32,6 +34,10 @@ paint()
 void loadPhotos(photoRefs(loadCustomization())).then(paint).catch(() => {})
 onDarkChange(paint)
 onCustomizationChange(paint)
+// 설정 > 글꼴에서 고른 글씨체 (기본 말고는 인터넷에서 받아 둔 것)
+initFont()
+// 가계부 카테고리 (내가 만든 것 · 바꾼 것) 를 읽어 두고, 바뀌면 앱 전체가 따라간다
+moneyCategoryRepo.watch()
 
 // 오프라인용 저장본: 웹은 쓰고, 폰 앱은 예전 것을 지운다 (업데이트해도 예전 화면이 뜨던 문제)
 setupServiceWorker()
