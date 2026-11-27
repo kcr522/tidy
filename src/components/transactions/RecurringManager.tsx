@@ -1,12 +1,18 @@
+import { addDays } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Pause, Play, Repeat, Trash2 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { Bell, Check, Pause, Play, Repeat, Sparkles, Trash2, X } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
 import type { Recurring, TransactionType } from '../../db/types'
 import { categoriesFor, resolveCategory } from '../../lib/categories'
 import { useCategories } from '../common/MoneyIcon'
+import { parseDateKey, toDateKey } from '../../lib/date'
 import { formatDateLabel, formatNumber, formatWon } from '../../lib/format'
 import { matchMerchant } from '../../lib/merchants'
 import { dayLabel, ddayFor, ddayLabel } from '../../lib/recurring'
+import { fixedSummary, hasRemind, REMIND_CHOICES } from '../../lib/recurringAlarms'
+import { guessRecurring, hideGuess, loadHiddenGuesses, type RecurringGuess } from '../../lib/recurringGuess'
+import { requestAlarmPermission } from '../../platform/alarms'
+import { transactionRepo } from '../../repositories/transactionRepo'
 import { parseAmount } from '../../lib/validate'
 import { recurringRepo, type RecurringInput } from '../../repositories/recurringRepo'
 import Button from '../common/Button'
@@ -16,7 +22,7 @@ import { inputClass } from '../common/formStyles'
 import { useToast } from '../common/Toast'
 import MerchantAvatar from './MerchantAvatar'
 
-export type RecurringPreset = Partial<Pick<RecurringInput, 'type' | 'category' | 'memo'>>
+export type RecurringPreset = Partial<Pick<RecurringInput, 'type' | 'category' | 'memo' | 'amount' | 'account' | 'day' | 'startDate'>>
 
 interface Props {
   today: string
@@ -28,15 +34,32 @@ interface Props {
 export default function RecurringManager({ today, preset }: Props) {
   const rules = useLiveQuery(() => recurringRepo.list(), [])
   const [editing, setEditing] = useState<Recurring | 'new' | null>(preset ? 'new' : null)
+  // 가계부에서 찾은 "매달 나가는 것 같은" 지출을 눌렀을 때 미리 채울 값
+  const [guessPreset, setGuessPreset] = useState<RecurringPreset | undefined>()
+  const [hidden, setHidden] = useState(loadHiddenGuesses)
+  const items = useLiveQuery(() => transactionRepo.listAll(), [])
+  const guesses = useMemo(() => (items && rules ? guessRecurring(items, rules, today, hidden) : []), [items, rules, today, hidden])
+  const summary = rules ? fixedSummary(rules, today) : null
   const toast = useToast()
+
+  function pickGuess(g: RecurringGuess) {
+    setGuessPreset({ type: 'EXPENSE', memo: g.memo, amount: g.amount, category: g.category, account: g.account, day: g.day, startDate: toDateKey(addDays(parseDateKey(g.lastDate), 1)) })
+    setEditing('new')
+  }
+
+  function dismissGuess(g: RecurringGuess) {
+    hideGuess(g.key)
+    setHidden((h) => [...h, g.key])
+  }
 
   async function save(input: RecurringInput) {
     try {
       if (editing && editing !== 'new' && editing.id != null) await recurringRepo.update(editing.id, input)
       else await recurringRepo.add(input)
       const added = await recurringRepo.runDue(today)
-      toast(added > 0 ? `저장하고 ${added}건을 바로 기록했어요` : '저장했어요')
+      toast(added > 0 ? `저장하고 ${added}건을 바로 기록했어요` : input.remindDays != null ? '저장했어요. 결제일 전에 알려 드릴게요' : '저장했어요')
       setEditing(null)
+      setGuessPreset(undefined)
     } catch {
       toast('저장하지 못했어요. 다시 시도해 주세요', 'error')
     }
@@ -54,10 +77,13 @@ export default function RecurringManager({ today, preset }: Props) {
       <RecurringForm
         key={editing === 'new' ? 'new' : editing.id}
         initial={editing === 'new' ? undefined : editing}
-        preset={editing === 'new' ? preset : undefined}
+        preset={editing === 'new' ? (guessPreset ?? preset) : undefined}
         today={today}
         onSubmit={save}
-        onCancel={() => setEditing(null)}
+        onCancel={() => {
+          setEditing(null)
+          setGuessPreset(undefined)
+        }}
         onDelete={editing !== 'new' ? () => remove(editing) : undefined}
       />
     )
@@ -65,7 +91,45 @@ export default function RecurringManager({ today, preset }: Props) {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-slate-500">월급, 통신비, 구독료처럼 매달 같은 날 생기는 내역은 여기 한 번만 적어 두면 그날 가계부에 자동으로 기록돼요.</p>
+      <p className="mb-4 text-sm text-slate-500">월급, 통신비, 구독료처럼 매달 같은 날 생기는 내역은 여기 한 번만 적어 두면 그날 가계부에 자동으로 기록돼요. 결제일 전에 알림도 받을 수 있어요.</p>
+      {summary && summary.monthly > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-brand-50 p-3 text-center">
+          <SummaryCell label="매달 고정 지출" value={formatWon(summary.monthly)} />
+          <SummaryCell label="1년이면" value={formatWon(summary.yearly)} />
+          <SummaryCell label="이번 달 남은 결제" value={summary.leftCount > 0 ? `${summary.leftCount}건 ${formatWon(summary.leftAmount)}` : '다 나갔어요'} />
+          {summary.askCount > 0 && <p className="col-span-3 text-[11px] text-slate-400">금액이 매달 다른 {summary.askCount}건은 합에서 뺐어요</p>}
+        </div>
+      )}
+      {guesses.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-dashed border-brand-200 p-3">
+          <p className="mb-2 flex items-center gap-1 text-sm font-bold text-brand-700">
+            <Sparkles className="size-4" aria-hidden />
+            가계부를 보니 매달 나가는 것 같아요
+          </p>
+          <ul className="space-y-1.5">
+            {guesses.map((g) => {
+              const m = matchMerchant(g.memo)
+              return (
+                <li key={g.key} className="flex items-center gap-2">
+                  <MerchantAvatar brand={m?.brand ?? null} category={g.category} size={32} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-800">{g.memo}</span>
+                    <span className="block truncate text-xs text-slate-400">
+                      {dayLabel(g.day)} · {formatWon(g.amount)} · {g.months}달째
+                    </span>
+                  </span>
+                  <button type="button" onClick={() => pickGuess(g)} className="tap shrink-0 rounded-full bg-grad px-3 py-1.5 text-xs font-bold text-white">
+                    정기로 등록
+                  </button>
+                  <button type="button" onClick={() => dismissGuess(g)} className="tap shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-slate-100" aria-label={`${g.memo} 정기 아님`} title="아니에요">
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
       {rules === undefined ? null : rules.length === 0 ? (
         <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center">
           <Repeat className="mx-auto size-8 text-slate-300" aria-hidden />
@@ -84,6 +148,7 @@ export default function RecurringManager({ today, preset }: Props) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-semibold text-slate-800">{m ? m.display : r.memo}</span>
                     <span className="block truncate text-xs text-slate-400">
+                      {hasRemind(r) && !paused && <Bell className="mr-0.5 inline size-3 -translate-y-px text-brand-500" aria-label="미리 알림" />}
                       {dayLabel(r.day)} · {paused ? '멈춤' : d.daysLeft === 0 ? (r.askAmount === 1 ? '오늘 금액을 물어봐요' : '오늘 기록돼요') : `다음 ${formatDateLabel(d.date)} (${ddayLabel(d.daysLeft)})`}
                     </span>
                   </span>
@@ -132,11 +197,13 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
   const [type, setType] = useState<TransactionType>(initial?.type ?? preset?.type ?? 'EXPENSE')
   const [memo, setMemo] = useState(initial?.memo ?? preset?.memo ?? '')
   const [askAmount, setAskAmount] = useState(initial?.askAmount === 1)
-  const [amountText, setAmountText] = useState(initial && initial.askAmount !== 1 ? formatNumber(initial.amount) : '')
+  const [amountText, setAmountText] = useState(initial ? (initial.askAmount !== 1 ? formatNumber(initial.amount) : '') : preset?.amount ? formatNumber(preset.amount) : '')
   const [category, setCategory] = useState(initial?.category ?? preset?.category ?? '')
-  const [account, setAccount] = useState(initial?.account ?? '')
-  const [day, setDay] = useState(initial?.day ?? Number(today.slice(8)))
-  const [startDate, setStartDate] = useState(initial?.startDate ?? today)
+  const [account, setAccount] = useState(initial?.account ?? preset?.account ?? '')
+  const [day, setDay] = useState(initial?.day ?? preset?.day ?? Number(today.slice(8)))
+  const [remindDays, setRemindDays] = useState<number | null>(initial ? (initial.remindDays ?? null) : null)
+  const [permNote, setPermNote] = useState<string>()
+  const [startDate, setStartDate] = useState(initial?.startDate ?? preset?.startDate ?? today)
   const [errors, setErrors] = useState<Partial<Record<'memo' | 'amount' | 'category', string>>>({})
   const categories = useCategories(type).map((c) => c.name)
 
@@ -151,6 +218,20 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
     if (m && type === 'EXPENSE' && !category) setCategory(resolveCategory('EXPENSE', m.brand.category))
   }
 
+  /** 미리 알림을 켜면 알림 허용을 묻는다 */
+  async function pickRemind(days: number | null) {
+    setRemindDays(days)
+    if (days == null) return setPermNote(undefined)
+    const p = await requestAlarmPermission().catch(() => 'unsupported' as const)
+    setPermNote(
+      p === 'granted'
+        ? undefined
+        : p === 'unsupported'
+          ? '이 브라우저는 알림을 못 띄워서, 앱이 열려 있을 때 화면 안에서만 알려 줘요'
+          : '알림이 꺼져 있어요. 휴대폰 설정에서 Tidy 알림을 켜야 울려요',
+    )
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     const amount = askAmount ? ({ ok: true, value: 0 } as const) : parseAmount(amountText)
@@ -160,7 +241,7 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
     if (!category) next.category = '카테고리를 골라 주세요'
     setErrors(next)
     if (!amount.ok || Object.keys(next).length > 0) return
-    await onSubmit({ type, memo: memo.trim().slice(0, 50), amount: amount.value, askAmount: askAmount ? 1 : 0, category, account: account.trim() || undefined, day, startDate })
+    await onSubmit({ type, memo: memo.trim().slice(0, 50), amount: amount.value, askAmount: askAmount ? 1 : 0, category, account: account.trim() || undefined, day, startDate, remindDays })
   }
 
   return (
@@ -254,6 +335,33 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
         </Field>
       </div>
 
+      <div>
+        <span id="recurring-remind-label" className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600">
+          <Bell className="size-3.5" aria-hidden />
+          미리 알림
+        </span>
+        <div className="grid grid-cols-4 gap-1 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-labelledby="recurring-remind-label">
+          {REMIND_CHOICES.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              role="radio"
+              aria-checked={remindDays === c.days}
+              onClick={() => void pickRemind(c.days)}
+              className={`min-h-10 rounded-xl text-[13px] font-semibold ${remindDays === c.days ? 'bg-white text-brand-700 shadow-card' : 'text-slate-500'}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        {remindDays != null && !permNote && (
+          <p className="mt-1 text-xs text-slate-400">
+            {type === 'INCOME' ? '들어오는 날' : '결제일'} {remindDays === 0 ? '당일' : remindDays === 1 ? '하루 전' : `${remindDays}일 전`} 아침 9시에 알려 드려요
+          </p>
+        )}
+        {permNote && <p className="mt-1 text-xs text-expense">{permNote}</p>}
+      </div>
+
       <PayMethodPicker value={account} onChange={setAccount} label={type === 'EXPENSE' ? '나가는 카드 · 계좌 (선택)' : '들어오는 계좌 (선택)'} />
       <Field label="시작일">
         <input type="date" value={startDate} onChange={(e) => e.target.value && setStartDate(e.target.value)} className={inputClass(false)} />
@@ -276,5 +384,14 @@ function RecurringForm({ initial, preset, today, onSubmit, onCancel, onDelete }:
         </Button>
       </div>
     </form>
+  )
+}
+
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className="mt-0.5 text-[13px] font-extrabold break-keep text-slate-900">{value}</p>
+    </div>
   )
 }
