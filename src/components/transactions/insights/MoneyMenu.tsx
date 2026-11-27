@@ -100,8 +100,8 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
           />
           <MenuItem
             icon={<CalendarCheck className="size-5" aria-hidden />}
-            title="월간 리포트"
-            desc="한 달 동안 쓴 돈, 끝낸 할 일, 습관, 일기를 한 장으로"
+            title="월간 · 연간 리포트"
+            desc="한 달 · 1년 동안 쓴 돈, 끝낸 할 일, 습관, 일기를 한 장으로"
             onClick={() => {
               onClose()
               navigate('/report')
