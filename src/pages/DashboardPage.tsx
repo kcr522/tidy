@@ -16,6 +16,7 @@ import PaydayCard from '../components/dashboard/PaydayCard'
 import UnreadScrapCard from '../components/dashboard/UnreadScrapCard'
 import RouteWidget from '../components/dashboard/RouteWidget'
 import { DateWidget, DdayWidget, HabitWeekWidget, ProgressWidget, TimelineWidget, TodoListWidget, TrackerWidget } from '../components/dashboard/MiniWidgets'
+import { MoodWidget, TimerWidget, WeatherWidget } from '../components/dashboard/ExtraWidgets'
 import WidgetGrid from '../components/dashboard/WidgetGrid'
 import HabitForm from '../components/habits/HabitForm'
 import TodoForm from '../components/todos/TodoForm'
@@ -168,6 +169,12 @@ export default function DashboardPage() {
         return card(<PaydayCard incomes={incomes ?? []} today={today} onAdd={() => setSheet({ kind: 'payday', fresh: (incomes ?? []).length === 0 })} />)
       case 'route':
         return <RouteWidget today={today} box={box} />
+      case 'timer':
+        return <TimerWidget box={box} />
+      case 'mood':
+        return <MoodWidget today={today} diary={diary} box={box} />
+      case 'weather':
+        return <WeatherWidget box={box} />
       case 'scrap':
         return card(
           <UnreadScrapCard unread={unread ?? []} linked={linked ?? new Map()} onAdd={() => setSheet({ kind: 'scrap' })} onOpen={open} onConvert={setConverting} onViewTodo={viewTodos} resurface={resurface} today={today} onLater={later} onDone={done} />,

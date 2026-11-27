@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BellRing, CalendarDays, Camera, ChevronRight, List, Menu, PiggyBank, Plus, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -24,7 +24,8 @@ import type { Transaction } from '../db/types'
 import { usePayNotify } from '../hooks/usePayNotify'
 import { useToday } from '../hooks/useToday'
 import { isSaving } from '../lib/categories'
-import { CategoryIcon, MethodIcon } from '../components/common/MoneyIcon'
+import { CategoryIcon, MethodIcon, useCategories } from '../components/common/MoneyIcon'
+import AddCategorySheet from '../components/categories/AddCategorySheet'
 import { payMethodRepo } from '../repositories/payMethodRepo'
 import { dayTitle } from '../lib/calendar'
 import { formatWon } from '../lib/format'
@@ -73,6 +74,7 @@ export default function TransactionsPage() {
   const [photoMenu, setPhotoMenu] = useState(false)
   const [showBank, setShowBank] = useState(false)
   const [showSavings, setShowSavings] = useState(false)
+  const [showAddCategory, setShowAddCategory] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [view, setViewState] = useState<View>(() => (jump ? 'calendar' : loadView()))
   const [selected, setSelected] = useState(jump ?? today)
@@ -141,6 +143,10 @@ export default function TransactionsPage() {
   // 저축은 가계부 첫 화면(목록 · 달력 · 필터)에 보이지 않고, 🐷 저금통을 눌러야 보인다 (사용자 요청 2026-11-23)
   const items = useMemo(() => monthItems?.filter((t) => !isSaving(t)), [monthItems])
   const used = useMemo(() => categoriesUsed(items ?? []), [items])
+  // 내가 만든 카테고리는 이번 달 내역이 없어도 카테고리별에 보인다
+  const expenseCats = useCategories('EXPENSE')
+  const incomeCats = useCategories('INCOME')
+  const mine = useMemo(() => [...expenseCats, ...incomeCats].filter((c) => !c.builtIn).map((c) => c.name), [expenseCats, incomeCats])
   const accounts = useMemo(() => accountTotals(items ?? []), [items])
   const methods = useLiveQuery(() => payMethodRepo.list(), [])
   const filtered = useMemo(
@@ -160,7 +166,7 @@ export default function TransactionsPage() {
     const saved = filterBy === 'account' ? filterByAccount(monthItems ?? [], account).filter(isSaving) : category === null ? (monthItems ?? []).filter(isSaving) : []
     return monthSummary([...(filtered ?? []), ...saved])
   }, [filtered, monthItems, filterBy, category, account])
-  const chips = category !== null && !used.includes(category) ? [...used, category] : used
+  const chips = [...new Set([...used, ...mine, ...(category !== null ? [category] : [])])]
 
   const moveMonth = (delta: number) => {
     const d = new Date(ym.year, ym.month - 1 + delta, 1)
@@ -233,7 +239,7 @@ export default function TransactionsPage() {
     <>
       <BudgetStrip year={ym.year} month={ym.month} today={today} onOpen={() => setShowMenu('budget')} />
 
-      {items !== undefined && items.length > 0 && (
+      {items !== undefined && (items.length > 0 || mine.length > 0) && (
         <div className="mb-4 space-y-2.5">
           <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1 md:max-w-xs" role="radiogroup" aria-label="모아 보기 기준">
             {(
@@ -261,15 +267,27 @@ export default function TransactionsPage() {
           >
             {filterBy === 'category'
               ? [null, ...chips].map((c) => (
-                  <Chip key={c ?? 'all'} active={category === c} onClick={() => setCategory(c)}>
-                    {c === null ? (
-                      '전체'
-                    ) : (
-                      <>
-                        <CategoryIcon category={c} /> {c}
-                      </>
+                  <Fragment key={c ?? 'all'}>
+                    <Chip active={category === c} onClick={() => setCategory(c)}>
+                      {c === null ? (
+                        '전체'
+                      ) : (
+                        <>
+                          <CategoryIcon category={c} /> {c}
+                        </>
+                      )}
+                    </Chip>
+                    {/* 폰에서도 스크롤 없이 보이게 '전체' 바로 옆에 둔다 */}
+                    {c === null && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCategory(true)}
+                        className="flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-dashed border-brand-300 px-4 text-sm font-bold whitespace-nowrap text-brand-600 hover:bg-white"
+                      >
+                        <Plus className="size-4" aria-hidden /> 카테고리 추가
+                      </button>
                     )}
-                  </Chip>
+                  </Fragment>
                 ))
               : [null, ...accounts].map((a) => (
                   <Chip key={a?.account ?? 'all'} active={account === (a?.account ?? null)} onClick={() => setAccount(a?.account ?? null)}>
@@ -284,6 +302,15 @@ export default function TransactionsPage() {
                     )}
                   </Chip>
                 ))}
+            {filterBy === 'category' && (
+              <button
+                type="button"
+                onClick={() => setShowMenu('categories')}
+                className="min-h-11 shrink-0 rounded-full border border-dashed border-slate-300 px-4 text-sm font-semibold whitespace-nowrap text-slate-500 hover:bg-white"
+              >
+                ⚙️ 카테고리 관리
+              </button>
+            )}
             {filterBy === 'account' && (
               <button
                 type="button"
@@ -557,6 +584,18 @@ export default function TransactionsPage() {
         {showMeal && <MealCapture onSave={saveMeal} />}
       </Modal>
 
+      <AddCategorySheet
+        open={showAddCategory}
+        onClose={() => setShowAddCategory(false)}
+        onAdded={(name) => {
+          setShowAddCategory(false)
+          setCategory(name)
+        }}
+        onManage={() => {
+          setShowAddCategory(false)
+          setShowMenu('categories')
+        }}
+      />
       {showMenu && <MoneyMenu onClose={() => setShowMenu(null)} today={today} initialView={showMenu} />}
 
       <Modal open={showSavings} title="저축 · 적금" onClose={() => setShowSavings(false)}>
@@ -585,8 +624,14 @@ export default function TransactionsPage() {
 }
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  // 고른 칩이 가로 스크롤 밖에 있으면 보이게 옮긴다 (새로 만든 카테고리가 맨 뒤에 붙을 때)
+  const ref = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }, [active])
   return (
     <button
+      ref={ref}
       type="button"
       aria-pressed={active}
       onClick={onClick}
