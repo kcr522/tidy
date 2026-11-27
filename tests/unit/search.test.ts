@@ -36,6 +36,13 @@ describe('전체 검색', () => {
   }
   const ALL_STARBUCKS = ['money-1', 'todo-1', 'diary-2026-11-08', 'scrap-2', 'event-1']
 
+  it('가계부 따로 적은 메모로도 찾는다', () => {
+    const hits = searchAll({ transactions: [okTx(4, '다이소', { note: '친구 생일 선물' })] }, '생일')
+    expect(hits).toHaveLength(1)
+    expect(hits[0].title).toBe('다이소')
+    expect(hits[0].field).toBe('메모')
+  })
+
   it('공백만 있는 검색어로는 아무것도 찾지 않는다', () => {
     expect(searchAll(data, '   ')).toEqual([])
   })

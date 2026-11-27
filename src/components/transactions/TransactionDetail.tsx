@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, HelpCircle, Pencil, Receipt, Repeat, StickyNote, Tag, Trash2, Wallet } from 'lucide-react'
+import { CalendarDays, Clock, HelpCircle, Pencil, Receipt, Repeat, StickyNote, Store, Tag, Trash2, Wallet } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import type { Transaction } from '../../db/types'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -31,6 +31,7 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
       <div className="flex flex-col items-center pt-1 pb-5 text-center">
         <MerchantAvatar brand={m?.brand ?? null} category={item.category} size={60} />
         <p className="mt-3 text-[15px] font-semibold text-slate-600">{m ? m.display : item.memo || item.category}</p>
+        {item.note && <p className="mt-0.5 text-[13px] text-slate-500">{item.note}</p>}
         <p className={`mt-1 text-[30px] font-extrabold tracking-tight ${income ? 'text-income' : 'text-slate-900'}`}>
           {income ? '+' : '-'}
           {formatWon(item.amount)}
@@ -62,7 +63,8 @@ export default function TransactionDetail({ item, onEdit, onDelete, onResolve }:
           muted={!item.account}
         />
         {item.recurringId != null && <Row icon={<Repeat />} label="정기 내역" value="매달 자동으로 기록돼요" />}
-        {item.memo && <Row icon={<StickyNote />} label={m ? '가게 이름' : '메모'} value={item.memo} />}
+        {item.memo && <Row icon={<Store />} label="가게 · 소비처" value={item.memo} />}
+        {item.note && <Row icon={<StickyNote />} label="메모" value={item.note} />}
         {item.originalMemo && <Row icon={<Receipt />} label="찍힌 이름" value={item.originalMemo} muted />}
         <Row icon={<Clock />} label="기록한 때" value={new Date(item.createdAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })} muted />
       </dl>

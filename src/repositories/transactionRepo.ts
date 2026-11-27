@@ -11,6 +11,8 @@ export interface TransactionInput {
   category: string
   date: string
   memo: string
+  /** 따로 적는 메모 */
+  note?: string
   time?: string
   account?: string
   /** 적금에 넣은 저축이면 그 적금 id */
