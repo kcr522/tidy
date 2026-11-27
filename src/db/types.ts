@@ -299,6 +299,8 @@ export interface Diary {
   hours?: DiaryHour[]
   /** 사진이 없을 때 캘린더에 칠할 색 (쓸 때 아무거나 하나 고른다) */
   color: string
+  /** 오늘 기분 (대시보드 기분 위젯, src/lib/mood.ts 의 이름). 안 골랐으면 없음 */
+  mood?: string
   createdAt: string
   updatedAt: string
 }
