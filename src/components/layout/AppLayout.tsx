@@ -17,6 +17,7 @@ import { listenPayNotify, syncPayNotifyFilter } from '../../platform/payNotify'
 import { listenForShares } from '../../platform/shareIntent'
 import { listenForWidgetRoutes } from '../../platform/widgetRoute'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
+import { syncRecurringAlarms } from '../../platform/recurringAlarms'
 import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
@@ -97,6 +98,13 @@ export default function AppLayout() {
     if (!todos) return
     return syncTodoAlarms(todos, (text) => toast(text))
   }, [todos, today, toast])
+
+  // 정기 지출 · 구독 미리 알림: 정기 내역이 바뀌거나(알림 설정, 기록됨) 날짜가 바뀌면 다시 맞춘다
+  const rules = useLiveQuery(() => recurringRepo.list(), [])
+  useEffect(() => {
+    if (!rules) return
+    return syncRecurringAlarms(rules, (text) => toast(text))
+  }, [rules, today, toast])
 
   // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
   useWidgetSync(todos, today)

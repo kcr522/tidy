@@ -47,6 +47,8 @@ export interface Recurring {
   startDate: string
   /** 마지막으로 기록한 날짜 (YYYY-MM-DD) */
   lastDate: string | null
+  /** 결제일 며칠 전 아침에 미리 알림 (0 = 당일 아침, 없으면 안 함) */
+  remindDays?: number | null
   isActive: Flag
   createdAt: string
   updatedAt: string

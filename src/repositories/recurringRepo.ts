@@ -3,7 +3,7 @@ import type { Recurring } from '../db/types'
 import { nowIso } from '../lib/date'
 import { pendingDates } from '../lib/recurring'
 
-export type RecurringInput = Pick<Recurring, 'type' | 'amount' | 'category' | 'memo' | 'account' | 'day' | 'startDate' | 'askAmount'>
+export type RecurringInput = Pick<Recurring, 'type' | 'amount' | 'category' | 'memo' | 'account' | 'day' | 'startDate' | 'askAmount' | 'remindDays'>
 
 /** 금액을 물어볼 정기 내역과 그 날짜 */
 export interface AskDue {
