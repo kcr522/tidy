@@ -34,6 +34,10 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // 보안 강화 (2026-11-27): 배포하는 APK 가 이 debug 판이라, 디버그 모드를 끈다.
+            // 켜져 있으면 USB 로 폰을 컴퓨터에 꽂은 사람이 앱 안 기록(가계부 · 일기)을 통째로 꺼내거나(run-as),
+            // 크롬 chrome://inspect 로 앱 화면을 열어 잠금을 건너뛸 수 있다. 서명 열쇠는 그대로라 덮어 깔기는 그대로 된다
+            debuggable false
             // 앱 용량 줄이기: 쓰지 않는 라이브러리 코드를 빼고 넣는다 (R8). 앱·Capacitor 코드는 proguard-rules.pro 에서 통째로 지킨다
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

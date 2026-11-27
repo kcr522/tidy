@@ -532,13 +532,17 @@
 | 항목 | 어떻게 |
 |---|---|
 | 로그인 | **Firebase Authentication** 구글 로그인 (비밀번호를 Tidy가 받지 않음). 시험용 이메일 계정은 Firebase 콘솔에서만 만들고, 비밀번호는 저장소에 없음 |
-| 내 기록만 보기 | **Firestore 보안 규칙**: `request.auth.uid == uid` 인 사람만 `users/{uid}` 아래를 읽고 쓸 수 있음 → 다른 사람 기록은 서버가 막음 ([firestore.rules](firestore.rules)) |
-| 앱 잠금 | 4자리 PIN 또는 8자 이상 비밀번호. 비밀번호를 그대로 저장하지 않고 **PBKDF2(SHA-256, 10만 번, 솔트)** 로 바꾼 값만 저장. 5번 틀리면 30초부터 최대 5분까지 기다리게 함. 안드로이드는 **지문 잠금**(androidx.biometric) |
-| API 키 숨기기 | Gemini · Groq · 카카오 · GitHub 키는 앱 코드에 없고 **Vercel 환경 변수**에만 둠. 앱은 Vercel 서버 함수에 부탁만 함 |
-| AI 서버 사용 제한 | 서버가 Firebase 로그인 토큰을 확인하고(로그인한 사람만), 한 사람당 하루 횟수 제한 (`AI_DAILY_LIMIT`) |
-| 관리자 페이지 | `/admin`은 로그인 토큰 확인 + `ADMIN_EMAILS`에 있는 메일만 열림. 전체 조회용 서비스 계정 키도 서버에만 둠 |
-| 웹 보안 헤더 | HTTPS 강제(HSTS), 다른 사이트 안에 못 띄우게(`X-Frame-Options: DENY`), `nosniff`, 카메라 · 위치는 Tidy 자신만 쓰게(`Permissions-Policy`) — [vercel.json](vercel.json) |
-| 앱 서명 | 안드로이드 APK는 항상 같은 키로 서명 → 다른 사람이 만든 가짜 APK로는 덮어 설치가 안 됨 |
+| 내 기록만 보기 | **Firestore 보안 규칙**: `request.auth.uid == uid` 인 사람만 `users/{uid}` 아래를 읽고 쓸 수 있음 → 다른 사람 기록은 서버가 막음 ([firestore.rules](firestore.rules)). `npm run test:rules` 로 에뮬레이터에서 13가지 경우를 확인 |
+| AI 횟수 고치기 막기 | 하루 AI 횟수(`users/{uid}/aiUsage`)는 앱이 **읽기만** 되고, 서버가 **서비스 계정**으로만 셈 → 앱에서 횟수를 0으로 되돌려 끝없이 쓰는 것을 막음. 횟수를 세지 못하면 AI를 부르지 않음 |
+| 앱 잠금 | 4자리 PIN 또는 8자 이상 비밀번호. 비밀번호를 그대로 저장하지 않고 **PBKDF2(SHA-256, 10만 번, 솔트)** 로 바꾼 값만 저장. 5번 틀리면 30초부터 최대 5분까지 기다리게 함(앱을 껐다 켜도 유지). 안드로이드는 **지문 잠금**(androidx.biometric) |
+| 폰에서 기록 꺼내기 막기 | 배포 APK의 **디버그 모드를 끔**(`debuggable false`, `webContentsDebuggingEnabled: false`) → USB로 컴퓨터에 꽂아도 `run-as` · `chrome://inspect` 로 앱 기록을 꺼내거나 잠금을 건너뛸 수 없음 |
+| API 키 숨기기 | Gemini · Groq · 카카오 · GitHub · 서비스 계정 키는 앱 코드에 없고 **Vercel 환경 변수**에만 둠. 앱은 Vercel 서버 함수에 부탁만 함. 저장소 전체 기록(커밋 500여 개)에도 진짜 비밀키가 없음을 확인 (Firebase 웹 API 키는 원래 공개 값) |
+| AI 서버 사용 제한 | 서버가 Firebase 로그인 토큰을 확인하고(로그인한 사람만, 사용 중지된 계정은 막음), 한 사람당 하루 횟수 제한 (`AI_DAILY_LIMIT`). `AI_ALLOWED_EMAILS` 를 쓰면 **인증된 메일**만 통과 |
+| 관리자 페이지 | `/admin`은 로그인 토큰 확인 + `ADMIN_EMAILS`에 있는 인증된 메일만 열림. 전체 조회용 서비스 계정 키도 서버에만 둠 |
+| 링크 대신 읽기 (SSRF 막기) | 스크랩 미리보기 서버(`/api/preview`)는 공개 http(s) 주소만 읽음. 주소 글자뿐 아니라 **DNS로 찾은 실제 IP**까지 확인해서 사설망 · 클라우드 내부(169.254.169.254 등) · `127.0.0.1.nip.io` 같은 이름을 막고, 넘어가는 주소(리다이렉트)도 한 번마다 다시 확인. 구글 캘린더 대신 읽기(`/api/ical`)는 `calendar.google.com` 만 |
+| 글 속 스크립트 막기 (XSS) | 메모 · 일기 꾸민 글은 허용한 태그 · 스타일만 남기고(`sanitizeHtml`), 링크는 `http(s)`만 엶. 웹에는 **CSP**(`Content-Security-Policy`)를 걸어 Tidy · 구글 로그인 말고는 스크립트를 못 불러오게 함 |
+| 웹 보안 헤더 | CSP, HTTPS 강제(HSTS 2년), 다른 사이트 안에 못 띄우게(`X-Frame-Options: DENY`, `frame-ancestors 'none'`), `nosniff`, 카메라 · 위치는 Tidy 자신만 쓰게(`Permissions-Policy`) — [vercel.json](vercel.json). `index.html` 안 스크립트를 고치면 CSP 지문도 같이 고쳐야 함 (테스트가 알려 줌) |
+| 앱 서명 | 안드로이드 APK는 항상 같은 키로 서명 → 덮어 설치가 됨. 키는 비공개 저장소 안에만 있어서, 저장소를 공개로 바꾸면 안 됨 ([docs/보안-점검.md](docs/보안-점검.md)) |
 
 ## 데이터 구조 (ERD)
 

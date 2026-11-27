@@ -17,7 +17,8 @@
 | `GEMINI_API_KEY` | 1번에서 복사한 키 | 꼭 |
 | `GROQ_API_KEY` | console.groq.com → API Keys 에서 만든 `gsk_…` 키 (Gemini 한도를 다 쓰면 대신 답해요) | 넣지 않아도 돼요 |
 | `AI_DAILY_LIMIT` | 한 사람이 하루에 쓸 수 있는 횟수 (기본 50) | 넣지 않아도 돼요 |
-| `AI_ALLOWED_EMAILS` | 쓸 수 있는 구글 메일 (쉼표로 구분). 비워 두면 로그인한 누구나 | 넣지 않아도 돼요 |
+| `AI_ALLOWED_EMAILS` | 쓸 수 있는 구글 메일 (쉼표로 구분). 비워 두면 로그인한 누구나. 인증된 메일만 통과해요 | 넣지 않아도 돼요 |
+| `FIREBASE_SERVICE_ACCOUNT` | 관리자 페이지와 같은 서비스 계정 JSON ([관리자-페이지-설정.md](관리자-페이지-설정.md)). 하루 횟수를 서버만 셀 수 있게 해요 (2026-11-27 보안 강화부터) | 꼭 (새 Firestore 규칙을 넣은 뒤) |
 
 3. **Deployments** → 맨 위 배포의 `⋯` → **Redeploy** 를 눌러야 새 값이 들어가요.
 

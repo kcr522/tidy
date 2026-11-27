@@ -7,6 +7,7 @@ import {
   cleanSharedUrl,
   extractSharedUrl,
   instagramEmbedUrl,
+  isPrivateIp,
   isPublicHttpUrl,
   naverBlogInnerUrl,
   parseLinkMeta,
@@ -14,7 +15,7 @@ import {
   xEmbedUrl,
   youtubeEmbedUrl,
 } from '../../src/lib/scrap/link'
-import { buildPreview, PreviewError } from '../../src/lib/scrap/previewServer'
+import { buildPreview, PreviewError, setHostResolver } from '../../src/lib/scrap/previewServer'
 import { createBackupRepo } from '../../src/repositories/backupRepo'
 import { createBookmarkRepo } from '../../src/repositories/bookmarkRepo'
 import { CategoryNameError, createScrapCategoryRepo } from '../../src/repositories/scrapCategoryRepo'
@@ -95,6 +96,51 @@ describe('링크 출처와 공유받기', () => {
 
   it.each(['http://localhost:3000', 'http://127.0.0.1/', 'http://192.168.0.1/', 'http://10.0.0.5/', 'http://169.254.169.254/latest', 'file:///etc/passwd', 'http://[::1]/', 'http://intranet/'])('서버는 내 컴퓨터 · 사설망 주소 %s 를 읽지 않는다 (보안)', (url) => {
     expect(isPublicHttpUrl(url)).toBe(false)
+  })
+
+  // 보안 강화 2026-11-27: 클라우드 내부 · 통신사 공유망(100.64/10) · IPv6 안에 숨긴 IPv4 도 막는다. 경계값은 안쪽 · 바깥쪽 짝으로
+  it.each([
+    ['100.64.0.1', true],
+    ['100.63.255.255', false],
+    ['100.127.255.255', true],
+    ['100.128.0.0', false],
+    ['172.16.0.1', true],
+    ['172.15.255.255', false],
+    ['172.31.255.255', true],
+    ['172.32.0.0', false],
+    ['::ffff:10.0.0.1', true],
+    ['::ffff:8.8.8.8', false],
+    ['::', true],
+    ['224.0.0.1', true],
+    ['2606:4700:4700::1111', false],
+    ['8.8.8.8', false],
+  ])('IP %s 는 사설망인가: %s', (ip, isPrivate) => {
+    expect(isPrivateIp(ip)).toBe(isPrivate)
+  })
+})
+
+describe('서버 미리보기: 이름이 가리키는 진짜 IP 확인 (SSRF) — 보안 강화 2026-11-27', () => {
+  const page = () => new Response('<html><head><meta property="og:title" content="공개 글"></head></html>', { headers: { 'content-type': 'text/html' } })
+  afterEach(() => setHostResolver(null))
+
+  it('겉은 공개 이름이지만 안쪽 IP(127.0.0.1)를 가리키면 읽지 않는다', async () => {
+    setHostResolver(async () => ['127.0.0.1'])
+    let asked = false
+    const f = (async () => ((asked = true), page())) as typeof fetch
+
+    const result = buildPreview('https://127.0.0.1.nip.io/', f)
+
+    await expect(result).rejects.toBeInstanceOf(PreviewError)
+    expect(asked).toBe(false) // 그 주소로 아예 묻지 않았는지 확인
+  })
+
+  it('공개 IP 를 가리키는 이름은 그대로 읽는다', async () => {
+    setHostResolver(async () => ['93.184.215.14'])
+    const f = (async () => page()) as typeof fetch
+
+    const result = await buildPreview('https://example.com/', f)
+
+    expect(result.title).toBe('공개 글')
   })
 })
 

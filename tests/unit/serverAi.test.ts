@@ -1,8 +1,9 @@
+import { generateKeyPairSync } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { askAssistant } from '../../src/lib/ai/assistantEngines'
 import { effectiveAi, engineFor } from '../../src/lib/ai/engines'
 import { callGemini, clearGeminiModelCache } from '../../src/lib/ai/gemini'
-import { handleAiProxy, kstDay, proxyEnvFrom, type AiProxyEnv, type AiUsage } from '../../src/lib/ai/proxyServer'
+import { forgetLogins, handleAiProxy, kstDay, proxyEnvFrom, type AiProxyEnv, type AiUsage } from '../../src/lib/ai/proxyServer'
 import { SERVER_KEY, ServerAiError } from '../../src/lib/ai/serverAi'
 import { usageLine } from '../../src/lib/ai/usage'
 
@@ -12,6 +13,12 @@ const NOT_SIGNED_IN = 401
 const NOT_ALLOWED = 403
 const BAD_REQUEST = 400
 const NO_KEY = 503
+const NOT_COUNTED = 503
+const FORBIDDEN = 403
+// 가짜 서비스 계정 (진짜 RSA 열쇠로 서명해 본다)
+const SA_TOKEN = 'sa-usage-token'
+const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } })
+const SERVICE_ACCOUNT = JSON.stringify({ client_email: 'usage@tidy-b0d8d.iam.gserviceaccount.com', private_key: privateKey, project_id: 'tidy-b0d8d' })
 const TOO_MANY = 429
 // 가짜 Gemini 가 한 번 답할 때 쓴 토큰
 const TOKENS_PER_CALL = 120
@@ -20,7 +27,7 @@ const json = (body: object, status = OK) => new Response(JSON.stringify(body), {
 const env = (more: Partial<AiProxyEnv> = {}): AiProxyEnv => ({ ...proxyEnvFrom({ GEMINI_API_KEY: 'SERVER-G' }), dailyLimit: DAILY_LIMIT, ...more })
 
 /** 구글 로그인 확인 + Firestore 사용량 + Gemini 를 흉내 내는 가짜 인터넷 */
-function fakeNet(opts: { gemini?: (body: unknown) => Response; email?: string } = {}) {
+function fakeNet(opts: { gemini?: (body: unknown) => Response; email?: string; verified?: boolean; usageAuth?: string; usageDown?: boolean } = {}) {
   const counts = new Map<string, { count: number; tokens: number }>()
   const calls: string[] = []
   const f = (async (url: string, init?: RequestInit) => {
@@ -28,10 +35,14 @@ function fakeNet(opts: { gemini?: (body: unknown) => Response; email?: string } 
     const headers = (init?.headers ?? {}) as Record<string, string>
     if (url.includes('accounts:lookup')) {
       const { idToken } = JSON.parse(String(init?.body))
-      return idToken === 'GOOD' ? json({ users: [{ localId: 'u1', email: opts.email ?? 'me@gmail.com' }] }) : json({ error: { message: 'INVALID_ID_TOKEN' } }, 400)
+      return idToken === 'GOOD' ? json({ users: [{ localId: 'u1', email: opts.email ?? 'me@gmail.com', emailVerified: opts.verified ?? true }] }) : json({ error: { message: 'INVALID_ID_TOKEN' } }, 400)
     }
+    if (url.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: SA_TOKEN })
     if (url.includes('documents:commit')) {
-      expect(headers.authorization).toBe('Bearer GOOD')
+      // 사용량은 정해 둔 권한(서비스 계정 또는 로그인 토큰)으로만 쓰는지 확인
+      expect(headers.authorization).toBe(opts.usageAuth ?? 'Bearer GOOD')
+      // 규칙이 막았거나 Firestore 가 멈췄을 때
+      if (opts.usageDown) return json({ error: { status: 'PERMISSION_DENIED' } }, FORBIDDEN)
       const w = JSON.parse(String(init?.body)).writes[0]
       const name = w.update.name as string
       const c = counts.get(name) ?? { count: 0, tokens: 0 }
@@ -62,6 +73,9 @@ const geminiCall = { provider: 'gemini', path: 'models/gemini-flash-latest:gener
 const countOf = (net: ReturnType<typeof fakeNet>) => [...net.counts.values()][0].count
 
 describe('Tidy AI 서버 (api/ai)', () => {
+  // 앞 테스트에서 확인한 로그인(메일)을 다음 테스트가 물려받지 않게
+  beforeEach(() => forgetLogins())
+
   it('키가 있는지와 하루 횟수를 알려 주고, 키는 절대 돌려주지 않는다 (보안)', async () => {
     const result = await handleAiProxy({ method: 'GET' }, env(), fakeNet().f)
 
@@ -85,6 +99,38 @@ describe('Tidy AI 서버 (api/ai)', () => {
     const result = await handleAiProxy(post(geminiCall), env({ allowedEmails: ['friend@gmail.com'] }), fakeNet().f)
 
     expect(result.status).toBe(NOT_ALLOWED)
+  })
+
+  it.each([
+    ['인증된 메일이면 쓴다', true, OK],
+    // 이메일 가입은 아무 메일이나 적을 수 있어서, 허용 메일을 흉내 낸 계정을 막는다 — 보안 강화 2026-11-27
+    ['인증 안 된 같은 메일이면 막는다', false, NOT_ALLOWED],
+  ])('허용 메일 목록이 있을 때 %s', async (_case, verified, status) => {
+    const okEmail = 'friend@gmail.com'
+    const net = fakeNet({ email: okEmail, verified })
+
+    const result = await handleAiProxy(post(geminiCall), env({ allowedEmails: [okEmail] }), net.f)
+
+    expect(result.status).toBe(status)
+  })
+
+  it('서비스 계정이 있으면 횟수를 그 계정으로 센다 (앱 로그인 토큰으로는 안 쓴다) — 보안 강화 2026-11-27', async () => {
+    const saEnv = { ...proxyEnvFrom({ GEMINI_API_KEY: 'SERVER-G', FIREBASE_SERVICE_ACCOUNT: SERVICE_ACCOUNT }), dailyLimit: DAILY_LIMIT }
+    const net = fakeNet({ usageAuth: `Bearer ${SA_TOKEN}` })
+
+    const result = await handleAiProxy(post(geminiCall), saEnv, net.f)
+
+    expect(result.status).toBe(OK)
+    expect(countOf(net)).toBe(1)
+  })
+
+  it('횟수를 세지 못하면(규칙이 막음 · Firestore 멈춤) AI 를 부르지 않는다 — 보안 강화 2026-11-27', async () => {
+    const net = fakeNet({ usageDown: true })
+
+    const result = await handleAiProxy(post(geminiCall), env(), net.f)
+
+    expect(result.status).toBe(NOT_COUNTED)
+    expect(net.calls.some((url) => url.includes('generativelanguage'))).toBe(false)
   })
 
   it.each([
