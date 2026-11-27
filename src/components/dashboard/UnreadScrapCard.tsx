@@ -1,6 +1,7 @@
 import { Bookmark as BookmarkIcon } from 'lucide-react'
 import type { Bookmark } from '../../db/types'
 import { domainOf } from '../../lib/validate'
+import ResurfaceCard from '../bookmarks/ResurfaceCard'
 import DashboardCard, { CardEmpty } from './DashboardCard'
 
 const MAX_ITEMS = 3
@@ -14,17 +15,30 @@ interface UnreadScrapCardProps {
   onOpen: (b: Bookmark) => void
   onConvert: (b: Bookmark) => void
   onViewTodo: () => void
+  /** 오늘 다시 볼 스크랩 (없으면 안 보인다) */
+  resurface?: Bookmark | null
+  today?: string
+  onLater?: (b: Bookmark) => void
+  onDone?: (b: Bookmark) => void
 }
 
 /** 스크랩 카드: "읽지 않은 스크랩 (개수)", 최근 3개, [할 일로 전환] (FR-053) */
-export default function UnreadScrapCard({ unread, linked, onAdd, onOpen, onConvert, onViewTodo }: UnreadScrapCardProps) {
+export default function UnreadScrapCard({ unread, linked, onAdd, onOpen, onConvert, onViewTodo, resurface, today, onLater, onDone }: UnreadScrapCardProps) {
+  // 다시 볼 스크랩은 맨 위에 따로 보여 주고, 아래 최근 목록에서는 뺀다
+  const showBack = !!resurface && !!today && !!onLater && !!onDone
+  const recent = showBack ? unread.filter((b) => b.id !== resurface.id) : unread
   return (
     <DashboardCard to="/scraps" icon={BookmarkIcon} title={`읽지 않은 스크랩 (${unread.length})`} addLabel="링크 저장" onAdd={onAdd}>
+      {showBack && (
+        <div className="mb-2">
+          <ResurfaceCard item={resurface} today={today} onOpen={onOpen} onLater={onLater} onDone={onDone} inset />
+        </div>
+      )}
       {unread.length === 0 ? (
         <CardEmpty>안 읽은 스크랩이 없어요. 나중에 볼 링크를 + 로 저장해 보세요.</CardEmpty>
       ) : (
         <ul className="space-y-2">
-          {unread.slice(0, MAX_ITEMS).map((b) => {
+          {recent.slice(0, showBack ? MAX_ITEMS - 1 : MAX_ITEMS).map((b) => {
             const converted = b.id != null && linked.has(b.id)
             return (
               <li key={b.id} className="flex items-center gap-2 rounded-2xl bg-grad-soft px-3.5 py-3">
