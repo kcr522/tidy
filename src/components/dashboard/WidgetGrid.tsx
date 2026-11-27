@@ -242,7 +242,8 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
     return () => window.removeEventListener('keydown', onKey)
   }, [editing, onEditingChange])
 
-  const hidden = list ? ALL_KINDS.filter((k) => !list.some((w) => w.kind === k)) : []
+  // 새로 생긴 위젯을 맨 위에
+  const hidden = list ? ALL_KINDS.filter((k) => !list.some((w) => w.kind === k)).sort((a, b) => Number(!!WIDGET_INFO[b].isNew) - Number(!!WIDGET_INFO[a].isNew)) : []
   const dragging = drag?.started ? list?.find((w) => w.kind === drag.kind) : undefined
 
   const gridStyle: CSSProperties = {
@@ -384,6 +385,7 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
       )}
 
       <Modal open={adding} title="위젯 추가" onClose={() => setAdding(false)}>
+        {cols === 4 && hidden.length > 0 && <p className="mb-3 text-[13px] break-keep text-slate-500">필요한 것만 골라 넣어요. 타이머 · 기분은 작은 타일로 나란히, 날씨는 얇은 한 줄로 들어가요</p>}
         {hidden.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">모든 위젯이 대시보드에 있어요</p>
         ) : (
@@ -399,7 +401,10 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
                   className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-left"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold">{WIDGET_INFO[k].name}</span>
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      {WIDGET_INFO[k].name}
+                      {WIDGET_INFO[k].isNew && <span className="rounded-full bg-grad px-1.5 py-px text-[10px] font-bold on-grad">NEW</span>}
+                    </span>
                     <span className="block text-sm text-slate-500">{WIDGET_INFO[k].desc}</span>
                   </span>
                   <Plus className="size-5 text-brand-600" aria-hidden />
