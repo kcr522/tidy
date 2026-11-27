@@ -34,10 +34,18 @@ interface WidgetGridProps {
   render: (kind: DashWidgetKind, box: WidgetBox) => ReactNode
 }
 
-/** 꾹 누르는 시간 (ms) */
-const HOLD_MS = 450
+/** 꾹 누르는 시간 (ms) — 폰에서 스크롤하다 잘못 들어가지 않게 넉넉히 (2026-11-26: 450 → 650) */
+const HOLD_MS = 650
 /** 손가락이 이만큼(px) 움직이면 꾹 누르기가 아니라 스크롤로 본다 */
 const SLOP = 10
+/** 편집 중 이만큼(px) 움직여야 끌기가 시작된다 (살짝 닿은 건 무시) */
+const DRAG_START = 14
+/** 다른 위젯 가운데쯤에 이만큼(ms) 머물러야 자리를 바꾼다 */
+const SWAP_DWELL = 220
+/** 자리를 바꾼 뒤 위젯들이 미끄러지는 동안(ms)은 다시 바꾸지 않는다 */
+const SWAP_COOLDOWN = 380
+/** 다른 위젯의 가장자리 이만큼(비율)은 '아직 안 들어감'으로 본다 */
+const EDGE = 0.2
 
 type Drag = {
   kind: DashWidgetKind
@@ -156,6 +164,9 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
   }, [drag])
   const lastSwap = useRef<DashWidgetKind | null>(null)
   const pointerY = useRef(0)
+  /** 지금 손가락이 머무는 위젯과 머물기 시작한 때 */
+  const hover = useRef<{ kind: DashWidgetKind; timer: number } | null>(null)
+  const lastSwapAt = useRef(0)
 
   useEffect(() => {
     if (!drag) return
@@ -163,36 +174,60 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
       const d = dragRef.current
       if (!d) return
       pointerY.current = e.clientY
-      const started = d.started || Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6
+      const started = d.started || Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > DRAG_START
       setDrag({ ...d, x: e.clientX, y: e.clientY, started })
       if (!started) return
       e.preventDefault()
-      // 손가락 아래에 있는 다른 위젯 자리로 옮긴다
+      // 손가락이 다른 위젯 '가운데쯤'에 있는지 본다 (가장자리를 스치기만 하면 안 바꾼다)
       let over: DashWidgetKind | null = null
       els.current.forEach((el, kind) => {
+        if (kind === d.kind) return
         const r = el.getBoundingClientRect()
-        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) over = kind
+        const ex = r.width * EDGE
+        const ey = r.height * EDGE
+        if (e.clientX >= r.left + ex && e.clientX <= r.right - ex && e.clientY >= r.top + ey && e.clientY <= r.bottom - ey) over = kind
       })
-      if (over === null || over === d.kind) {
+      if (over === null) {
         lastSwap.current = null
+        clearHover()
         return
       }
-      if (over === lastSwap.current) return
-      lastSwap.current = over
-      const target = over
-      update((l) => moveWidget(l, l.findIndex((w) => w.kind === d.kind), l.findIndex((w) => w.kind === target)))
+      if (over === lastSwap.current || hover.current?.kind === over) return
+      // 잠깐 머물러야 바꾼다: 지나가기만 하면 그대로
+      clearHover()
+      const target: DashWidgetKind = over
+      const wait = Math.max(SWAP_DWELL, lastSwapAt.current + SWAP_COOLDOWN - performance.now())
+      hover.current = {
+        kind: target,
+        timer: window.setTimeout(() => {
+          hover.current = null
+          const cur = dragRef.current
+          if (!cur?.started) return
+          lastSwap.current = target
+          lastSwapAt.current = performance.now()
+          navigator.vibrate?.(6)
+          update((l) => moveWidget(l, l.findIndex((w) => w.kind === cur.kind), l.findIndex((w) => w.kind === target)))
+        }, wait),
+      }
+    }
+    const clearHover = () => {
+      if (hover.current) window.clearTimeout(hover.current.timer)
+      hover.current = null
     }
     const onUp = () => {
+      clearHover()
       lastSwap.current = null
       setDrag(null)
     }
-    // 화면 위·아래 끝으로 끌면 저절로 스크롤
+    // 화면 위·아래 끝으로 끌면 저절로 스크롤 — 끝에 가까울수록 조금씩 빨라진다 (최대 초당 약 360px)
     let raf = 0
     const tick = () => {
       const y = pointerY.current
       if (dragRef.current?.started) {
-        if (y < 90) window.scrollBy(0, -10)
-        else if (y > window.innerHeight - 110) window.scrollBy(0, 10)
+        const top = 80
+        const bottom = window.innerHeight - 100
+        if (y < top) window.scrollBy(0, -Math.ceil(6 * Math.min(1, (top - y) / top)))
+        else if (y > bottom) window.scrollBy(0, Math.ceil(6 * Math.min(1, (y - bottom) / 100)))
       }
       raf = requestAnimationFrame(tick)
     }
@@ -202,6 +237,7 @@ export default function WidgetGrid({ editing, onEditingChange, render }: WidgetG
     window.addEventListener('pointercancel', onUp)
     return () => {
       cancelAnimationFrame(raf)
+      clearHover()
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
