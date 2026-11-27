@@ -5,7 +5,7 @@ import { extLabel, isImage, isVideo } from '../../lib/attachments'
 import { formatDateLabel } from '../../lib/format'
 import { isOverdue } from '../../lib/summary'
 import { timeLabel } from '../../lib/todoAlarms'
-import { repeatLabel } from '../../lib/todoRepeat'
+import { repeatEndLabel, repeatLabel } from '../../lib/todoRepeat'
 import { openAttachment } from '../../platform/openAttachment'
 import { ImageViewer } from '../common/AttachmentField'
 import { useToast } from '../common/Toast'
@@ -64,7 +64,7 @@ export default function TodoItem({ todo, today, onToggle, onSelect, onOpenLink }
             </span>
             <span className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 empty:hidden">
               {todo.repeat && !done && (
-                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-500" title="반복">
+                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-500" title={repeatEndLabel(todo.repeat) ? `반복 · ${repeatEndLabel(todo.repeat)}` : '반복'}>
                   <Repeat className="size-3.5" aria-hidden />
                   <span className="sr-only">반복</span>
                   {repeatLabel(todo.repeat)}

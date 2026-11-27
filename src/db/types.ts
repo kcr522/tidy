@@ -94,9 +94,22 @@ export interface Todo {
  * 할 일 반복
  * - day: 매일
  * - week: 매주 days 요일 (0 일요일 ~ 6 토요일)
- * - month: 매달 day일 (그 달에 없으면 말일)
+ * - month: 매달 day일 (그 달에 없으면 말일, -1 이면 늘 말일) 또는 매달 nth번째 weekday요일 (nth -1 이면 마지막 주)
+ * - year: 매년 month월 day일 (2월 29일은 없는 해에 28일)
+ *
+ * 2026-11-27 더 자세하게 (모두 없어도 되는 칸이라 옛 반복도 그대로 쓴다)
+ * - interval: 몇 번째마다 (2주마다 = 격주). 없으면 1
+ * - start: interval 을 세는 기준 날짜 (YYYY-MM-DD). 없으면 그 할 일의 마감일
+ * - until: 이 날짜까지만 (YYYY-MM-DD)
+ * - left: 남은 횟수 (이번 것 포함). 1 인 할 일을 끝내면 더 만들지 않는다
  */
-export type TodoRepeat = { every: 'day' } | { every: 'week'; days: number[] } | { every: 'month'; day: number }
+export type TodoRepeat = { interval?: number; start?: string; until?: string; left?: number } & (
+  | { every: 'day' }
+  | { every: 'week'; days: number[] }
+  | { every: 'month'; day: number }
+  | { every: 'month'; nth: number; weekday: number }
+  | { every: 'year'; month: number; day: number }
+)
 
 /** 한 달 예산 (스키마 9부터). 매달 똑같이 적용된다 */
 export interface Budget {

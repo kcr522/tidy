@@ -2,7 +2,7 @@ import { db as defaultDb, type TidyDB } from '../db/database'
 import type { Attachment, Priority, Todo, TodoRepeat } from '../db/types'
 import { cleanAttachments } from '../lib/attachments'
 import { nowIso, todayKey } from '../lib/date'
-import { nextDueDate } from '../lib/todoRepeat'
+import { nextDueDate, nextRepeat, prevRepeat } from '../lib/todoRepeat'
 import { MAX_TITLE_LENGTH, MAX_TODO_MEMO_LENGTH } from '../lib/validate'
 
 /** 화면에서 입력받는 값 */
@@ -69,7 +69,7 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
     /**
      * 완료 ↔ 미완료 (FR-021). 완료 시각을 기록한다.
      * 스크랩에서 만든 할 일을 완료하면 그 스크랩도 읽음으로 바꾼다 (FR-042).
-     * 반복 할 일을 완료하면 다음 날짜로 새 할 일을 만든다. 완료를 되돌리면 그 새 할 일을 지운다 (아직 안 끝냈을 때).
+     * 반복 할 일을 완료하면 다음 날짜로 새 할 일을 만든다. 완료를 되돌리면 그 새 할 일을 지운다 (아직 안 끝냈을 때). 끝나는 날짜를 넘거나 남은 횟수를 다 쓰면 더 만들지 않는다.
      * @returns 반복으로 새로 생긴 할 일의 마감일
      */
     async toggleComplete(id: number, today: string = todayKey()): Promise<string | undefined> {
@@ -81,14 +81,16 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
         let nextId: number | undefined
         let nextDue: string | undefined
         if (completing && todo.repeat && todo.dueDate) {
-          nextDue = nextDueDate(todo.repeat, todo.dueDate, today)
+          nextDue = nextDueDate(todo.repeat, todo.dueDate, today) ?? undefined
+        }
+        if (completing && todo.repeat && nextDue) {
           nextId = await database.todos.add({
             title: todo.title,
             dueDate: nextDue,
             priority: todo.priority,
             ...(todo.categoryId != null && { categoryId: todo.categoryId }),
             ...(todo.remindAt && { remindAt: todo.remindAt }),
-            repeat: todo.repeat,
+            repeat: nextRepeat(todo.repeat),
             ...(todo.memo && { memo: todo.memo }),
             ...(todo.attachments?.length && { attachments: todo.attachments }),
             isCompleted: 0,
@@ -102,7 +104,7 @@ export function createTodoRepo(database: TidyDB = defaultDb) {
         if (!completing && todo.repeatNextId != null) {
           const next = await database.todos.get(todo.repeatNextId)
           if (next && next.isCompleted === 0) {
-            repeat = next.repeat
+            repeat = next.repeat && prevRepeat(next.repeat)
             await database.todos.delete(todo.repeatNextId)
           }
         }
