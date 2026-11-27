@@ -1,9 +1,11 @@
 import { Plus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { formatNumber } from '../../lib/format'
-import { addWord, loadPayFilter, onPayFilterChange, savePayFilter, type PayFilter } from '../../lib/payNotifyFilter'
+import { addWord, loadPayFilter, onPayFilterChange, payAppRows, removeApp, savePayFilter, type PayAppRow, type PayFilter } from '../../lib/payNotifyFilter'
+import { listPayNotifications, listPayNotifyApps } from '../../platform/payNotify'
 import Button from '../common/Button'
 import { inputClass } from '../common/formStyles'
+import PayAppPicker, { AppIcon } from './PayAppPicker'
 
 /** 설정 > 결제 알림 > 기록하지 않을 알림: 낱말, 앱, 적은 금액, 입금 */
 export default function PayFilterEditor() {
@@ -11,6 +13,14 @@ export default function PayFilterEditor() {
   const [word, setWord] = useState('')
   const [min, setMin] = useState(() => (filter.minAmount ? formatNumber(filter.minAmount) : ''))
   useEffect(() => onPayFilterChange(() => setFilter(loadPayFilter())), [])
+  const [picking, setPicking] = useState(false)
+  const [rows, setRows] = useState<PayAppRow[] | null>(null)
+  // 앱 목록(아이콘 포함)은 폰에서 읽는다. 옛 앱이면 모아 둔 결제 알림을 보낸 앱으로
+  const loadApps = useCallback(() => {
+    void Promise.all([listPayNotifyApps(), listPayNotifications()]).then(([apps, items]) => setRows(payAppRows(loadPayFilter(), apps, items)))
+  }, [])
+  useEffect(loadApps, [loadApps])
+  const iconOf = (pkg: string) => rows?.find((r) => r.pkg === pkg)?.icon
 
   const save = (f: PayFilter) => {
     setFilter(f)
@@ -49,16 +59,30 @@ export default function PayFilterEditor() {
         </ul>
       )}
 
-      <p className="mt-4 text-sm font-medium text-slate-600">이 앱 알림은 빼기</p>
+      <div className="mt-4 flex items-center gap-2">
+        <p className="flex-1 text-sm font-medium text-slate-600">이 앱 알림은 빼기</p>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-9 px-3! text-sm"
+          onClick={() => {
+            loadApps()
+            setPicking(true)
+          }}
+        >
+          <Plus className="size-4" aria-hidden />앱 고르기
+        </Button>
+      </div>
       {filter.apps.length > 0 ? (
         <ul className="mt-1.5 flex flex-wrap gap-1.5">
           {filter.apps.map((a) => (
-            <Chip key={a.pkg} label={`📱 ${a.name}`} onRemove={() => save({ ...filter, apps: filter.apps.filter((x) => x.pkg !== a.pkg) })} />
+            <Chip key={a.pkg} label={a.name} icon={<AppIcon icon={iconOf(a.pkg)} small />} onRemove={() => save(removeApp(filter, a.pkg))} />
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-400">결제 알림 확인 화면에서 &lsquo;이 앱 알림 빼기&rsquo;를 누르면 여기 생겨요.</p>
+        <p className="text-xs text-slate-400">&lsquo;앱 고르기&rsquo;에서 카드 · 은행 · 페이 앱을 골라 빼요.</p>
       )}
+      <PayAppPicker open={picking} onClose={() => setPicking(false)} filter={filter} rows={rows} onChange={save} />
 
       <label className="mt-4 flex items-center gap-2 text-sm">
         <span className="flex-1 font-medium whitespace-nowrap text-slate-600">이 금액보다 적으면 빼기</span>
@@ -97,9 +121,10 @@ export default function PayFilterEditor() {
   )
 }
 
-function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+function Chip({ label, icon, onRemove }: { label: string; icon?: ReactNode; onRemove: () => void }) {
   return (
-    <li className="flex items-center gap-0.5 rounded-full bg-slate-100 py-1 pr-1 pl-3 text-sm text-slate-700">
+    <li className={`flex items-center gap-0.5 rounded-full bg-slate-100 py-1 pr-1 text-sm text-slate-700 ${icon ? 'pl-1.5' : 'pl-3'}`}>
+      {icon && <span className="mr-1">{icon}</span>}
       {label}
       <button type="button" onClick={onRemove} className="tap rounded-full p-1 text-slate-400 hover:bg-slate-200" aria-label={`${label} 지우기`}>
         <X className="size-3.5" aria-hidden />

@@ -19,6 +19,7 @@ import TransactionDetail from '../components/transactions/TransactionDetail'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionList from '../components/transactions/TransactionList'
 import MoneyMenu, { type MenuView } from '../components/transactions/insights/MoneyMenu'
+import { onMoneyMenu } from '../lib/moneyMenuSignal'
 import BudgetStrip from '../components/budget/BudgetStrip'
 import type { Transaction } from '../db/types'
 import { usePayNotify } from '../hooks/usePayNotify'
@@ -69,6 +70,8 @@ export default function TransactionsPage() {
   const [account, setAccount] = useState<string | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [showMenu, setShowMenu] = useState<MenuView | null>(null)
+  // 폰 위쪽 톱니바퀴 옆 ⋮ 를 누르면 메뉴를 연다
+  useEffect(() => onMoneyMenu(() => setShowMenu('menu')), [])
   const [showMeal, setShowMeal] = useState(false)
   // 📷: 무엇으로 기록할지 고르기 → 은행·카드 캡처 / 음식 사진
   const [photoMenu, setPhotoMenu] = useState(false)
@@ -332,7 +335,7 @@ export default function TransactionsPage() {
         title="가계부"
         action={
           <div className="flex gap-1 sm:gap-2">
-            <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setShowMenu('menu')} aria-label="예산, 차트, 통계, 고정 금액 메뉴" title="메뉴">
+            <Button variant="secondary" className="w-11 px-0! max-md:hidden sm:w-12" onClick={() => setShowMenu('menu')} aria-label="예산, 차트, 통계, 고정 금액 메뉴" title="메뉴">
               <Menu className="size-5" aria-hidden />
             </Button>
             <Button variant="secondary" className="w-11 px-0! sm:w-12" onClick={() => setPhotoMenu(true)} aria-label="사진으로 기록" title="사진으로 기록">

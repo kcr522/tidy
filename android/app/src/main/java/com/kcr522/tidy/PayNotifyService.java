@@ -37,6 +37,8 @@ public class PayNotifyService extends NotificationListenerService {
     static final String KEY_ALERT = "alert";
     /** 기록하지 않을 알림 규칙 (앱 화면에서 보낸 JSON: words, pkgs, minAmount, skipDeposit) */
     static final String KEY_FILTER = "filter";
+    /** 결제 알림을 보낸 적 있는 앱 {pkg: {name, t, n}} — 설정의 '뺄 앱 고르기' 목록 맨 위에 보인다 */
+    static final String KEY_SEEN = "seen";
     static final String CHANNEL = "tidy_pay_notify";
     static final int ALERT_ID = 7301;
     static final String ACTION_OPEN = "com.kcr522.tidy.OPEN_PAY_NOTIFY";
@@ -87,6 +89,7 @@ public class PayNotifyService extends NotificationListenerService {
 
         Context ctx = getApplicationContext();
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        rememberApp(prefs, pkg);
         // 사용자가 빼기로 한 알림은 모으지도, 알리지도 않는다
         if (blocked(prefs.getString(KEY_FILTER, ""), pkg, all)) return;
         long now = System.currentTimeMillis();
@@ -160,6 +163,28 @@ public class PayNotifyService extends NotificationListenerService {
             // 규칙을 못 읽으면 거르지 않는다 (앱 화면에서 한 번 더 거른다)
         }
         return false;
+    }
+
+    /** 결제 알림을 보낸 앱을 기억한다 (뺀 앱도 — 다시 켜고 싶을 때 목록에 있어야 하니까) */
+    private void rememberApp(SharedPreferences prefs, String pkg) {
+        try {
+            JSONObject seen = new JSONObject(prefs.getString(KEY_SEEN, "{}"));
+            JSONObject a = seen.optJSONObject(pkg);
+            if (a == null) a = new JSONObject();
+            String name = appLabel(pkg);
+            if (!name.isEmpty()) a.put("name", name);
+            a.put("t", System.currentTimeMillis());
+            a.put("n", a.optInt("n", 0) + 1);
+            seen.put(pkg, a);
+            prefs.edit().putString(KEY_SEEN, seen.toString()).apply();
+        } catch (Exception ignored) {
+            // 기억하지 못해도 알림 모으기는 계속
+        }
+    }
+
+    /** 결제 알림을 읽는 앱인가 (패키지 이름만 보고) — 설정의 앱 고르기 목록에 쓴다 */
+    static boolean isFinanceApp(String pkg) {
+        return FIN_PKG.matcher(pkg).find() || MESSENGERS.contains(pkg);
     }
 
     private String appLabel(String pkg) {

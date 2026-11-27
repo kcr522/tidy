@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Suspense, useEffect } from 'react'
-import { Search, Settings } from 'lucide-react'
+import { EllipsisVertical, Search, Settings } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useToday } from '../../hooks/useToday'
 import { prefetchPages } from '../../lib/lazyPage'
@@ -17,6 +17,7 @@ import { listenPayNotify, syncPayNotifyFilter } from '../../platform/payNotify'
 import { listenForShares } from '../../platform/shareIntent'
 import { listenForWidgetRoutes } from '../../platform/widgetRoute'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
+import { syncRecurringAlarms } from '../../platform/recurringAlarms'
 import { listenResurfaceTap, syncResurfaceAlarms } from '../../platform/resurfaceAlarms'
 import { useResurfaceSettings, useSnoozes } from '../../lib/scrap/resurface'
 import { bookmarkRepo } from '../../repositories/bookmarkRepo'
@@ -29,6 +30,7 @@ import ColorModeButton from '../common/ColorModeButton'
 import AskAmountPrompt from '../transactions/AskAmountPrompt'
 import { useToast } from '../common/Toast'
 import { NAV_ITEMS } from './navItems'
+import { openMoneyMenu } from '../../lib/moneyMenuSignal'
 import { themeFor } from './theme'
 
 /**
@@ -38,7 +40,8 @@ import { themeFor } from './theme'
  */
 export default function AppLayout() {
   // 지금 보고 있는 구역의 색 (가계부: 하늘, 할 일: 민트, 스크랩: 라벤더)
-  const theme = themeFor(useLocation().pathname)
+  const { pathname } = useLocation()
+  const theme = themeFor(pathname)
   const today = useToday()
   const toast = useToast()
   const navigate = useNavigate()
@@ -101,6 +104,12 @@ export default function AppLayout() {
     return syncTodoAlarms(todos, (text) => toast(text))
   }, [todos, today, toast])
 
+  // 정기 지출 · 구독 미리 알림: 정기 내역이 바뀌거나(알림 설정, 기록됨) 날짜가 바뀌면 다시 맞춘다
+  const rules = useLiveQuery(() => recurringRepo.list(), [])
+  useEffect(() => {
+    if (!rules) return
+    return syncRecurringAlarms(rules, (text) => toast(text))
+  }, [rules, today, toast])
   // 안 본 스크랩 다시 보기 알림: 스크랩 · 설정 · "나중에"가 바뀌면 다시 맞춘다
   const unreadScraps = useLiveQuery(() => bookmarkRepo.list('unread'), [])
   const [resurfaceSettings] = useResurfaceSettings()
@@ -145,6 +154,12 @@ export default function AppLayout() {
             <Link to="/settings" className="tap rounded-full p-1.5 text-slate-500" aria-label="설정">
               <Settings className="size-[22px]" aria-hidden />
             </Link>
+            {/* 가계부에서만: 톱니바퀴 옆 ⋮ 를 누르면 가계부 메뉴(예산 · 차트 · 통계 · 고정 금액 …)가 열린다 (사용자 요청 2026-11-27) */}
+            {pathname.startsWith('/money') && (
+              <button type="button" onClick={openMoneyMenu} className="tap -mr-1.5 rounded-full p-1.5 text-slate-500" aria-label="가계부 메뉴" title="가계부 메뉴">
+                <EllipsisVertical className="size-[22px]" aria-hidden />
+              </button>
+            )}
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-28 short:pb-20 md:px-6 md:pt-[calc(2.5rem+env(safe-area-inset-top))] md:pb-10 short:md:pt-[calc(1.5rem+env(safe-area-inset-top))] lg:px-10">

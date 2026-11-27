@@ -74,3 +74,61 @@ export function blockReason(f: PayFilter, n: PayNotification, g: PaymentGuess): 
   if (f.skipDeposit && isDeposit(`${n.title} ${n.text}`)) return '입금'
   return null
 }
+
+export function removeApp(f: PayFilter, pkg: string): PayFilter {
+  return { ...f, apps: f.apps.filter((a) => a.pkg !== pkg) }
+}
+
+/** 뺄 앱 고르기 목록 한 줄 */
+export interface PayAppRow {
+  pkg: string
+  name: string
+  icon?: string
+  /** 마지막 결제 알림 시각 (ms, 온 적 없으면 0) */
+  seen: number
+  /** 그동안 온 결제 알림 수 */
+  count: number
+  blocked: boolean
+}
+
+/**
+ * 뺄 앱 고르기 목록 만들기: 폰이 알려 준 앱(옛 앱이면 null) + 모아 둔 알림을 보낸 앱 + 이미 뺀 앱.
+ * 결제 알림이 온 앱이 먼저(많이 온 순), 나머지는 이름 순.
+ */
+export function payAppRows(
+  f: PayFilter,
+  phoneApps: { pkg: string; name: string; icon?: string; seen?: number; count?: number }[] | null,
+  notifications: Pick<PayNotification, 'pkg' | 'app' | 'postedAt'>[],
+): PayAppRow[] {
+  const rows = new Map<string, PayAppRow>()
+  const blocked = new Set(f.apps.map((a) => a.pkg))
+  const row = (pkg: string, name: string) => {
+    let r = rows.get(pkg)
+    if (!r) {
+      r = { pkg, name: name || pkg, seen: 0, count: 0, blocked: blocked.has(pkg) }
+      rows.set(pkg, r)
+    } else if (r.name === pkg && name) r.name = name
+    return r
+  }
+  for (const a of phoneApps ?? []) {
+    if (!a?.pkg) continue
+    const r = row(a.pkg, a.name)
+    if (a.icon) r.icon = a.icon
+    r.seen = Math.max(r.seen, a.seen ?? 0)
+    r.count = Math.max(r.count, a.count ?? 0)
+  }
+  // 옛 앱은 폰이 세어 주지 않으니 모아 둔 알림으로 센다
+  const counted = new Map<string, number>()
+  for (const n of notifications) {
+    if (!n.pkg) continue
+    const r = row(n.pkg, n.app)
+    r.seen = Math.max(r.seen, n.postedAt || 0)
+    counted.set(n.pkg, (counted.get(n.pkg) ?? 0) + 1)
+  }
+  for (const [pkg, c] of counted) {
+    const r = rows.get(pkg)!
+    r.count = Math.max(r.count, c)
+  }
+  for (const a of f.apps) row(a.pkg, a.name)
+  return [...rows.values()].sort((a, b) => b.count - a.count || b.seen - a.seen || a.name.localeCompare(b.name, 'ko'))
+}

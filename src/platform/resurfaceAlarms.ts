@@ -10,8 +10,8 @@ import { showWebNotification } from './alarms'
  * - 웹: 알릴 날 정한 시각이 지나서 앱을 열어 두면 한 번 알려 준다
  */
 
-/** 적금(id×10) · 할 일(1,000,000+)과 겹치지 않게 */
-const ID_BASE = 2_000_000
+/** 적금(id×10) · 할 일(1,000,000+) · 정기 지출(2,000,000 + id×10)과 겹치지 않게 */
+const ID_BASE = 900_000_000
 
 const FIRED_KEY = 'tidy:scrap-resurface-fired'
 
