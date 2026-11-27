@@ -13,7 +13,18 @@ interface PayNotifyPlugin {
   takeOpen(): Promise<{ open: boolean }>
   /** 기록하지 않을 알림 규칙 (JSON). 폰 쪽에서 미리 걸러 알림을 모으지도 띄우지도 않는다 */
   setFilter(options: { filter: string }): Promise<void>
+  /** 뺄 앱 고르기 목록: 결제 알림을 보낸 앱 + 폰에 깔린 카드·은행·페이·문자 앱 */
+  apps(): Promise<{ apps: PayApp[] }>
   addListener(event: 'posted' | 'open', cb: () => void): Promise<PluginListenerHandle>
+}
+
+/** 뺄 앱 고르기 한 줄. icon 은 PNG data URL, seen 은 마지막 결제 알림 시각(ms), count 는 그동안 온 결제 알림 수 */
+export interface PayApp {
+  pkg: string
+  name: string
+  icon?: string
+  seen?: number
+  count?: number
 }
 
 const PayNotify = registerPlugin<PayNotifyPlugin>('PayNotify')
@@ -50,6 +61,16 @@ export async function listPayNotifications(): Promise<PayNotification[]> {
     return (await PayNotify.list()).items ?? []
   } catch {
     return []
+  }
+}
+
+/** 뺄 앱 고르기 목록. 옛 앱(apps 가 없음)이면 null — 화면이 모아 둔 알림에서 앱을 꺼내 쓴다 */
+export async function listPayNotifyApps(): Promise<PayApp[] | null> {
+  if (!payNotifyAvailable()) return null
+  try {
+    return (await PayNotify.apps()).apps ?? []
+  } catch {
+    return null
   }
 }
 
