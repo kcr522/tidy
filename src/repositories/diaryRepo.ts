@@ -48,8 +48,25 @@ export function createDiaryRepo(database: TidyDB = defaultDb, random: () => numb
       if (files.length) entry.attachments = files
       const hours = cleanHours(input.hours ?? old?.hours ?? [])
       if (hours.length) entry.hours = hours
+      // 기분은 대시보드 위젯에서 따로 고른다. 일기를 고쳐도 그대로 둔다
+      if (old?.mood) entry.mood = old.mood
       await database.diaries.put(entry)
       return now
+    },
+
+    /** 그날 기분을 고른다 (같은 걸 다시 고르면 지운다). 일기가 없으면 빈 일기를 만든다 (사용자 요청 2026-11-27) */
+    async setMood(date: string, mood: string | null): Promise<void> {
+      const now = nowIso()
+      const old = await database.diaries.get(date)
+      if (old) {
+        const next: Diary = { ...old, updatedAt: now }
+        if (mood) next.mood = mood
+        else delete next.mood
+        await database.diaries.put(next)
+        return
+      }
+      if (!mood) return
+      await database.diaries.put({ date, text: '', mood, color: randomDiaryColor(random), createdAt: now, updatedAt: now })
     },
 
     /** 일기 달력에 크게 보일 대표 사진을 바꾼다. 그 일기에 있는 사진만 고를 수 있다 */
