@@ -27,6 +27,7 @@ import { useToday } from '../hooks/useToday'
 import { formatDateLabel } from '../lib/format'
 import type { DashWidgetKind } from '../lib/dashLayout'
 import { parseDateKey, toDateKey } from '../lib/date'
+import { pickResurface, snoozeScrap, useResurfaceSettings, useSnoozes } from '../lib/scrap/resurface'
 import { openUrl } from '../platform/openUrl'
 import { diaryRepo } from '../repositories/diaryRepo'
 import { eventRepo } from '../repositories/eventRepo'
@@ -56,6 +57,10 @@ export default function DashboardPage() {
   const todos = useLiveQuery(() => todoRepo.listAll(), [])
   const unread = useLiveQuery(() => bookmarkRepo.list('unread'), [])
   const linked = useLiveQuery(() => todoRepo.linkedBookmarks(), [])
+  // 저장만 하고 안 본 스크랩 하나를 날마다 바꿔 가며 다시 꺼낸다
+  const [resurfaceSettings] = useResurfaceSettings()
+  const snoozes = useSnoozes()
+  const resurface = useMemo(() => (resurfaceSettings.card ? (pickResurface(unread ?? [], today, snoozes)[0] ?? null) : null), [resurfaceSettings.card, unread, today, snoozes])
   const habits = useLiveQuery(() => habitRepo.list(), [])
   const checkRows = useLiveQuery(() => habitRepo.allChecks(), [])
   const checks = useMemo(() => groupChecks(checkRows ?? []), [checkRows])
@@ -122,6 +127,18 @@ export default function DashboardPage() {
     if (b.id != null) await bookmarkRepo.markRead(b.id)
   }
 
+  function later(b: Bookmark) {
+    if (b.id == null) return
+    snoozeScrap(b.id, today)
+    toast('일주일 뒤에 다시 보여 드릴게요')
+  }
+
+  async function done(b: Bookmark) {
+    if (b.id == null) return
+    await bookmarkRepo.markRead(b.id)
+    toast('본 것으로 표시했어요')
+  }
+
   const viewTodos = () => navigate('/todos', { state: { tab: 'all' } })
   const loading = transactions === undefined || todos === undefined || unread === undefined
 
@@ -160,7 +177,7 @@ export default function DashboardPage() {
         return <WeatherWidget box={box} />
       case 'scrap':
         return card(
-          <UnreadScrapCard unread={unread ?? []} linked={linked ?? new Map()} onAdd={() => setSheet({ kind: 'scrap' })} onOpen={open} onConvert={setConverting} onViewTodo={viewTodos} />,
+          <UnreadScrapCard unread={unread ?? []} linked={linked ?? new Map()} onAdd={() => setSheet({ kind: 'scrap' })} onOpen={open} onConvert={setConverting} onViewTodo={viewTodos} resurface={resurface} today={today} onLater={later} onDone={done} />,
         )
     }
   }

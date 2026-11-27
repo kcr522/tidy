@@ -1,6 +1,9 @@
 import { BookmarkPlus, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { useAskCapture, useAutoCapture } from '../../lib/scrap/settings'
+import { EVERY_OPTIONS, useResurfaceSettings } from '../../lib/scrap/resurface'
+import { requestAlarmPermission } from '../../platform/alarms'
+import { useToast } from '../common/Toast'
 import InstagramImportDialog from '../bookmarks/InstagramImportDialog'
 
 function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
@@ -11,8 +14,20 @@ function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   )
 }
 
-/** 설정 > 스크랩: 사이트 자동 캡처, 캡처 같이 저장 묻기, 공유받기 안내 */
+/** 설정 > 스크랩: 사이트 자동 캡처, 캡처 같이 저장 묻기, 안 본 스크랩 다시 보기, 공유받기 안내 */
 export default function ScrapSettingsSection() {
+  const [back, setBack] = useResurfaceSettings()
+  const toast = useToast()
+  async function toggleNotify() {
+    if (back.notify) return setBack({ ...back, notify: false })
+    const p = await requestAlarmPermission()
+    if (p === 'denied' || p === 'unsupported') {
+      toast(p === 'denied' ? '알림이 꺼져 있어요. 폰 설정에서 Tidy 알림을 허용해 주세요' : '이 브라우저는 알림을 못 띄워요', 'error')
+      return
+    }
+    setBack({ ...back, notify: true })
+    toast('안 본 스크랩을 알려 드릴게요')
+  }
   const [auto, setAuto] = useAutoCapture()
   const [ask, setAsk] = useAskCapture()
   const [importing, setImporting] = useState(false)
@@ -34,6 +49,45 @@ export default function ScrapSettingsSection() {
           </span>
           <Switch on={ask} onToggle={() => setAsk(!ask)} />
         </label>
+      )}
+      <label className="flex min-h-16 items-center gap-3 border-t border-slate-100 px-5 py-3">
+        <span className="flex-1">
+          <span className="block text-[15px] font-semibold text-slate-800">안 본 스크랩 다시 보여 주기</span>
+          <span className="block text-xs text-slate-500">저장하고 3일 넘게 안 연 스크랩을 하루 하나씩 대시보드 · 스크랩 화면 맨 위에 꺼내 줘요</span>
+        </span>
+        <Switch on={back.card} onToggle={() => setBack({ ...back, card: !back.card })} />
+      </label>
+      <label className="flex min-h-16 items-center gap-3 border-t border-slate-100 px-5 py-3">
+        <span className="flex-1">
+          <span className="block text-[15px] font-semibold text-slate-800">알림으로도 알려 주기</span>
+          <span className="block text-xs text-slate-500">정한 날 정한 시각에 “저장해 두고 안 본 스크랩이 있어요” 알림. 누르면 그 스크랩이 열려요</span>
+        </span>
+        <Switch on={back.notify} onToggle={() => void toggleNotify()} />
+      </label>
+      {back.notify && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3">
+          <div className="flex gap-1 rounded-full bg-slate-100 p-1" role="radiogroup" aria-label="알림 주기">
+            {EVERY_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={back.every === o.value}
+                onClick={() => setBack({ ...back, every: o.value })}
+                className={`tap rounded-full px-3 py-1.5 text-xs font-bold ${back.every === o.value ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500'}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="time"
+            value={back.time}
+            onChange={(e) => e.target.value && setBack({ ...back, time: e.target.value })}
+            aria-label="알림 시각"
+            className="min-h-9 rounded-full bg-slate-100 px-3 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
       )}
       <button type="button" onClick={() => setImporting(true)} className="tap flex min-h-16 w-full items-center gap-3 border-t border-slate-100 px-5 py-3 text-left">
         <BookmarkPlus className="size-5 shrink-0 text-pink-500" aria-hidden />

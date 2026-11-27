@@ -11,6 +11,7 @@ import CategoryManager from '../components/bookmarks/CategoryManager'
 import ConvertToTodoDialog from '../components/bookmarks/ConvertToTodoDialog'
 import ScrapSortDialog from '../components/bookmarks/ScrapSortDialog'
 import ScrapDetail from '../components/bookmarks/ScrapDetail'
+import ResurfaceCard from '../components/bookmarks/ResurfaceCard'
 import Button from '../components/common/Button'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EmptyState from '../components/common/EmptyState'
@@ -24,6 +25,8 @@ import { applyTidy, planTidy, undoTidy, type TidyResult } from '../lib/scrap/aut
 import { enrichMany, enrichScrap, fillThumbs, needsFill, tidyOldScrapTitles } from '../lib/scrap/enrich'
 import { askCaptureEnabled, autoCaptureEnabled, lastCategoryFor, rememberCategory } from '../lib/scrap/settings'
 import { makeSuggester } from '../lib/scrap/suggest'
+import { pickResurface, snoozeScrap, useResurfaceSettings, useSnoozes } from '../lib/scrap/resurface'
+import { useToday } from '../hooks/useToday'
 import { openUrl } from '../platform/openUrl'
 import { bookmarkRepo, type BookmarkFilter } from '../repositories/bookmarkRepo'
 import { CategoryNameError, MAX_CATEGORY_NAME, scrapCategoryRepo } from '../repositories/scrapCategoryRepo'
@@ -62,6 +65,8 @@ function readView(): View {
 /** 공유받기(/share)에서 넘어오는 값 */
 export interface ShareState {
   share?: { url: string; title?: string }
+  /** "다시 볼 스크랩" 알림을 눌러 들어오면 그 스크랩을 연다 */
+  openScrap?: number
 }
 
 /** 스크랩 화면 (spec US3) + 카테고리, 미리보기, 캡처, AI 정리 */
@@ -130,6 +135,11 @@ export default function BookmarksPage() {
     const inCat = (all ?? []).filter((b) => cat === 'all' || (cat === 'none' ? b.categoryId == null : b.categoryId === cat))
     return { all: inCat.length, unread: inCat.filter((b) => b.isRead === 0).length, byCat }
   }, [all, cat])
+  // 저장만 하고 안 본 스크랩 하나를 다시 꺼낸다 (대시보드와 같은 것)
+  const today = useToday()
+  const [resurfaceSettings] = useResurfaceSettings()
+  const snoozes = useSnoozes()
+  const resurface = useMemo(() => (resurfaceSettings.card ? (pickResurface(all ?? [], today, snoozes)[0] ?? null) : null), [resurfaceSettings.card, all, today, snoozes])
   // 미분류로 남은 스크랩 → AI 없이 정리하기
   const unsortedCount = counts.byCat.get(null) ?? 0
   // 저장할 때 카테고리 추천 (AI 없이: 낱말 + 전에 나눈 스크랩)
@@ -224,6 +234,14 @@ export default function BookmarksPage() {
     }
   }
 
+  // "다시 볼 스크랩" 알림을 누르고 들어왔으면 그 스크랩을 바로 연다
+  useEffect(() => {
+    const id = (location.state as ShareState | null)?.openScrap
+    if (typeof id !== 'number') return
+    showDetail(id)
+    navigate('.', { replace: true, state: null })
+  }, [location.state, navigate])
+
   // 다른 앱에서 공유하기로 들어왔으면 바로 저장 창을 연다
   useEffect(() => {
     const share = (location.state as ShareState | null)?.share
@@ -278,6 +296,24 @@ export default function BookmarksPage() {
   async function open(b: Bookmark) {
     openUrl(b.url)
     if (b.id != null && b.isRead === 0) await bookmarkRepo.markRead(b.id)
+  }
+
+  /** 자세히 보기를 열면 본 것으로 친다 (안 본 스크랩 다시 보기에서 빠진다) */
+  function showDetail(id: number | null) {
+    setDetailId(id)
+    if (id != null) void bookmarkRepo.get(id).then((b) => (b?.isRead === 0 ? bookmarkRepo.markRead(id) : undefined)).catch(() => undefined)
+  }
+
+  function later(b: Bookmark) {
+    if (b.id == null) return
+    snoozeScrap(b.id, today)
+    toast('일주일 뒤에 다시 보여 드릴게요')
+  }
+
+  async function done(b: Bookmark) {
+    if (b.id == null) return
+    await bookmarkRepo.markRead(b.id)
+    toast('본 것으로 표시했어요')
   }
 
   async function confirmDelete() {
@@ -414,6 +450,12 @@ export default function BookmarksPage() {
         </div>
       )}
 
+      {!searching && resurface && cat === 'all' && (
+        <div className="mb-3">
+          <ResurfaceCard item={resurface} today={today} onOpen={open} onLater={later} onDone={done} />
+        </div>
+      )}
+
       {!searching && tidy?.kind !== 'running' && unsortedCount > 0 && (cat === 'all' || cat === 'none') && (
         <button type="button" onClick={() => setSorting(true)} className="tap mb-3 flex w-full items-center gap-3 rounded-2xl bg-grad-soft px-4 py-3 text-left shadow-card">
           <Wand2 className="size-5 shrink-0 text-brand-600" aria-hidden />
@@ -492,7 +534,7 @@ export default function BookmarksPage() {
                   cover={b.id != null ? covers?.get(b.id)?.cover : undefined}
                   categoryName={catName(b.categoryId)}
                   onOpen={() => open(b)}
-                  onDetail={() => setDetailId(b.id ?? null)}
+                  onDetail={() => showDetail(b.id ?? null)}
                   search={{ terms, field: m.field, snippet: m.snippet }}
                 />
               ))}
@@ -514,7 +556,7 @@ export default function BookmarksPage() {
               cover={b.id != null ? covers?.get(b.id)?.cover : undefined}
               categoryName={catName(b.categoryId)}
               onOpen={() => open(b)}
-              onDetail={() => setDetailId(b.id ?? null)}
+              onDetail={() => showDetail(b.id ?? null)}
             />
           ))}
         </ul>
@@ -530,7 +572,7 @@ export default function BookmarksPage() {
                 captures={cv?.captures ?? 0}
                 categoryName={catName(b.categoryId)}
                 onOpen={() => open(b)}
-                onDetail={() => setDetailId(b.id ?? null)}
+                onDetail={() => showDetail(b.id ?? null)}
                 onEdit={() => setEditor({ mode: 'edit', item: b })}
                 converted={b.id != null && !!linked?.has(b.id)}
                 onConvert={() => setConverting(b)}

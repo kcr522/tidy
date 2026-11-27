@@ -18,6 +18,9 @@ import { listenForShares } from '../../platform/shareIntent'
 import { listenForWidgetRoutes } from '../../platform/widgetRoute'
 import { syncTodoAlarms } from '../../platform/todoAlarms'
 import { syncRecurringAlarms } from '../../platform/recurringAlarms'
+import { listenResurfaceTap, syncResurfaceAlarms } from '../../platform/resurfaceAlarms'
+import { useResurfaceSettings, useSnoozes } from '../../lib/scrap/resurface'
+import { bookmarkRepo } from '../../repositories/bookmarkRepo'
 import { habitRepo } from '../../repositories/habitRepo'
 import { recurringRepo } from '../../repositories/recurringRepo'
 import { savingsRepo } from '../../repositories/savingsRepo'
@@ -107,6 +110,15 @@ export default function AppLayout() {
     if (!rules) return
     return syncRecurringAlarms(rules, (text) => toast(text))
   }, [rules, today, toast])
+  // 안 본 스크랩 다시 보기 알림: 스크랩 · 설정 · "나중에"가 바뀌면 다시 맞춘다
+  const unreadScraps = useLiveQuery(() => bookmarkRepo.list('unread'), [])
+  const [resurfaceSettings] = useResurfaceSettings()
+  const resurfaceSnoozes = useSnoozes()
+  useEffect(() => {
+    if (!unreadScraps) return
+    return syncResurfaceAlarms(unreadScraps, (text) => toast(text))
+  }, [unreadScraps, resurfaceSettings, resurfaceSnoozes, today, toast])
+  useEffect(() => listenResurfaceTap((id) => navigate('/scraps', { state: { openScrap: id } })), [navigate])
 
   // 갤럭시 홈 화면 위젯에 오늘 할 일과 지출을 보낸다
   useWidgetSync(todos, today)
