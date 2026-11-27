@@ -1,6 +1,7 @@
 import { BookHeart } from 'lucide-react'
 import type { Diary } from '../../db/types'
 import { dayTitle } from '../../lib/calendar'
+import { moodOf } from '../../lib/mood'
 
 interface Props {
   grid: string[]
@@ -66,6 +67,11 @@ export default function DiaryMonth({ grid, month, today, selected, diaries, onPi
               </span>
               {diary && !diary.photo && diary.text && (
                 <span className="relative mt-0.5 line-clamp-2 text-[10px] leading-tight font-medium break-all text-slate-700 sm:text-[11px]">{diary.text}</span>
+              )}
+              {moodOf(diary?.mood) && (
+                <span className="absolute top-1 right-1 text-[13px] leading-none" title={moodOf(diary?.mood)!.label} aria-hidden>
+                  {moodOf(diary?.mood)!.emoji}
+                </span>
               )}
               {(diary?.photos?.length ?? 0) > 1 && (
                 <span className="absolute right-1 bottom-1 rounded-full bg-black/55 px-1.5 py-px text-[10px] font-bold text-white">{diary!.photos!.length}</span>
