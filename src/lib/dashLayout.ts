@@ -6,7 +6,7 @@
  * - 위치는 순서로 정한다: 앞에서부터 빈 곳에 채워 넣는다 (CSS grid dense)
  */
 
-export type DashWidgetKind = 'date' | 'timeline' | 'progress' | 'dday' | 'todos' | 'habitWeek' | 'tracker' | 'money' | 'ai' | 'payday' | 'scrap' | 'route'
+export type DashWidgetKind = 'date' | 'timeline' | 'progress' | 'dday' | 'todos' | 'habitWeek' | 'tracker' | 'money' | 'ai' | 'payday' | 'scrap' | 'route' | 'timer' | 'mood' | 'weather'
 
 export interface DashWidget {
   kind: DashWidgetKind
@@ -20,7 +20,7 @@ export const GRID_COLS = [4, 8, 12] as const
 export type GridCols = (typeof GRID_COLS)[number]
 
 /** 위젯 이름과 가장 작은 크기 (칸) */
-export const WIDGET_INFO: Record<DashWidgetKind, { name: string; desc: string; minW: number; minH: number }> = {
+export const WIDGET_INFO: Record<DashWidgetKind, { name: string; desc: string; minW: number; minH: number; isNew?: boolean }> = {
   date: { name: '날짜 · 달력', desc: '오늘 날짜와 이번 달 달력', minW: 2, minH: 2 },
   timeline: { name: '오늘 시간표', desc: '시간 정한 할 일과 시간별 일기', minW: 2, minH: 3 },
   progress: { name: '할 일 진행', desc: '오늘 할 일을 점으로', minW: 2, minH: 1 },
@@ -33,6 +33,9 @@ export const WIDGET_INFO: Record<DashWidgetKind, { name: string; desc: string; m
   payday: { name: '월급날', desc: '다음 월급까지', minW: 2, minH: 2 },
   scrap: { name: '안 읽은 스크랩', desc: '저장해 둔 링크', minW: 2, minH: 3 },
   route: { name: '이동 기록', desc: '오늘 다닌 길을 지도에', minW: 2, minH: 2 },
+  timer: { name: '집중 타이머', desc: '25분 집중 · 스톱워치', minW: 2, minH: 2, isNew: true },
+  mood: { name: '오늘 기분', desc: '이모지 하나로 기분 남기기', minW: 2, minH: 2, isNew: true },
+  weather: { name: '날씨', desc: '지금 기온과 오늘 비 소식', minW: 2, minH: 2, isNew: true },
 }
 
 export const ALL_KINDS = Object.keys(WIDGET_INFO) as DashWidgetKind[]
@@ -68,6 +71,9 @@ const MID: DashWidget[] = [
   { kind: 'payday', w: 4, h: 4 },
   { kind: 'scrap', w: 4, h: 4 },
   { kind: 'route', w: 4, h: 4 },
+  { kind: 'weather', w: 4, h: 4 },
+  { kind: 'timer', w: 4, h: 3 },
+  { kind: 'mood', w: 4, h: 3 },
 ]
 
 const WIDE: DashWidget[] = [
@@ -77,13 +83,26 @@ const WIDE: DashWidget[] = [
   { kind: 'progress', w: 3, h: 3 },
   { kind: 'todos', w: 3, h: 3 },
   { kind: 'dday', w: 3, h: 2 },
-  { kind: 'tracker', w: 8, h: 3 },
-  { kind: 'payday', w: 4, h: 3 },
+  { kind: 'tracker', w: 6, h: 3 },
+  { kind: 'payday', w: 3, h: 3 },
+  { kind: 'mood', w: 3, h: 3 },
   { kind: 'money', w: 4, h: 5 },
   { kind: 'ai', w: 4, h: 5 },
   { kind: 'scrap', w: 4, h: 5 },
   { kind: 'route', w: 4, h: 5 },
+  { kind: 'weather', w: 4, h: 5 },
+  { kind: 'timer', w: 4, h: 5 },
 ]
+
+/**
+ * 기본 배치에 없는 위젯을 "추가" 로 넣을 때의 크기 (사용자 요청 2026-11-27)
+ * 폰이 복잡해지지 않게 타이머 · 기분 · 날씨는 폰 기본 배치에 넣지 않고, 넣으면 타이머 · 기분은 반 칸(2×2) 작은 타일로 나란히, 날씨는 한 줄 낮은 띠(4×2)로 들어간다
+ */
+const ADD_SIZE: Record<GridCols, Partial<Record<DashWidgetKind, { w: number; h: number }>>> = {
+  4: { timer: { w: 2, h: 2 }, mood: { w: 2, h: 2 }, weather: { w: 4, h: 2 }, dday: { w: 4, h: 1 } },
+  8: {},
+  12: {},
+}
 
 export function defaultLayout(cols: GridCols): DashWidget[] {
   return (cols === 4 ? PHONE : cols === 8 ? MID : WIDE).map((w) => ({ ...w }))
@@ -145,7 +164,8 @@ export function removeWidget(list: DashWidget[], kind: DashWidgetKind): DashWidg
 /** 빠진 위젯을 기본 크기로 맨 앞에 다시 넣는다 */
 export function addWidget(list: DashWidget[], kind: DashWidgetKind, cols: GridCols): DashWidget[] {
   if (list.some((x) => x.kind === kind)) return list
-  const base = defaultLayout(cols).find((x) => x.kind === kind) ?? { kind, w: cols, h: WIDGET_INFO[kind].minH }
+  const size = ADD_SIZE[cols][kind]
+  const base = defaultLayout(cols).find((x) => x.kind === kind) ?? (size ? { kind, ...size } : { kind, w: cols, h: WIDGET_INFO[kind].minH })
   return [{ ...base }, ...list]
 }
 
