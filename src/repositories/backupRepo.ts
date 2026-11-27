@@ -163,7 +163,7 @@ function isRecurring(v: unknown): v is Recurring {
   return (
     isObj(v) && isId(v.id) && (v.type === 'INCOME' || v.type === 'EXPENSE') && isNum(v.amount) && isStr(v.category) &&
     isStr(v.memo) && isOptStr(v.account) && isNum(v.day) && isStr(v.startDate) && (v.lastDate === null || isStr(v.lastDate)) &&
-    (v.askAmount === undefined || isFlag(v.askAmount)) && isFlag(v.isActive) && isStr(v.createdAt) && isStr(v.updatedAt)
+    (v.askAmount === undefined || isFlag(v.askAmount)) && (v.remindDays == null || isNum(v.remindDays)) && isFlag(v.isActive) && isStr(v.createdAt) && isStr(v.updatedAt)
   )
 }
 

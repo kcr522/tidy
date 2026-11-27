@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BarChart3, CalendarCheck, Tags, CreditCard, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
+import { BarChart3, CalendarCheck, Tags, CreditCard, ChevronLeft, ChevronRight, FileSpreadsheet, PieChart, Repeat, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { budgetStatus } from '../../../lib/budget'
@@ -18,10 +18,11 @@ import { payMethodRepo } from '../../../repositories/payMethodRepo'
 import { accountTotals, NO_ACCOUNT } from '../../../lib/summary'
 import ChartPanel from './ChartPanel'
 import StatsPanel from './StatsPanel'
+import ExportPanel from './ExportPanel'
 
-export type MenuView = 'menu' | 'chart' | 'stats' | 'fixed' | 'budget' | 'methods' | 'categories'
+export type MenuView = 'menu' | 'chart' | 'stats' | 'fixed' | 'budget' | 'methods' | 'categories' | 'export'
 
-const TITLE: Record<MenuView, string> = { menu: '가계부 메뉴', chart: '차트', stats: '통계', fixed: '고정 금액', budget: '예산', methods: '카드 · 계좌', categories: '카테고리' }
+const TITLE: Record<MenuView, string> = { menu: '가계부 메뉴', chart: '차트', stats: '통계', fixed: '고정 금액', budget: '예산', methods: '카드 · 계좌', categories: '카테고리', export: '엑셀로 내보내기' }
 
 /** ≡ 버튼을 누르면 열리는 창: 차트 / 통계 / 고정 금액. 열 때만 그린다 (닫으면 처음 메뉴로) */
 export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { onClose: () => void; today: string; initialView?: MenuView }) {
@@ -94,9 +95,15 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
           <MenuItem
             icon={<Repeat className="size-5" aria-hidden />}
             title="고정 금액"
-            desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈"
-            hint={active.length > 0 ? `${active.length}개 · 매달 고정 지출 ${formatWon(fixedOut)}` : undefined}
+            desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈 · 결제 전 알림"
+            hint={active.length > 0 ? `${active.length}개 · 매달 고정 지출 ${formatWon(fixedOut)} · 1년 ${formatWon(fixedOut * 12)}` : undefined}
             onClick={() => setView('fixed')}
+          />
+          <MenuItem
+            icon={<FileSpreadsheet className="size-5" aria-hidden />}
+            title="엑셀로 내보내기"
+            desc="기간을 골라 내역을 엑셀 파일(CSV)로 저장 · 공유"
+            onClick={() => setView('export')}
           />
           <MenuItem
             icon={<CalendarCheck className="size-5" aria-hidden />}
@@ -116,6 +123,7 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
       {view === 'budget' && <BudgetPanel today={today} />}
       {view === 'methods' && <PayMethodManager today={today} />}
       {view === 'categories' && <CategoryManager />}
+      {view === 'export' && items && <ExportPanel items={items} today={today} />}
     </Modal>
   )
 }

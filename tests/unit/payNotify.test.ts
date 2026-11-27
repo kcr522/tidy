@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildCandidates, parsePayNotification, type PayNotification } from '../../src/lib/payNotify'
-import { addApp, addWord, EMPTY_FILTER, type PayFilter } from '../../src/lib/payNotifyFilter'
+import { addApp, addWord, EMPTY_FILTER, payAppRows, removeApp, type PayFilter } from '../../src/lib/payNotifyFilter'
 
 const at = (hourMinute: string, day = '2026-11-17') => new Date(`${day}T${hourMinute}:00`).getTime()
 const notice = (pkg: string, app: string, title: string, text: string, time = '14:35'): PayNotification => ({ id: `${pkg}-${time}-${title}`, pkg, app, title, text, postedAt: at(time) })
@@ -115,6 +115,52 @@ describe('거르기 (기록하지 않을 알림)', () => {
     expect(filter.words).toEqual(['스타벅스'])
     expect(addApp(filter, 'a.b', 'AB').apps).toHaveLength(1)
   })
+})
+
+describe('뺄 앱 고르기 목록', () => {
+  const TOSS = { pkg: 'viva.republica.toss', name: '토스' }
+  const KB = { pkg: 'com.kbcard.cxh.appcard', name: 'KB Pay' }
+  const SHINHAN = { pkg: SHINHAN_APP[0], name: SHINHAN_APP[1] }
+  const noPhoneList = null
+  const noNotifications: { pkg: string; app: string; postedAt: number }[] = []
+
+  it('결제 알림이 많이 온 앱이 위, 온 적 없는 앱은 이름 순으로 아래에 온다', () => {
+    const phone = [{ ...KB }, { ...TOSS, seen: 2000, count: 1 }, { ...SHINHAN, seen: 1000, count: 5 }]
+
+    const rows = payAppRows(EMPTY_FILTER, phone, noNotifications)
+
+    expect(rows.map((r) => r.pkg)).toEqual([SHINHAN.pkg, TOSS.pkg, KB.pkg])
+  })
+
+  it('옛 앱(폰 목록 없음)이면 모아 둔 알림을 보낸 앱으로 목록을 만들고 알림 수를 센다 — 앱을 고를 수 없던 문제', () => {
+    const pending = [card(1000), card(2000), { pkg: TOSS.pkg, app: TOSS.name, postedAt: 3000 }]
+
+    const rows = payAppRows(EMPTY_FILTER, noPhoneList, pending)
+
+    expect(rows.map((r) => [r.name, r.count])).toEqual([
+      [SHINHAN.name, 2],
+      [TOSS.name, 1],
+    ])
+  })
+
+  it('이미 뺀 앱은 폰에서 지웠어도 목록에 남아 다시 켤 수 있다', () => {
+    const filter = addApp(EMPTY_FILTER, KB.pkg, KB.name)
+
+    const rows = payAppRows(filter, [TOSS], noNotifications)
+
+    expect(rows.find((r) => r.pkg === KB.pkg)?.blocked).toBe(true)
+    expect(rows.find((r) => r.pkg === TOSS.pkg)?.blocked).toBe(false)
+  })
+
+  it('뺀 앱을 다시 켜면 거르기 규칙에서 빠진다', () => {
+    const filter = addApp(addApp(EMPTY_FILTER, KB.pkg, KB.name), TOSS.pkg, TOSS.name)
+
+    expect(removeApp(filter, KB.pkg).apps).toEqual([TOSS])
+  })
+
+  function card(postedAt: number) {
+    return { pkg: SHINHAN.pkg, app: SHINHAN.name, postedAt }
+  }
 })
 
 describe('입출금 알림 · 금액 (은행 · 카드 · 간편결제 여러 모양)', () => {
