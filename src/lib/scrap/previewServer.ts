@@ -1,6 +1,6 @@
 // 링크 미리보기를 "서버에서" 만드는 부분. api/preview.ts(배포)와 vite.config.ts(개발 중)가 같이 쓴다.
 // 브라우저는 다른 사이트의 HTML을 직접 읽을 수 없어서(CORS) 서버가 대신 읽어 준다.
-import { detectSource, isPublicHttpUrl, naverBlogInnerUrl, parseLinkMeta, type PreviewResponse } from './link.js'
+import { detectSource, isPrivateIp, isPublicHttpUrl, naverBlogInnerUrl, parseLinkMeta, type PreviewResponse } from './link.js'
 
 /** 미리보기 봇처럼 보여야 인스타그램·X가 로그인 화면 대신 og 태그를 준다 */
 const BOT_UA = 'Mozilla/5.0 (compatible; facebookexternalhit/1.1; +http://www.facebook.com/externalhit_uatext.php) TidyPreview/1.0'
@@ -42,11 +42,43 @@ export async function readLimited(res: Response, max: number): Promise<Uint8Arra
   return out
 }
 
+/** 이름 → IP 들 (서버에서만. 테스트는 바꿔 끼운다) */
+export type HostResolver = (host: string) => Promise<string[]>
+
+const dnsResolver: HostResolver = async (host) => {
+  const { lookup } = await import('node:dns/promises')
+  return (await lookup(host, { all: true, verbatim: true })).map((a) => a.address)
+}
+
+let resolver: HostResolver | null = null
+/** 테스트용: 이름 풀기를 바꾼다 (null 이면 진짜 인터넷일 때만 DNS 로 확인) */
+export function setHostResolver(r: HostResolver | null) {
+  resolver = r
+}
+
+/**
+ * 이름이 가리키는 IP 가 사설망이면 막는다 (보안 강화 2026-11-27)
+ * 주소 글자만 보면 127.0.0.1.nip.io 같은 "안쪽을 가리키는 이름"을 못 걸러서, 실제 IP 까지 확인한다
+ */
+async function assertPublicHost(url: string, f: Fetch): Promise<void> {
+  const r = resolver ?? (f === globalThis.fetch ? dnsResolver : null)
+  if (!r) return
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, '')
+  let ips: string[]
+  try {
+    ips = await r(host)
+  } catch {
+    throw new PreviewError('사이트 주소를 찾지 못했어요', 400)
+  }
+  if (!ips.length || ips.some(isPrivateIp)) throw new PreviewError('열 수 없는 주소예요', 400)
+}
+
 export async function get(url: string, f: Fetch, signal?: AbortSignal, headers: Record<string, string> = {}): Promise<Response> {
-  // 리다이렉트를 직접 따라가며 매번 사설망 주소인지 확인한다
+  // 리다이렉트를 직접 따라가며 매번 사설망 주소인지 확인한다 (글자 + 실제 IP)
   let current = url
   for (let i = 0; i < 5; i++) {
     if (!isPublicHttpUrl(current)) throw new PreviewError('열 수 없는 주소예요', 400)
+    await assertPublicHost(current, f)
     const res = await f(current, { headers: { 'user-agent': BOT_UA, accept: 'text/html,application/xhtml+xml,image/*;q=0.8,*/*;q=0.5', 'accept-language': 'ko,en;q=0.8', ...headers }, redirect: 'manual', signal })
     const loc = res.headers.get('location')
     if (res.status >= 300 && res.status < 400 && loc) {

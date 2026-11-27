@@ -5,8 +5,14 @@
  * - 한 사람이 하루에 쓸 수 있는 횟수(AI_DAILY_LIMIT, 기본 50번)를 정하고, 쓴 횟수와 토큰은
  *   그 사람의 Firestore 자리(users/내 uid/aiUsage/날짜)에 센다. 그래서 답할 때마다 "오늘 몇 번 남았는지"를 같이 돌려준다
  * - 키는 서버에만 있고 앱으로는 절대 보내지 않는다
- * 이 파일은 서버에서도 돌아서 다른 파일을 import 하지 않는다.
+ * 보안 강화 (2026-11-27)
+ * - 횟수는 서버만 쓴다: Firebase 서비스 계정(FIREBASE_SERVICE_ACCOUNT)으로 쓰고, Firestore 규칙은 앱이 aiUsage 를 못 고치게 막는다.
+ *   전에는 그 사람 로그인 토큰으로 썼기 때문에, 마음먹으면 자기 횟수를 0으로 되돌려 끝없이 쓸 수 있었다
+ * - 횟수를 세지 못하면 AI 를 부르지 않는다 (세지 못한 채로 쓰게 두지 않는다)
+ * - AI_ALLOWED_EMAILS 는 "인증된 메일"일 때만 통과 (아무 메일로 가입해 흉내 내는 것을 막는다)
+ * 이 파일은 서버에서만 돈다 (앱은 type 만 가져다 쓴다).
  */
+import { parseServiceAccount, serviceToken } from '../admin/adminServer.js'
 
 export interface AiProxyEnv {
   geminiKey?: string
@@ -18,6 +24,8 @@ export interface AiProxyEnv {
   dailyLimit: number
   /** 비어 있으면 로그인한 누구나 */
   allowedEmails: string[]
+  /** 횟수를 쓰는 서버 전용 계정 (없으면 그 사람 로그인 토큰으로 쓴다: 규칙을 바꾸기 전까지만 된다) */
+  serviceAccount?: { client_email: string; private_key: string } | null
 }
 
 const FIREBASE_API_KEY = 'AIzaSyAlkxWKQPttsDaUo4Obe_nX36mz1IsKM7o'
@@ -28,7 +36,9 @@ type Env = Record<string, string | undefined>
 
 export function proxyEnvFrom(env: Env): AiProxyEnv {
   const limit = Number(env.AI_DAILY_LIMIT)
+  const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT)
   return {
+    serviceAccount: sa && sa !== 'broken' ? sa : null,
     geminiKey: env.GEMINI_API_KEY?.trim() || undefined,
     groqKey: env.GROQ_API_KEY?.trim() || undefined,
     firebaseApiKey: env.FIREBASE_API_KEY?.trim() || env.VITE_FIREBASE_API_KEY?.trim() || FIREBASE_API_KEY,
@@ -97,16 +107,21 @@ interface Who {
   uid: string
   email: string
   token: string
+  emailVerified: boolean
 }
 
 /** 확인한 로그인 토큰을 잠깐 기억 (같은 사람이 연달아 물을 때 빠르게) */
 const verified = new Map<string, { who: Who; until: number }>()
+/** 테스트용: 기억해 둔 로그인 확인을 지운다 */
+export function forgetLogins() {
+  verified.clear()
+}
 
 async function verifyUser(authorization: string | null | undefined, env: AiProxyEnv, fetcher: typeof fetch): Promise<Who | ProxyReply> {
   const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1]
   if (!token) return err(401, 'Tidy AI는 구글 로그인하면 쓸 수 있어요')
   const hit = verified.get(token)
-  if (hit && hit.until > Date.now()) return hit.who
+  if (hit && hit.until > Date.now()) return allowed(hit.who, env)
   let res: Response
   try {
     res = await fetcher(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(env.firebaseApiKey)}`, {
@@ -117,14 +132,29 @@ async function verifyUser(authorization: string | null | undefined, env: AiProxy
   } catch {
     return err(502, '로그인을 확인하지 못했어요. 잠시 뒤에 다시 해 주세요')
   }
-  const data = (await res.json().catch(() => ({}))) as { users?: { localId?: string; email?: string }[] }
+  const data = (await res.json().catch(() => ({}))) as { users?: { localId?: string; email?: string; emailVerified?: boolean; disabled?: boolean }[] }
   const user = data.users?.[0]
-  if (!res.ok || !user?.localId) return err(401, '로그인이 끝났어요. 다시 로그인해 주세요')
-  const who = { uid: user.localId, email: (user.email ?? '').toLowerCase(), token }
-  if (env.allowedEmails.length && !env.allowedEmails.includes(who.email)) return err(403, '이 계정은 Tidy AI를 쓸 수 없어요')
+  if (!res.ok || !user?.localId || user.disabled) return err(401, '로그인이 끝났어요. 다시 로그인해 주세요')
+  const who = { uid: user.localId, email: (user.email ?? '').toLowerCase(), token, emailVerified: user.emailVerified === true }
   if (verified.size > 200) verified.clear()
   verified.set(token, { who, until: Date.now() + 5 * 60_000 })
+  return allowed(who, env)
+}
+
+/** 정해 둔 메일만 쓰게 했으면, 그 메일이 정말 그 사람 것인지(인증된 메일인지)도 본다 */
+function allowed(who: Who, env: AiProxyEnv): Who | ProxyReply {
+  if (env.allowedEmails.length && (!who.emailVerified || !env.allowedEmails.includes(who.email))) return err(403, '이 계정은 Tidy AI를 쓸 수 없어요')
   return who
+}
+
+/** 사용량 문서를 읽고 쓸 때 보내는 권한: 서비스 계정이 있으면 그것, 없으면 그 사람 로그인 토큰 */
+async function usageAuth(env: AiProxyEnv, who: Who, fetcher: typeof fetch): Promise<string | null> {
+  if (!env.serviceAccount) return `Bearer ${who.token}`
+  try {
+    return `Bearer ${await serviceToken(env.serviceAccount, fetcher)}`
+  } catch {
+    return null
+  }
 }
 
 /** 그 사람의 오늘 사용량 문서 */
@@ -132,14 +162,16 @@ const usageDoc = (env: AiProxyEnv, uid: string, day: string) => `projects/${env.
 
 /**
  * 오늘 사용량에 횟수·토큰을 더하고 더한 뒤의 값을 돌려준다.
- * 그 사람의 로그인 토큰으로 쓰기 때문에 Firestore 보안 규칙(본인 자리만)이 그대로 지켜 준다. 못 세면 null
+ * 서비스 계정으로 쓴다 (앱은 규칙 때문에 이 문서를 고칠 수 없다). 못 세면 null
  */
 async function addUsage(env: AiProxyEnv, who: Who, day: string, count: number, tokens: number, fetcher: typeof fetch): Promise<{ used: number; tokens: number } | null> {
   const name = usageDoc(env, who.uid, day)
+  const authorization = await usageAuth(env, who, fetcher)
+  if (!authorization) return null
   try {
     const res = await fetcher(`https://firestore.googleapis.com/v1/projects/${env.projectId}/databases/(default)/documents:commit`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${who.token}` },
+      headers: { 'content-type': 'application/json', authorization },
       body: JSON.stringify({
         writes: [
           {
@@ -164,8 +196,10 @@ async function addUsage(env: AiProxyEnv, who: Who, day: string, count: number, t
 }
 
 async function readUsage(env: AiProxyEnv, who: Who, day: string, fetcher: typeof fetch): Promise<{ used: number; tokens: number }> {
+  const authorization = await usageAuth(env, who, fetcher)
+  if (!authorization) return { used: 0, tokens: 0 }
   try {
-    const res = await fetcher(`https://firestore.googleapis.com/v1/${usageDoc(env, who.uid, day)}`, { headers: { authorization: `Bearer ${who.token}` } })
+    const res = await fetcher(`https://firestore.googleapis.com/v1/${usageDoc(env, who.uid, day)}`, { headers: { authorization } })
     if (!res.ok) return { used: 0, tokens: 0 }
     const data = (await res.json().catch(() => ({}))) as { fields?: { count?: { integerValue?: string }; tokens?: { integerValue?: string } } }
     return { used: Number(data.fields?.count?.integerValue ?? 0), tokens: Number(data.fields?.tokens?.integerValue ?? 0) }
@@ -250,7 +284,9 @@ export async function handleAiProxy(req: ProxyRequest, env: AiProxyEnv, fetcher:
   let counted: { used: number; tokens: number } | null = null
   if (counts) {
     counted = await addUsage(env, who, day, 1, 0, fetcher)
-    if (counted && counted.used > env.dailyLimit) {
+    // 세지 못했으면 묻지 않는다 (전에는 그냥 물어서, 횟수를 못 쓰게 막으면 끝없이 쓸 수 있었다)
+    if (!counted) return err(503, '오늘 쓴 횟수를 확인하지 못했어요. 잠시 뒤에 다시 해 주세요')
+    if (counted.used > env.dailyLimit) {
       await addUsage(env, who, day, -1, 0, fetcher)
       const usage: AiUsage = { used: env.dailyLimit, limit: env.dailyLimit, remaining: 0, tokens: 0, tokensToday: counted.tokens, provider: call.provider }
       return err(429, `오늘 Tidy AI를 ${env.dailyLimit}번 다 썼어요. 내일 다시 쓸 수 있어요`, { usage, tidyLimit: true })

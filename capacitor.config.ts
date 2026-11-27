@@ -6,6 +6,10 @@ const config: CapacitorConfig = {
   appName: 'Tidy',
   webDir: 'dist',
   backgroundColor: '#f2f4f6',
+  android: {
+    // 크롬 chrome://inspect 로 앱 화면 · 저장된 기록을 들여다보지 못하게 (보안 강화 2026-11-27)
+    webContentsDebuggingEnabled: false,
+  },
 }
 
 export default config

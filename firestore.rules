@@ -1,10 +1,18 @@
 rules_version = '2';
 // Tidy 기기 동기화 보안 규칙
 // 로그인한 사람은 자기 자리(users/내 uid/…)만 읽고 쓸 수 있다. 다른 사람 기록은 볼 수 없다.
+// aiUsage(오늘 Tidy AI 쓴 횟수)는 읽기만 된다. 서버(서비스 계정)만 센다 — 앱에서 횟수를 0으로 되돌려 끝없이 쓰는 것을 막는다 (보안 강화 2026-11-27)
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+    match /users/{uid}/{collection}/{rest=**} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && collection != 'aiUsage';
     }
   }
 }

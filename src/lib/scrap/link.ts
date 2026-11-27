@@ -300,9 +300,26 @@ export function isPublicHttpUrl(raw: string): boolean {
   if (u.username || u.password) return false
   const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, '')
   if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || !h.includes('.') && !h.includes(':')) return false
-  if (/^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return false
-  if (h.includes(':') && (h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80') || h.startsWith('::ffff:'))) return false
+  if (isPrivateIp(h)) return false
   return true
+}
+
+/**
+ * 사설망 · 이 컴퓨터 · 클라우드 내부 주소인지 (IPv4 · IPv6 글자). 이름(example.com)이면 false
+ * 서버가 대신 읽어 주는 주소가 내부 시스템(예: 169.254.169.254 클라우드 비밀 정보)을 가리키지 못하게 막는다 (SSRF)
+ */
+export function isPrivateIp(raw: string): boolean {
+  const h = raw.toLowerCase().replace(/^\[|\]$/g, '')
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) {
+    const [a, b] = h.split('.').map(Number)
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19)) || a >= 224
+  }
+  if (!h.includes(':')) return false
+  if (h === '::' || h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe8') || h.startsWith('fe9') || h.startsWith('fea') || h.startsWith('feb') || h.startsWith('ff')) return true
+  // ::ffff:10.0.0.1 처럼 IPv4 를 품은 IPv6
+  const v4 = h.match(/^::(ffff:)?(\d{1,3}(\.\d{1,3}){3})$/)?.[2]
+  if (v4) return isPrivateIp(v4)
+  return h.startsWith('::ffff:') || h.startsWith('64:ff9b:')
 }
 
 /** 미리보기 API가 돌려주는 모양 */
