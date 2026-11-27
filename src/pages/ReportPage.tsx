@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addMonths, format } from 'date-fns'
 import { BookHeart, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Flame, PiggyBank, Wallet } from 'lucide-react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import BudgetBar from '../components/budget/BudgetBar'
 import PageHeader from '../components/common/PageHeader'
@@ -14,6 +15,7 @@ import { habitRepo } from '../repositories/habitRepo'
 import { todoRepo } from '../repositories/todoRepo'
 import { CategoryIcon } from '../components/common/MoneyIcon'
 import { Card, Num, ReportKindSwitch } from '../components/report/ReportParts'
+import ReportSearch from '../components/report/ReportSearch'
 import YearReport from '../components/report/YearReport'
 import { defaultReportYear } from '../lib/yearlyReport'
 
@@ -32,6 +34,7 @@ export default function ReportPage() {
   const ym = m && /^\d{4}-\d{2}$/.test(m) ? m : defaultReportMonth(today)
   const move = (n: number) => setParams({ m: format(addMonths(parseDateKey(`${ym}-01`), n), 'yyyy-MM') }, { replace: true })
   const isFuture = ym >= today.slice(0, 7)
+  const [query, setQuery] = useState('')
 
   const data = useLiveQuery(async () => {
     const from = `${prevMonth(ym)}-01`
@@ -53,6 +56,7 @@ export default function ReportPage() {
     <>
       <PageHeader title={year ? '연간 리포트' : '월간 리포트'} />
       <ReportKindSwitch kind={year ? 'year' : 'month'} onChange={(k) => setParams(k === 'year' ? { y: defaultReportYear(today) } : {}, { replace: true })} />
+      <ReportSearch query={query} onQuery={setQuery} year={year ?? ym.slice(0, 4)} ym={year ? null : ym} />
       {year ? (
         <YearReport year={year} today={today} onYear={(next) => setParams({ y: next }, { replace: true })} />
       ) : (

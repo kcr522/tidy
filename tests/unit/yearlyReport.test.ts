@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Todo, Transaction } from '../../src/db/types'
-import { activityRows, buildYearReport, defaultReportYear, longestStreak, teaserOf, type YearInput } from '../../src/lib/yearlyReport'
+import { activityRows, buildYearReport, defaultReportYear, longestStreak, searchSpending, teaserOf, type YearInput } from '../../src/lib/yearlyReport'
 
 const row = (date: string, amount: number, category = '식비', memo = '', type: Transaction['type'] = 'EXPENSE'): Transaction => ({ type, amount, date, category, memo, createdAt: '', updatedAt: '' })
 const doneTodo = (doneAt: string): Todo => ({ title: '할 일', dueDate: null, isCompleted: 1, completedAt: doneAt, priority: 'MEDIUM', createdAt: '', updatedAt: '' })
@@ -92,5 +92,33 @@ describe('yearlyReport', () => {
     ['2026-11-07', '/report?m=2026-10'],
   ])('대시보드 카드: %s에는 %s로 간다', (today, expected) => {
     expect(teaserOf(today)?.to ?? null).toBe(expected)
+  })
+})
+
+describe('searchSpending', () => {
+  const spends = [row('2025-03-01', 20000, '문화/여가', '영화'), row('2025-03-15', 30000, '문화/여가', '전시'), row('2025-07-02', 15000, '식비', '여가 모임 저녁'), row('2025-03-20', 9000, '식비', '점심'), row('2024-03-01', 99000, '문화/여가', '콘서트'), row('2025-03-03', 50000, '저축', '여가 통장')]
+  const LEISURE = '여가'
+
+  it('카테고리나 메모에 그 글자가 있는 지출을 그달 · 그해로 모으고, 저축과 다른 해는 뺀다', () => {
+    const result = searchSpending(spends, LEISURE, '2025', '2025-03')
+
+    expect(result?.month).toEqual({ amount: 50000, count: 2 })
+    expect(result?.year).toEqual({ amount: 65000, count: 3 })
+    expect(result?.months[6]).toBe(15000) // 7월: 메모 '여가 모임'
+    expect(result?.categories).toEqual(['문화/여가'])
+  })
+
+  it.each([
+    ['', null],
+    ['  ', null],
+  ])('빈 검색어(%j)면 결과가 없다', (query, expected) => {
+    expect(searchSpending(spends, query, '2025')).toBe(expected)
+  })
+
+  it('띄어쓰기와 영문 대소문자는 무시하고, 달을 안 주면 그달 칸은 비운다', () => {
+    const result = searchSpending([row('2025-01-01', 5900, '구독', 'Netflix')], 'net flix', '2025')
+
+    expect(result?.year.amount).toBe(5900)
+    expect(result?.month).toBeNull()
   })
 })

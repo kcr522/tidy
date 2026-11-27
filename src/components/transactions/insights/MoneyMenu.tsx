@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BarChart3, CalendarCheck, Tags, CreditCard, ChevronLeft, ChevronRight, PieChart, Repeat, Target } from 'lucide-react'
+import { BarChart3, CalendarCheck, Tags, CreditCard, ChevronLeft, ChevronRight, PieChart, Repeat, Sparkles, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { budgetStatus } from '../../../lib/budget'
@@ -18,6 +18,7 @@ import { payMethodRepo } from '../../../repositories/payMethodRepo'
 import { accountTotals, NO_ACCOUNT } from '../../../lib/summary'
 import ChartPanel from './ChartPanel'
 import StatsPanel from './StatsPanel'
+import { defaultReportYear } from '../../../lib/yearlyReport'
 
 export type MenuView = 'menu' | 'chart' | 'stats' | 'fixed' | 'budget' | 'methods' | 'categories'
 
@@ -100,11 +101,20 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
           />
           <MenuItem
             icon={<CalendarCheck className="size-5" aria-hidden />}
-            title="월간 · 연간 리포트"
-            desc="한 달 · 1년 동안 쓴 돈, 끝낸 할 일, 습관, 일기를 한 장으로"
+            title="월간 리포트"
+            desc="한 달 동안 쓴 돈, 끝낸 할 일, 습관, 일기를 한 장으로"
             onClick={() => {
               onClose()
               navigate('/report')
+            }}
+          />
+          <MenuItem
+            icon={<Sparkles className="size-5" aria-hidden />}
+            title="연간 리포트"
+            desc="1년 동안 쓴 돈, 달마다 막대, 습관 최장 연속, 기록 잔디"
+            onClick={() => {
+              onClose()
+              navigate(`/report?y=${defaultReportYear(today)}`)
             }}
           />
         </ul>

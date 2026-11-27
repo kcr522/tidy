@@ -2,11 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { BookHeart, Bookmark, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Flame, PiggyBank, Wallet } from 'lucide-react'
 import { db } from '../../db/database'
 import { formatDateLabel, formatWon } from '../../lib/format'
-import { activityRows, buildYearReport, type MonthBar } from '../../lib/yearlyReport'
+import { activityRows, buildYearReport } from '../../lib/yearlyReport'
 import { habitRepo } from '../../repositories/habitRepo'
 import { todoRepo } from '../../repositories/todoRepo'
 import { CategoryIcon } from '../common/MoneyIcon'
-import { Card, Num } from './ReportParts'
+import { Bars, Card, Num } from './ReportParts'
 
 /** 연간 리포트: 1년 동안 쓴 돈 · 모은 돈, 할 일, 습관, 일기를 한 장으로 (AI 없이 이 기기 기록만) */
 export default function YearReport({ year, today, onYear }: { year: string; today: string; onYear: (y: string) => void }) {
@@ -75,7 +75,7 @@ export default function YearReport({ year, today, onYear }: { year: string; toda
                 <h4 className="mt-4 mb-2 flex items-baseline justify-between text-sm font-bold text-slate-700">
                   달마다 쓴 돈 <span className="text-xs font-medium text-slate-400">한 달 평균 {formatWon(r.money.monthAvg)}</span>
                 </h4>
-                <Bars months={r.months} pick={(m) => m.expense} color="var(--color-expense)" format={formatWon} />
+                <Bars values={r.months.map((m) => m.expense)} color="var(--color-expense)" format={formatWon} />
                 <p className="mt-2 text-sm text-slate-600">
                   가장 많이 쓴 달은 <b className="text-slate-900">{r.money.maxMonth}월</b>
                   {r.money.minMonth && (
@@ -116,7 +116,7 @@ export default function YearReport({ year, today, onYear }: { year: string; toda
 
           <div className="grid gap-4">
             <Card icon={<CheckCircle2 className="size-5" aria-hidden />} title="할 일">
-              <Bars months={r.months} pick={(m) => m.todosDone} color="var(--color-brand-500)" format={(n) => `${n}개`} />
+              <Bars values={r.months.map((m) => m.todosDone)} color="var(--color-brand-500)" format={(n) => `${n}개`} />
               <p className="mt-2 text-sm text-slate-600">
                 1년 동안 <b className="text-slate-900">{r.todos.done}개</b>를 끝냈어요
                 {r.todos.bestMonth && (
@@ -177,24 +177,6 @@ function Big({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl bg-white/15 px-2 py-2">
       <p className="text-lg font-extrabold tabular-nums">{value}</p>
       <p className="text-xs opacity-85">{label}</p>
-    </div>
-  )
-}
-
-/** 12달 막대 (가장 큰 달만 진하게) */
-function Bars({ months, pick, color, format }: { months: MonthBar[]; pick: (m: MonthBar) => number; color: string; format: (n: number) => string }) {
-  const max = Math.max(1, ...months.map(pick))
-  return (
-    <div className="flex h-24 items-end gap-1" role="img" aria-label={months.map((m) => `${m.month}월 ${format(pick(m))}`).join(', ')}>
-      {months.map((m) => {
-        const v = pick(m)
-        return (
-          <div key={m.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
-            <div className="w-full rounded-t-md" style={{ height: `${v ? Math.max(4, (v / max) * 100) : 2}%`, background: v ? color : 'var(--color-slate-200)', opacity: v === max ? 1 : 0.45 }} />
-            <span className="text-[10px] text-slate-400 tabular-nums">{m.month}</span>
-          </div>
-        )
-      })}
     </div>
   )
 }

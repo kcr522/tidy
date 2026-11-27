@@ -230,3 +230,39 @@ export function teaserOf(today: string): { to: string; title: string; desc: stri
   const ym = prevMonth(today.slice(0, 7))
   return { to: `/report?m=${ym}`, title: `${Number(ym.slice(5, 7))}월 돌아보기`, desc: '지난달 쓴 돈, 끝낸 할 일, 습관을 정리했어요', year: false }
 }
+
+export interface SpendSearch {
+  /** 찾은 카테고리 이름들 (메모로만 찾았으면 비어 있다) */
+  categories: string[]
+  /** 1월 ~ 12월에 쓴 돈 */
+  months: number[]
+  year: { amount: number; count: number }
+  /** ym 을 줬을 때만: 그달 */
+  month: { amount: number; count: number } | null
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '')
+
+/** 리포트 검색: 카테고리나 메모에 글자가 들어간 지출을 그해 · 그달로 모은다 ("여가" → 문화/여가). 저축 · 수입은 빼고 */
+export function searchSpending(transactions: Transaction[], query: string, year: string, ym: string | null = null): SpendSearch | null {
+  const q = norm(query)
+  if (!q) return null
+  const months = Array<number>(12).fill(0)
+  const categories = new Set<string>()
+  let count = 0
+  let monthAmount = 0
+  let monthCount = 0
+  for (const t of transactions) {
+    if (!t.date.startsWith(year) || !isSpending(t)) continue
+    const byCategory = norm(t.category).includes(q)
+    if (!byCategory && !norm(t.memo ?? '').includes(q)) continue
+    if (byCategory) categories.add(t.category)
+    months[Number(t.date.slice(5, 7)) - 1] += t.amount
+    count++
+    if (ym && t.date.startsWith(ym)) {
+      monthAmount += t.amount
+      monthCount++
+    }
+  }
+  return { categories: [...categories], months, year: { amount: months.reduce((s, n) => s + n, 0), count }, month: ym ? { amount: monthAmount, count: monthCount } : null }
+}

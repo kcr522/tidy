@@ -50,3 +50,18 @@ export function ReportKindSwitch({ kind, onChange }: { kind: 'month' | 'year'; o
     </div>
   )
 }
+
+/** 12달 막대 (가장 큰 달만 진하게, mark 달은 테두리) */
+export function Bars({ values, color, format, mark }: { values: number[]; color: string; format: (n: number) => string; mark?: number }) {
+  const max = Math.max(1, ...values)
+  return (
+    <div className="flex h-24 items-end gap-1" role="img" aria-label={values.map((v, n) => `${n + 1}월 ${format(v)}`).join(', ')}>
+      {values.map((v, n) => (
+        <div key={n} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+          <div className="w-full rounded-t-md" style={{ height: `${v ? Math.max(4, (v / max) * 100) : 2}%`, background: v ? color : 'var(--color-slate-200)', opacity: v === max || n + 1 === mark ? 1 : 0.45 }} />
+          <span className={`text-[10px] tabular-nums ${n + 1 === mark ? 'font-extrabold text-slate-800' : 'text-slate-400'}`}>{n + 1}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
