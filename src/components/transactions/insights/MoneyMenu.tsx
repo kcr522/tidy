@@ -95,8 +95,8 @@ export default function MoneyMenu({ onClose, today, initialView = 'menu' }: { on
           <MenuItem
             icon={<Repeat className="size-5" aria-hidden />}
             title="고정 금액"
-            desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈"
-            hint={active.length > 0 ? `${active.length}개 · 매달 고정 지출 ${formatWon(fixedOut)}` : undefined}
+            desc="월급, 월세, 구독료처럼 매달 나가고 들어오는 돈 · 결제 전 알림"
+            hint={active.length > 0 ? `${active.length}개 · 매달 고정 지출 ${formatWon(fixedOut)} · 1년 ${formatWon(fixedOut * 12)}` : undefined}
             onClick={() => setView('fixed')}
           />
           <MenuItem
